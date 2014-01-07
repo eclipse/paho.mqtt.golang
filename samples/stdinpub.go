@@ -25,7 +25,7 @@ import (
 	"time"
 )
 
-import MQTT ""
+import MQTT "git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
 
 func main() {
 	stdin := bufio.NewReader(os.Stdin)

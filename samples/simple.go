@@ -16,7 +16,7 @@ package main
 
 import "fmt"
 import "time"
-import MQTT ""
+import MQTT "git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
 
 var f MQTT.MessageHandler = func(msg MQTT.Message) {
 	fmt.Printf("TOPIC: %s\n", msg.Topic())

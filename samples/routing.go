@@ -28,7 +28,7 @@ must wait for messages to be published.
 package main
 
 import "fmt"
-import MQTT ""
+import MQTT "git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
 
 var broker_load = make(chan bool)
 var broker_connection = make(chan bool)
