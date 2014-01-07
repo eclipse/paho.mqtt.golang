@@ -1,0 +1,95 @@
+/*
+ * Copyright (c) 2013 IBM Corp.
+ *
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ *
+ * Contributors:
+ *    Seth Hoenig
+ *    Allan Stockdill-Mander
+ *    Mike Robertson
+ */
+
+/*
+
+This sample is designed to demonstrate the ability to set individual
+callbacks on a per-subscription basis. There are three handlers in use:
+ brokerLoadHandler -        $SYS/broker/load/#
+ brokerConnectionHandler -  $SYS/broker/connection/#
+ brokerClientHandler -      $SYS/broker/clients/#
+The client will receive 100 messages total from those subscriptions,
+and then print the total number of messages received from each.
+It may take a few moments for the sample to complete running, as it
+must wait for messages to be published.
+*/
+
+package main
+
+import "fmt"
+import MQTT ""
+
+var broker_load = make(chan bool)
+var broker_connection = make(chan bool)
+var broker_clients = make(chan bool)
+
+var brokerLoadHandler MQTT.MessageHandler = func(msg MQTT.Message) {
+	broker_load <- true
+	fmt.Printf("BrokerLoadHandler         ")
+	fmt.Printf("[%s]  ", msg.Topic())
+	fmt.Printf("%s\n", msg.Payload())
+}
+
+var brokerConnectionHandler MQTT.MessageHandler = func(msg MQTT.Message) {
+	broker_connection <- true
+	fmt.Printf("BrokerConnectionHandler   ")
+	fmt.Printf("[%s]  ", msg.Topic())
+	fmt.Printf("%s\n", msg.Payload())
+}
+
+var brokerClientsHandler MQTT.MessageHandler = func(msg MQTT.Message) {
+	broker_clients <- true
+	fmt.Printf("BrokerClientsHandler      ")
+	fmt.Printf("[%s]  ", msg.Topic())
+	fmt.Printf("%s\n", msg.Payload())
+}
+
+func main() {
+	opts := MQTT.NewClientOptions().SetBroker("tcp://test.mosquitto.org:1883").SetClientId("router-sample")
+	opts.SetTraceLevel(MQTT.Off)
+	opts.SetCleanSession(true)
+
+	c := MQTT.NewClient(opts)
+	_, err := c.Start()
+	if err != nil {
+		panic(err)
+	}
+	ss1 := c.StartSubscription(brokerLoadHandler, "$SYS/broker/load/#", MQTT.QOS_ZERO)
+	<-ss1
+	ss2 := c.StartSubscription(brokerConnectionHandler, "$SYS/broker/connection/#", MQTT.QOS_ZERO)
+	<-ss2
+	ss3 := c.StartSubscription(brokerClientsHandler, "$SYS/broker/clients/#", MQTT.QOS_ZERO)
+	<-ss3
+
+	num_bload := 0
+	num_bconns := 0
+	num_bclients := 0
+
+	for i := 0; i < 100; i++ {
+		select {
+		case <-broker_load:
+			num_bload++
+		case <-broker_connection:
+			num_bconns++
+		case <-broker_clients:
+			num_bclients++
+		}
+	}
+
+	fmt.Printf("Received %d Broker Load messages\n", num_bload)
+	fmt.Printf("Received %d Broker Connection messages\n", num_bconns)
+	fmt.Printf("Received %d Broker Clients messages\n", num_bclients)
+
+	c.Disconnect(250)
+}
