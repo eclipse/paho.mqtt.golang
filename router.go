@@ -134,7 +134,9 @@ func (r *router) matchAndDispatch(messages <-chan *Message, order bool) {
 				for e := r.routes.Front(); e != nil; e = e.Next() {
 					if e.Value.(*route).match(message.Topic()) {
 						if order {
+							r.RUnlock()
 							e.Value.(*route).callback(*message)
+							r.RLock()
 						} else {
 							go e.Value.(*route).callback(*message)
 						}
@@ -144,7 +146,9 @@ func (r *router) matchAndDispatch(messages <-chan *Message, order bool) {
 				r.RUnlock()
 				if !sent {
 					if order {
+						r.RUnlock()
 						r.defaultHandler(*message)
+						r.RLock()
 					} else {
 						go r.defaultHandler(*message)
 					}

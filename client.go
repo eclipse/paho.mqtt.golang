@@ -16,6 +16,7 @@
 package mqtt
 
 import (
+	"errors"
 	"math/rand"
 	"net"
 	"sync"
@@ -104,14 +105,17 @@ func (c *MqttClient) Start() ([]Receipt, error) {
 
 	c1, err1 := openConnection(c.options.server, c.options.tlsconfig)
 	if err1 != nil {
+		c.trace_w(CLI, "failed to connect to primary broker")
 		if c.options.server2 != nil {
 			c2, err2 := openConnection(c.options.server2, c.options.tlsconfig)
 			if err2 != nil {
+				c.trace_w(CLI, "failed to connect to standby broker")
 				return nil, err1
 			}
 			c.conn = c2
 			c.trace_v(CLI, "connected to standby broker")
 		} else {
+			c.trace_w(CLI, "standby broker is not configured")
 			return nil, err1
 		}
 	} else {
@@ -119,7 +123,10 @@ func (c *MqttClient) Start() ([]Receipt, error) {
 		c.trace_v(CLI, "connected to primary broker")
 	}
 
-	chkcond(c.conn != nil)
+	if c.conn == nil {
+		c.trace_e(CLI, "Failed to connect to a broker")
+		return nil, errors.New("Failed to connect to a broker")
+	}
 
 	c.persist.Open()
 	c.receipts = newReceiptMap()
@@ -164,10 +171,12 @@ func (c *MqttClient) Start() ([]Receipt, error) {
 
 	rc := <-c.begin // wait for connack
 	if rc != CONN_ACCEPTED {
+		c.trace_c(CLI, "CONNACK was not CONN_ACCEPTED, but rather %s", rc2str(rc))
 		return nil, chkrc(rc)
 	}
 
 	c.connected = true
+	c.trace_v(CLI, "client is connected")
 
 	if c.options.timeout != 0 {
 		go keepalive(c)
@@ -192,10 +201,11 @@ func (c *MqttClient) Start() ([]Receipt, error) {
 // the specified number of milliseconds to wait for existing work to be
 // completed.
 func (c *MqttClient) Disconnect(quiesce uint) {
-	c.trace_v(CLI, "disconnecting")
 	if !c.IsConnected() {
+		c.trace_w(CLI, "already disconnected")
 		return
 	}
+	c.trace_v(CLI, "disconnecting")
 	c.connected = false
 
 	// wait for work to finish, or quiesce time consumed
@@ -213,10 +223,11 @@ func (c *MqttClient) Disconnect(quiesce uint) {
 
 // ForceDisconnect will end the connection with the mqtt broker immediately.
 func (c *MqttClient) ForceDisconnect() {
-	c.trace_w(CLI, "force disconnecting")
 	if !c.IsConnected() {
+		c.trace_w(CLI, "already disconnected")
 		return
 	}
+	c.trace_v(CLI, "forcefully disconnecting")
 	c.disconnect()
 }
 

@@ -75,6 +75,18 @@ func (c *MqttClient) trace_w(cm component, f string, v ...interface{}) {
 	c.t.Trace_W(cm, f, v...)
 }
 
+func (t *Tracer) Trace_C(cm component, f string, v ...interface{}) {
+	if t.level >= Critical && t.output != nil {
+		x := fmt.Sprintf(f, v...)
+		m := fmt.Sprintf(frmt, cm, timestamp(), t.clientid, x)
+		t.output.WriteString(m)
+	}
+}
+
+func (c *MqttClient) trace_c(cm component, f string, v ...interface{}) {
+	c.t.Trace_C(cm, f, v...)
+}
+
 func (t *Tracer) Trace_E(cm component, f string, v ...interface{}) {
 	if t.level >= Critical && t.output != nil {
 		x := fmt.Sprintf(f, v...)
