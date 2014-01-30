@@ -67,7 +67,7 @@ func (store *MemoryStore) Get(key string) *Message {
 	mid := key2mid(key)
 	m := store.messages[key]
 	if m == nil {
-		store.t.Trace_V(STR, "memorystore get: message %v not found", mid)
+		store.t.Trace_C(STR, "memorystore get: message %v not found", mid)
 	} else {
 		store.t.Trace_V(STR, "memorystore get: message %v found", mid)
 	}
@@ -95,7 +95,7 @@ func (store *MemoryStore) Del(key string) {
 	mid := key2mid(key)
 	m := store.messages[key]
 	if m == nil {
-		store.t.Trace_V(STR, "memorystore del: message %v not found", mid)
+		store.t.Trace_W(STR, "memorystore del: message %v not found", mid)
 	} else {
 		store.messages[key] = nil
 		store.t.Trace_V(STR, "memorystore del: message %v was deleted", mid)

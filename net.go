@@ -55,7 +55,7 @@ func connect(c *MqttClient) {
 		incLength, err := c.conn.Read(incomingBuf)
 		c.trace_v(NET, "connect read %d bytes of network data", incLength)
 		if err != nil {
-			c.trace_v(NET, "connect got error")
+			c.trace_e(NET, "connect got error")
 			c.errors <- err
 		}
 		length += incLength
@@ -71,7 +71,7 @@ func connect(c *MqttClient) {
 		c.trace_v(NET, "connect received inbound message, type %v", msg.msgType())
 		c.ibound <- msg
 	} else {
-		c.trace_v(NET, "connect msg was nil")
+		c.trace_e(NET, "connect msg was nil")
 	}
 
 	return
@@ -110,7 +110,7 @@ readdata:
 			c.trace_v(NET, "incoming received inbound message, type %v", msg.msgType())
 			c.ibound <- msg
 		} else {
-			c.trace_v(NET, "incoming msg was nil")
+			c.trace_c(NET, "incoming msg was nil")
 		}
 		length -= pOffset
 		data = data[pOffset:]
@@ -126,7 +126,7 @@ readdata:
 		return
 		// Not trying to disconnect, send the error to the errors channel
 	default:
-		c.trace_v(NET, "incoming stopped with error")
+		c.trace_e(NET, "incoming stopped with error")
 		c.errors <- err
 		return
 	}
@@ -155,10 +155,11 @@ func outgoing(c *MqttClient) {
 			persist_obound(c.persist, msg)
 			_, err := c.conn.Write(msg.Bytes())
 			if err != nil {
-				c.trace_v(NET, "outgoing stopped with error")
+				c.trace_e(NET, "outgoing stopped with error")
 				c.errors <- err
 				return
 			}
+
 			if (msg.QoS() == QOS_ZERO) &&
 				(msgtype == PUBLISH || msgtype == SUBSCRIBE || msgtype == UNSUBSCRIBE) {
 				c.receipts.get(msg.MsgId()) <- Receipt{}
@@ -171,7 +172,7 @@ func outgoing(c *MqttClient) {
 			c.trace_v(NET, "obound priority msg to write, type %d", msgtype)
 			_, err := c.conn.Write(msg.Bytes())
 			if err != nil {
-				c.trace_v(NET, "outgoing stopped with error")
+				c.trace_e(NET, "outgoing stopped with error")
 				c.errors <- err
 				return
 			}

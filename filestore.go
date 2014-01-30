@@ -75,7 +75,7 @@ func (store *FileStore) Close() {
 	defer store.Unlock()
 	store.Lock()
 	store.opened = false
-	store.t.Trace_V(STR, "store is not open")
+	store.t.Trace_W(STR, "store is not open")
 }
 
 // Put will put a message into the store, associated with the provided
@@ -161,7 +161,7 @@ func (store *FileStore) del(key string) {
 	filepath := fullpath(store.directory, key)
 	store.t.Trace_V(STR, "path of deletion: `%s`", filepath)
 	if !exists(filepath) {
-		store.t.Trace_E(STR, "store could not delete key: %v", key)
+		store.t.Trace_W(STR, "store could not delete key: %v", key)
 		return
 	}
 	rerr := os.Remove(filepath)
