@@ -49,7 +49,7 @@ func keepalive(c *MqttClient) {
 	for {
 		select {
 		case <-c.stopPing:
-			c.trace_v(PNG, "keepalive stopped")
+			c.trace_w(PNG, "keepalive stopped")
 			return
 		default:
 			last := uint(time.Since(c.lastContact.get()).Seconds())
@@ -61,7 +61,7 @@ func keepalive(c *MqttClient) {
 					c.oboundP <- ping
 					c.pingOutstanding = true
 				} else {
-					c.trace_v(PNG, "pingresp not received, disconnecting")
+					c.trace_c(PNG, "pingresp not received, disconnecting")
 					c.disconnect()
 				}
 			}

@@ -64,3 +64,22 @@ func chkrc(rc ConnRC) error {
 	}
 	return nil
 }
+
+func rc2str(rc ConnRC) string {
+	switch rc {
+	case CONN_ACCEPTED:
+		return "CONN_ACCEPTED"
+	case CONN_REF_BAD_PROTO_VER:
+		return "CONN_REF_BAD_PROTO_VER"
+	case CONN_REF_ID_REJ:
+		return "CONN_REF_ID_REJ"
+	case CONN_REF_SERV_UNAVAIL:
+		return "CONN_REF_SERV_UNAVAIL"
+	case CONN_REF_BAD_USER_PASS:
+		return "CONN_REF_BAD_USER_PASS"
+	case CONN_REF_NOT_AUTH:
+		return "CONN_REF_NOT_AUTH"
+	default:
+		return "UNKNOWN"
+	}
+}

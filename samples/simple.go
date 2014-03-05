@@ -14,9 +14,12 @@
 
 package main
 
-import "fmt"
-import "time"
-import MQTT "git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
+import (
+	"fmt"
+	MQTT "git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
+	"os"
+	"time"
+)
 
 var f MQTT.MessageHandler = func(msg MQTT.Message) {
 	fmt.Printf("TOPIC: %s\n", msg.Topic())
@@ -33,19 +36,28 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	receipt := c.StartSubscription(nil, "/go-mqtt/sample", MQTT.QOS_ZERO)
-	<-receipt
+
+	if receipt, err := c.StartSubscription(nil, "/go-mqtt/sample", MQTT.QOS_ZERO); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	} else {
+		<-receipt
+	}
 
 	for i := 0; i < 5; i++ {
 		text := fmt.Sprintf("this is msg #%d!", i)
-		receipt = c.Publish(MQTT.QOS_ONE, "/go-mqtt/sample", text)
+		receipt := c.Publish(MQTT.QOS_ONE, "/go-mqtt/sample", text)
 		<-receipt
 	}
 
 	time.Sleep(3 * time.Second)
 
-	receipt = c.EndSubscription("/go-mqtt/sample")
-	<-receipt
+	if receipt, err := c.EndSubscription("/go-mqtt/sample"); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	} else {
+		<-receipt
+	}
 
 	c.Disconnect(250)
 }

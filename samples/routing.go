@@ -12,8 +12,7 @@
  *    Mike Robertson
  */
 
-/*
-
+/*----------------------------------------------------------------------
 This sample is designed to demonstrate the ability to set individual
 callbacks on a per-subscription basis. There are three handlers in use:
  brokerLoadHandler -        $SYS/broker/load/#
@@ -23,12 +22,15 @@ The client will receive 100 messages total from those subscriptions,
 and then print the total number of messages received from each.
 It may take a few moments for the sample to complete running, as it
 must wait for messages to be published.
-*/
+-----------------------------------------------------------------------*/
 
 package main
 
-import "fmt"
-import MQTT "git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
+import (
+	"fmt"
+	MQTT "git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
+	"os"
+)
 
 var broker_load = make(chan bool)
 var broker_connection = make(chan bool)
@@ -65,12 +67,27 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	ss1 := c.StartSubscription(brokerLoadHandler, "$SYS/broker/load/#", MQTT.QOS_ZERO)
-	<-ss1
-	ss2 := c.StartSubscription(brokerConnectionHandler, "$SYS/broker/connection/#", MQTT.QOS_ZERO)
-	<-ss2
-	ss3 := c.StartSubscription(brokerClientsHandler, "$SYS/broker/clients/#", MQTT.QOS_ZERO)
-	<-ss3
+
+	if receipt, err := c.StartSubscription(brokerLoadHandler, "$SYS/broker/load/#", MQTT.QOS_ZERO); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	} else {
+		<-receipt
+	}
+
+	if receipt, err := c.StartSubscription(brokerConnectionHandler, "$SYS/broker/connection/#", MQTT.QOS_ZERO); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	} else {
+		<-receipt
+	}
+
+	if receipt, err := c.StartSubscription(brokerClientsHandler, "$SYS/broker/clients/#", MQTT.QOS_ZERO); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	} else {
+		<-receipt
+	}
 
 	num_bload := 0
 	num_bconns := 0
@@ -87,9 +104,9 @@ func main() {
 		}
 	}
 
-	fmt.Printf("Received %d Broker Load messages\n", num_bload)
-	fmt.Printf("Received %d Broker Connection messages\n", num_bconns)
-	fmt.Printf("Received %d Broker Clients messages\n", num_bclients)
+	fmt.Printf("Received %3d Broker Load messages\n", num_bload)
+	fmt.Printf("Received %3d Broker Connection messages\n", num_bconns)
+	fmt.Printf("Received %3d Broker Clients messages\n", num_bclients)
 
 	c.Disconnect(250)
 }
