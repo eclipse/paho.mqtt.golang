@@ -14,9 +14,13 @@
 
 package main
 
-import "fmt"
-import "flag"
-import MQTT "git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
+import (
+	"flag"
+	"fmt"
+	"os"
+
+	MQTT "git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
+)
 
 /*
 Options:
@@ -126,7 +130,14 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		client.StartSubscription(nil, *topic, MQTT.QoS(*qos))
+
+		filter, e := MQTT.NewTopicFilter(*topic, byte(*qos))
+		if e != nil {
+			fmt.Println(e)
+			os.Exit(1)
+		}
+
+		client.StartSubscription(nil, filter)
 
 		for num_received < *num {
 			incoming := <-choke

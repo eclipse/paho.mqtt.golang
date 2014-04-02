@@ -22,9 +22,9 @@ import (
 	"strconv"
 	"syscall"
 	"time"
-)
 
-import MQTT "git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
+	MQTT "git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
+)
 
 func onMessageReceived(message MQTT.Message) {
 	fmt.Printf("Received message on topic: %s\n", message.Topic())
@@ -67,7 +67,12 @@ func main() {
 		fmt.Printf("Connected to %s\n", *server)
 	}
 
-	client.StartSubscription(onMessageReceived, *topic, MQTT.QoS(*qos))
+	filter, e := MQTT.NewTopicFilter(*topic, byte(*qos))
+	if e != nil {
+		fmt.Println(e)
+		os.Exit(1)
+	}
+	client.StartSubscription(onMessageReceived, filter)
 
 	for {
 		time.Sleep(1 * time.Second)

@@ -16,9 +16,10 @@ package main
 
 import (
 	"fmt"
-	MQTT "git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
 	"os"
 	"time"
+
+	MQTT "git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
 )
 
 var f MQTT.MessageHandler = func(msg MQTT.Message) {
@@ -37,7 +38,8 @@ func main() {
 		panic(err)
 	}
 
-	if receipt, err := c.StartSubscription(nil, "/go-mqtt/sample", MQTT.QOS_ZERO); err != nil {
+	filter, _ := MQTT.NewTopicFilter("/go-mqtt/sample", 0)
+	if receipt, err := c.StartSubscription(nil, filter); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	} else {

@@ -28,8 +28,9 @@ package main
 
 import (
 	"fmt"
-	MQTT "git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
 	"os"
+
+	MQTT "git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
 )
 
 var broker_load = make(chan bool)
@@ -68,21 +69,24 @@ func main() {
 		panic(err)
 	}
 
-	if receipt, err := c.StartSubscription(brokerLoadHandler, "$SYS/broker/load/#", MQTT.QOS_ZERO); err != nil {
+	loadFilter, _ := MQTT.NewTopicFilter("$SYS/broker/load/#", 0)
+	if receipt, err := c.StartSubscription(brokerLoadHandler, loadFilter); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	} else {
 		<-receipt
 	}
 
-	if receipt, err := c.StartSubscription(brokerConnectionHandler, "$SYS/broker/connection/#", MQTT.QOS_ZERO); err != nil {
+	connectionFilter, _ := MQTT.NewTopicFilter("$SYS/broker/connection/#", 0)
+	if receipt, err := c.StartSubscription(brokerConnectionHandler, connectionFilter); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	} else {
 		<-receipt
 	}
 
-	if receipt, err := c.StartSubscription(brokerClientsHandler, "$SYS/broker/clients/#", MQTT.QOS_ZERO); err != nil {
+	clientsFilter, _ := MQTT.NewTopicFilter("$SYS/broker/clients/#", 0)
+	if receipt, err := c.StartSubscription(brokerClientsHandler, clientsFilter); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	} else {

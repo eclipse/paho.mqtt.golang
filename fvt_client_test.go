@@ -37,6 +37,7 @@ func Test_Start(t *testing.T) {
 	c.Disconnect(250)
 }
 
+/* uncomment this if you have connection policy disallowing FailClientID
 func Test_InvalidConnRc(t *testing.T) {
 	ops := NewClientOptions().SetClientId("FailClientID").
 		SetBroker("tcp://" + FVT_IP + ":17003").
@@ -49,6 +50,7 @@ func Test_InvalidConnRc(t *testing.T) {
 	}
 	c.Disconnect(250)
 }
+*/
 
 // Helper function for Test_Start_Ssl
 func NewTlsConfig() *tls.Config {
@@ -72,8 +74,7 @@ func NewTlsConfig() *tls.Config {
 	}
 }
 
-// temporarily disabled b/c Seth doesn't know
-//   how to configure IMA for SSL
+/* uncomment this if you have ssl setup
 func Test_Start_Ssl(t *testing.T) {
 	tlsconfig := NewTlsConfig()
 	ops := NewClientOptions().SetClientId("StartSsl").
@@ -90,6 +91,7 @@ func Test_Start_Ssl(t *testing.T) {
 
 	c.Disconnect(250)
 }
+*/
 
 func Test_Publish_1(t *testing.T) {
 	ops := NewClientOptions()

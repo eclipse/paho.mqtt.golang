@@ -109,7 +109,8 @@ func main() {
 		panic(err)
 	}
 
-	c.StartSubscription(nil, "/go-mqtt/sample", MQTT.QOS_ZERO)
+	filter, _ := MQTT.NewTopicFilter("/go-mqtt/sample", 0)
+	c.StartSubscription(nil, filter)
 
 	i := 0
 	for _ = range time.Tick(time.Duration(1) * time.Second) {

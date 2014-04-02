@@ -80,7 +80,9 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	c.StartSubscription(callback, "/go-mqtt/sample", MQTT.QOS_ZERO)
+
+	filter, _ := MQTT.NewTopicFilter("/go-mqtt/sample", 0)
+	c.StartSubscription(callback, filter)
 
 	for i := 0; i < 5; i++ {
 		text := fmt.Sprintf("this is msg #%d!", i)
