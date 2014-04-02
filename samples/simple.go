@@ -22,7 +22,7 @@ import (
 	MQTT "git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
 )
 
-var f MQTT.MessageHandler = func(msg MQTT.Message) {
+var f MQTT.MessageHandler = func(client *MQTT.MqttClient, msg MQTT.Message) {
 	fmt.Printf("TOPIC: %s\n", msg.Topic())
 	fmt.Printf("MSG: %s\n", msg.Payload())
 }
@@ -48,7 +48,7 @@ func main() {
 
 	for i := 0; i < 5; i++ {
 		text := fmt.Sprintf("this is msg #%d!", i)
-		receipt := c.Publish(MQTT.QOS_ONE, "/go-mqtt/sample", text)
+		receipt := c.Publish(MQTT.QOS_ONE, "/go-mqtt/sample", []byte(text))
 		<-receipt
 	}
 

@@ -158,7 +158,7 @@ func Test_Subscribe(t *testing.T) {
 	sops.SetBroker(FVT_TCP)
 	sops.SetClientId("Subscribe_rx")
 	sops.SetStore(NewFileStore("/tmp/fvt/Subscribe/s"))
-	var f MessageHandler = func(msg Message) {
+	var f MessageHandler = func(client *MqttClient, msg Message) {
 		fmt.Printf("TOPIC: %s\n", msg.Topic())
 		fmt.Printf("MSG: %s\n", msg.Payload())
 	}
@@ -190,7 +190,8 @@ func Test_Will(t *testing.T) {
 	sops := NewClientOptions().SetBroker(FVT_TCP)
 	sops.SetClientId("will-giver")
 	sops.SetWill("/wills", "good-byte!", QOS_ZERO, false)
-	sops.SetOnConnectionLost(func(err error) {
+	sops.SetOnConnectionLost(func(client *MqttClient, err error) {
+		fmt.Println("OnConnectionLost!")
 	})
 	c := NewClient(sops)
 
@@ -198,7 +199,7 @@ func Test_Will(t *testing.T) {
 	wops.SetBroker(FVT_TCP)
 	wops.SetClientId("will-subscriber")
 	wops.SetStore(NewFileStore("/tmp/fvt/Will"))
-	wops.SetDefaultPublishHandler(func(msg Message) {
+	wops.SetDefaultPublishHandler(func(client *MqttClient, msg Message) {
 		fmt.Printf("TOPIC: %s\n", msg.Topic())
 		fmt.Printf("MSG: %s\n", msg.Payload())
 		willmsgc <- string(msg.Payload())
@@ -240,14 +241,14 @@ func Test_Binary_Will(t *testing.T) {
 	sops := NewClientOptions().SetBroker(FVT_TCP)
 	sops.SetClientId("will-giver")
 	sops.SetBinaryWill("/wills", will, QOS_ZERO, false)
-	sops.SetOnConnectionLost(func(err error) {
+	sops.SetOnConnectionLost(func(client *MqttClient, err error) {
 	})
 	c := NewClient(sops)
 
 	wops := NewClientOptions().SetBroker(FVT_TCP)
 	wops.SetClientId("will-subscriber")
 	wops.SetStore(NewFileStore("/tmp/fvt/Binary_Will"))
-	wops.SetDefaultPublishHandler(func(msg Message) {
+	wops.SetDefaultPublishHandler(func(client *MqttClient, msg Message) {
 		fmt.Printf("TOPIC: %s\n", msg.Topic())
 		fmt.Printf("MSG: %v\n", msg.Payload())
 		willmsgc <- msg.Payload()
@@ -310,7 +311,7 @@ func Test_p0s0(t *testing.T) {
 	sops.SetBroker(FVT_TCP)
 	sops.SetClientId("p0s0-sub")
 	sops.SetStore(NewFileStore(store + "/s"))
-	var f MessageHandler = func(msg Message) {
+	var f MessageHandler = func(client *MqttClient, msg Message) {
 		fmt.Printf("TOPIC: %s\n", msg.Topic())
 		fmt.Printf("MSG: %s\n", msg.Payload())
 		choke <- true
@@ -370,7 +371,7 @@ func Test_p0s1(t *testing.T) {
 	sops.SetBroker(FVT_TCP)
 	sops.SetClientId("p0s1-sub")
 	sops.SetStore(NewFileStore(store + "/s"))
-	var f MessageHandler = func(msg Message) {
+	var f MessageHandler = func(client *MqttClient, msg Message) {
 		fmt.Printf("TOPIC: %s\n", msg.Topic())
 		fmt.Printf("MSG: %s\n", msg.Payload())
 		choke <- true
@@ -429,7 +430,7 @@ func Test_p0s2(t *testing.T) {
 	sops.SetBroker(FVT_TCP)
 	sops.SetClientId("p0s2-sub")
 	sops.SetStore(NewFileStore(store + "/s"))
-	var f MessageHandler = func(msg Message) {
+	var f MessageHandler = func(client *MqttClient, msg Message) {
 		fmt.Printf("TOPIC: %s\n", msg.Topic())
 		fmt.Printf("MSG: %s\n", msg.Payload())
 		choke <- true
@@ -488,7 +489,7 @@ func Test_p1s0(t *testing.T) {
 	sops.SetBroker(FVT_TCP)
 	sops.SetClientId("p1s0-sub")
 	sops.SetStore(NewFileStore(store + "/s"))
-	var f MessageHandler = func(msg Message) {
+	var f MessageHandler = func(client *MqttClient, msg Message) {
 		fmt.Printf("TOPIC: %s\n", msg.Topic())
 		fmt.Printf("MSG: %s\n", msg.Payload())
 		choke <- true
@@ -547,7 +548,7 @@ func Test_p1s1(t *testing.T) {
 	sops.SetBroker(FVT_TCP)
 	sops.SetClientId("p1s1-sub")
 	sops.SetStore(NewFileStore(store + "/s"))
-	var f MessageHandler = func(msg Message) {
+	var f MessageHandler = func(client *MqttClient, msg Message) {
 		fmt.Printf("TOPIC: %s\n", msg.Topic())
 		fmt.Printf("MSG: %s\n", msg.Payload())
 		choke <- true
@@ -606,7 +607,7 @@ func Test_p1s2(t *testing.T) {
 	sops.SetBroker(FVT_TCP)
 	sops.SetClientId("p1s2-sub")
 	sops.SetStore(NewFileStore(store + "/s"))
-	var f MessageHandler = func(msg Message) {
+	var f MessageHandler = func(client *MqttClient, msg Message) {
 		fmt.Printf("TOPIC: %s\n", msg.Topic())
 		fmt.Printf("MSG: %s\n", msg.Payload())
 		choke <- true
@@ -664,7 +665,7 @@ func Test_p2s0(t *testing.T) {
 	sops.SetBroker(FVT_TCP)
 	sops.SetClientId("p2s0-sub")
 	sops.SetStore(NewFileStore(store + "/s"))
-	var f MessageHandler = func(msg Message) {
+	var f MessageHandler = func(client *MqttClient, msg Message) {
 		fmt.Printf("TOPIC: %s\n", msg.Topic())
 		fmt.Printf("MSG: %s\n", msg.Payload())
 		choke <- true
@@ -720,7 +721,7 @@ func Test_p2s1(t *testing.T) {
 	sops.SetBroker(FVT_TCP)
 	sops.SetClientId("p2s1-sub")
 	sops.SetStore(NewFileStore(store + "/s"))
-	var f MessageHandler = func(msg Message) {
+	var f MessageHandler = func(client *MqttClient, msg Message) {
 		fmt.Printf("TOPIC: %s\n", msg.Topic())
 		fmt.Printf("MSG: %s\n", msg.Payload())
 		choke <- true
@@ -779,7 +780,7 @@ func Test_p2s2(t *testing.T) {
 	sops.SetBroker(FVT_TCP)
 	sops.SetClientId("p2s2-sub")
 	sops.SetStore(NewFileStore(store + "/s"))
-	var f MessageHandler = func(msg Message) {
+	var f MessageHandler = func(client *MqttClient, msg Message) {
 		fmt.Printf("TOPIC: %s\n", msg.Topic())
 		fmt.Printf("MSG: %s\n", msg.Payload())
 		choke <- true
@@ -836,7 +837,7 @@ func Test_PublishMessage(t *testing.T) {
 	sops.SetBroker(FVT_TCP)
 	sops.SetClientId("pubmsg-sub")
 	sops.SetStore(NewFileStore(store + "/s"))
-	var f MessageHandler = func(msg Message) {
+	var f MessageHandler = func(client *MqttClient, msg Message) {
 		fmt.Printf("TOPIC: %s\n", msg.Topic())
 		fmt.Printf("MSG: %s\n", msg.Payload())
 		if string(msg.Payload()) != "pubmsg payload" {
@@ -896,7 +897,7 @@ func Test_PublishEmptyMessage(t *testing.T) {
 	sops.SetBroker(FVT_TCP)
 	sops.SetClientId("pubmsgempty-sub")
 	sops.SetStore(NewFileStore(store + "/s"))
-	var f MessageHandler = func(msg Message) {
+	var f MessageHandler = func(client *MqttClient, msg Message) {
 		fmt.Printf("TOPIC: %s\n", msg.Topic())
 		fmt.Printf("MSG: %s\n", msg.Payload())
 		if string(msg.Payload()) != "" {
@@ -952,7 +953,7 @@ func Test_Cleanstore(t *testing.T) {
 	sops.SetClientId("cleanstore-sub")
 	sops.SetCleanSession(false)
 	sops.SetStore(NewFileStore(store + "/s"))
-	var f MessageHandler = func(msg Message) {
+	var f MessageHandler = func(client *MqttClient, msg Message) {
 		fmt.Printf("TOPIC: %s\n", msg.Topic())
 		fmt.Printf("MSG: %s\n", msg.Payload())
 		// Close the connection after receiving
@@ -962,7 +963,7 @@ func Test_Cleanstore(t *testing.T) {
 		s.conn.Close()
 	}
 	sops.SetDefaultPublishHandler(f)
-	var ocl OnConnectionLost = func(reason error) {
+	var ocl OnConnectionLost = func(client *MqttClient, reason error) {
 		fmt.Printf("OnConnectionLost\n")
 	}
 	sops.SetOnConnectionLost(ocl)

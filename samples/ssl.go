@@ -88,7 +88,7 @@ func NewTlsConfig() *tls.Config {
 	}
 }
 
-var f MQTT.MessageHandler = func(msg MQTT.Message) {
+var f MQTT.MessageHandler = func(client *MQTT.MqttClient, msg MQTT.Message) {
 	fmt.Printf("TOPIC: %s\n", msg.Topic())
 	fmt.Printf("MSG: %s\n", msg.Payload())
 }
@@ -118,7 +118,7 @@ func main() {
 			break
 		}
 		text := fmt.Sprintf("this is msg #%d!", i)
-		c.Publish(MQTT.QOS_ZERO, "/go-mqtt/sample", text)
+		c.Publish(MQTT.QOS_ZERO, "/go-mqtt/sample", []byte(text))
 		i++
 	}
 

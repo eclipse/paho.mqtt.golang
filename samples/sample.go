@@ -102,7 +102,7 @@ func main() {
 		fmt.Println("Sample Publisher Started")
 		for i := 0; i < *num; i++ {
 			fmt.Println("---- doing publish ----")
-			receipt := client.Publish(MQTT.QoS(*qos), *topic, *payload)
+			receipt := client.Publish(MQTT.QoS(*qos), *topic, []byte(*payload))
 
 			go func() {
 				<-receipt
@@ -121,7 +121,7 @@ func main() {
 		num_received := 0
 		choke := make(chan [2]string)
 
-		opts.SetDefaultPublishHandler(func(msg MQTT.Message) {
+		opts.SetDefaultPublishHandler(func(client *MQTT.MqttClient, msg MQTT.Message) {
 			choke <- [2]string{msg.Topic(), string(msg.Payload())}
 		})
 

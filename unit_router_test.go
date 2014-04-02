@@ -34,7 +34,7 @@ func Test_newRouter(t *testing.T) {
 func Test_AddRoute(t *testing.T) {
 	router, _ := newRouter()
 	calledback := false
-	cb := func(Message) {
+	cb := func(client *MqttClient, msg Message) {
 		calledback = true
 	}
 	router.addRoute("/alpha", cb)
@@ -255,7 +255,7 @@ func Test_match(t *testing.T) {
 func Test_MatchAndDispatch(t *testing.T) {
 	calledback := make(chan bool)
 
-	cb := func(m Message) {
+	cb := func(c *MqttClient, m Message) {
 		calledback <- true
 	}
 
@@ -266,7 +266,7 @@ func Test_MatchAndDispatch(t *testing.T) {
 	router, stopper := newRouter()
 	router.addRoute("a", cb)
 
-	router.matchAndDispatch(msgs, true)
+	router.matchAndDispatch(msgs, true, nil)
 
 	msgs <- pub
 

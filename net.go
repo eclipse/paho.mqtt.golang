@@ -288,7 +288,7 @@ func alllogic(c *MqttClient) {
 			c.conn.Close()
 
 			// Call onConnectionLost or default error handler
-			go c.options.onconnlost(err)
+			go c.options.onconnlost(c, err)
 			return
 		}
 	}

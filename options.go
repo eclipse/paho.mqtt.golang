@@ -23,13 +23,13 @@ import (
 // MessageHandler is a callback type which can be set to be
 // executed upon the arrival of messages published to topics
 // to which the client is subscribed.
-type MessageHandler func(message Message)
+type MessageHandler func(client *MqttClient, message Message)
 
 // OnConnectionLost is a callback type which can be set to be
 // executed upon an unintended disconnection from the MQTT broker.
 // Disconnects caused by calling Disconnect or ForceDisconnect will
 // not cause an OnConnectionLost callback to execute.
-type OnConnectionLost func(reason error)
+type OnConnectionLost func(client *MqttClient, reason error)
 
 // ClientOptions contains configurable options for an MqttClient.
 type ClientOptions struct {

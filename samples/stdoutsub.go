@@ -26,7 +26,7 @@ import (
 	MQTT "git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
 )
 
-func onMessageReceived(message MQTT.Message) {
+func onMessageReceived(client *MQTT.MqttClient, message MQTT.Message) {
 	fmt.Printf("Received message on topic: %s\n", message.Topic())
 	fmt.Printf("Message: %s\n", message.Payload())
 }

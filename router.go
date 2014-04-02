@@ -72,7 +72,7 @@ func (r *route) match(topic string) bool {
 type router struct {
 	sync.RWMutex
 	routes         *list.List
-	defaultHandler func(Message)
+	defaultHandler MessageHandler
 	messages       chan *Message
 	stop           chan bool
 }
@@ -124,7 +124,7 @@ func (r *router) setDefaultHandler(handler MessageHandler) {
 // takes messages off the channel, matches them against the internal route list and calls the
 // associated callback (or the defaultHandler, if one exists and no other route matched). If
 // anything is sent down the stop channel the function will end.
-func (r *router) matchAndDispatch(messages <-chan *Message, order bool) {
+func (r *router) matchAndDispatch(messages <-chan *Message, order bool, client *MqttClient) {
 	go func() {
 		for {
 			select {
@@ -135,10 +135,10 @@ func (r *router) matchAndDispatch(messages <-chan *Message, order bool) {
 					if e.Value.(*route).match(message.Topic()) {
 						if order {
 							r.RUnlock()
-							e.Value.(*route).callback(*message)
+							e.Value.(*route).callback(client, *message)
 							r.RLock()
 						} else {
-							go e.Value.(*route).callback(*message)
+							go e.Value.(*route).callback(client, *message)
 						}
 						sent = true
 					}
@@ -147,10 +147,10 @@ func (r *router) matchAndDispatch(messages <-chan *Message, order bool) {
 				if !sent {
 					if order {
 						r.RUnlock()
-						r.defaultHandler(*message)
+						r.defaultHandler(client, *message)
 						r.RLock()
 					} else {
-						go r.defaultHandler(*message)
+						go r.defaultHandler(client, *message)
 					}
 				}
 			case <-r.stop:

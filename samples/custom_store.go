@@ -17,9 +17,12 @@
 
 package main
 
-import "fmt"
-import "time"
-import MQTT "git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
+import (
+	"fmt"
+	"time"
+
+	MQTT "git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
+)
 
 // This NoOpStore type implements the go-mqtt/Store interface, which
 // allows it to be used by the go-mqtt client library. However, it is
@@ -70,7 +73,7 @@ func main() {
 	opts.SetClientId("custom-store")
 	opts.SetStore(myNoOpStore)
 
-	var callback MQTT.MessageHandler = func(msg MQTT.Message) {
+	var callback MQTT.MessageHandler = func(client *MQTT.MqttClient, msg MQTT.Message) {
 		fmt.Printf("TOPIC: %s\n", msg.Topic())
 		fmt.Printf("MSG: %s\n", msg.Payload())
 	}
@@ -86,7 +89,7 @@ func main() {
 
 	for i := 0; i < 5; i++ {
 		text := fmt.Sprintf("this is msg #%d!", i)
-		c.Publish(MQTT.QOS_ONE, "/go-mqtt/sample", text)
+		c.Publish(MQTT.QOS_ONE, "/go-mqtt/sample", []byte(text))
 	}
 
 	for i := 1; i < 5; i++ {

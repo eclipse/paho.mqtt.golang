@@ -44,7 +44,7 @@ var ErrInvalidTopicFilterMultilevel = errors.New("Invalid TopicFilter - multi-le
  */
 var ErrInvalidQoS = errors.New("Invalid QoS")
 
-func DefaultErrorHandler(reason error) {
+func DefaultErrorHandler(client *MqttClient, reason error) {
 	fmt.Fprintf(os.Stderr, "%s go-mqtt suffered fatal error %v", ERR, reason)
 	os.Exit(1)
 }

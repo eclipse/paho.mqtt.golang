@@ -61,7 +61,7 @@ func main() {
 		if err == io.EOF {
 			os.Exit(0)
 		}
-		r := client.Publish(MQTT.QoS(*qos), *topic, strings.TrimSpace(message))
+		r := client.Publish(MQTT.QoS(*qos), *topic, []byte(strings.TrimSpace(message)))
 		<-r
 		fmt.Println("Message Sent")
 	}

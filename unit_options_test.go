@@ -153,7 +153,7 @@ func Test_TlsConfig(t *testing.T) {
 }
 
 func Test_OnConnectionLost(t *testing.T) {
-	onconnlost := func(err error) {
+	onconnlost := func(client *MqttClient, err error) {
 		panic(err)
 	}
 	o := NewClientOptions().SetOnConnectionLost(onconnlost)

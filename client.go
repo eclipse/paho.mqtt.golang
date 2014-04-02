@@ -165,9 +165,9 @@ func (c *MqttClient) Start() ([]Receipt, error) {
 	c.options.pubChanZero = make(chan *Message, 1000)
 	c.options.pubChanOne = make(chan *Message, 1000)
 	c.options.pubChanTwo = make(chan *Message, 1000)
-	c.options.msgRouter.matchAndDispatch(c.options.pubChanZero, c.options.order)
-	c.options.msgRouter.matchAndDispatch(c.options.pubChanOne, c.options.order)
-	c.options.msgRouter.matchAndDispatch(c.options.pubChanTwo, c.options.order)
+	c.options.msgRouter.matchAndDispatch(c.options.pubChanZero, c.options.order, c)
+	c.options.msgRouter.matchAndDispatch(c.options.pubChanOne, c.options.order, c)
+	c.options.msgRouter.matchAndDispatch(c.options.pubChanTwo, c.options.order, c)
 
 	rc := <-c.begin // wait for connack
 	if rc != CONN_ACCEPTED {
