@@ -105,7 +105,7 @@ func Test_Publish_1(t *testing.T) {
 		t.Fatalf("Error on MqttClient.Start(): ", err)
 	}
 
-	c.Publish(QOS_ZERO, "/test/Publish", "Publish qo0")
+	c.Publish(QOS_ZERO, "/test/Publish", []byte("Publish qo0"))
 
 	c.Disconnect(250)
 }
@@ -122,8 +122,8 @@ func Test_Publish_2(t *testing.T) {
 		t.Fatalf("Error on MqttClient.Start(): ", err)
 	}
 
-	c.Publish(QOS_ZERO, "/test/Publish", "Publish1 qos0")
-	c.Publish(QOS_ZERO, "/test/Publish", "Publish2 qos0")
+	c.Publish(QOS_ZERO, "/test/Publish", []byte("Publish1 qos0"))
+	c.Publish(QOS_ZERO, "/test/Publish", []byte("Publish2 qos0"))
 
 	c.Disconnect(250)
 }
@@ -140,9 +140,9 @@ func Test_Publish_3(t *testing.T) {
 		t.Fatalf("Error on MqttClient.Start(): ", err)
 	}
 
-	c.Publish(QOS_ZERO, "/test/Publish", "Publish1 qos0")
-	c.Publish(QOS_ONE, "/test/Publish", "Publish2 qos1")
-	c.Publish(QOS_TWO, "/test/Publish", "Publish2 qos2")
+	c.Publish(QOS_ZERO, "/test/Publish", []byte("Publish1 qos0"))
+	c.Publish(QOS_ONE, "/test/Publish", []byte("Publish2 qos1"))
+	c.Publish(QOS_TWO, "/test/Publish", []byte("Publish2 qos2"))
 
 	c.Disconnect(250)
 }
@@ -178,7 +178,7 @@ func Test_Subscribe(t *testing.T) {
 		t.Fatalf("Error on MqttClient.Start(): ", err)
 	}
 
-	p.Publish(QOS_ZERO, "/test/sub", "Publish qos0")
+	p.Publish(QOS_ZERO, "/test/sub", []byte("Publish qos0"))
 
 	p.Disconnect(250)
 	s.Disconnect(250)
@@ -334,15 +334,15 @@ func Test_p0s0(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error on MqttClient.Start(): ", err)
 	}
-	receipt = p.Publish(QOS_ZERO, topic, "p0s0 payload 1")
+	receipt = p.Publish(QOS_ZERO, topic, []byte("p0s0 payload 1"))
 	<-receipt
-	receipt = p.Publish(QOS_ZERO, topic, "p0s0 payload 2")
+	receipt = p.Publish(QOS_ZERO, topic, []byte("p0s0 payload 2"))
 	<-receipt
 
 	wait(choke)
 	wait(choke)
 
-	receipt = p.Publish(QOS_ZERO, topic, "p0s0 payload 3")
+	receipt = p.Publish(QOS_ZERO, topic, []byte("p0s0 payload 3"))
 	<-receipt
 	wait(choke)
 
@@ -394,14 +394,14 @@ func Test_p0s1(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error on MqttClient.Start(): ", err)
 	}
-	receipt = p.Publish(QOS_ZERO, topic, "p0s1 payload 1")
+	receipt = p.Publish(QOS_ZERO, topic, []byte("p0s1 payload 1"))
 	<-receipt
-	receipt = p.Publish(QOS_ZERO, topic, "p0s1 payload 2")
+	receipt = p.Publish(QOS_ZERO, topic, []byte("p0s1 payload 2"))
 	<-receipt
 	wait(choke)
 	wait(choke)
 
-	receipt = p.Publish(QOS_ZERO, topic, "p0s1 payload 3")
+	receipt = p.Publish(QOS_ZERO, topic, []byte("p0s1 payload 3"))
 	<-receipt
 	wait(choke)
 
@@ -453,14 +453,14 @@ func Test_p0s2(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error on MqttClient.Start(): ", err)
 	}
-	receipt = p.Publish(QOS_ZERO, topic, "p0s2 payload 1")
+	receipt = p.Publish(QOS_ZERO, topic, []byte("p0s2 payload 1"))
 	<-receipt
-	receipt = p.Publish(QOS_ZERO, topic, "p0s2 payload 2")
+	receipt = p.Publish(QOS_ZERO, topic, []byte("p0s2 payload 2"))
 	<-receipt
 	wait(choke)
 	wait(choke)
 
-	receipt = p.Publish(QOS_ZERO, topic, "p0s2 payload 3")
+	receipt = p.Publish(QOS_ZERO, topic, []byte("p0s2 payload 3"))
 	<-receipt
 	wait(choke)
 
@@ -512,14 +512,14 @@ func Test_p1s0(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error on MqttClient.Start(): ", err)
 	}
-	receipt = p.Publish(QOS_ONE, topic, "p1s0 payload 1")
+	receipt = p.Publish(QOS_ONE, topic, []byte("p1s0 payload 1"))
 	<-receipt
-	receipt = p.Publish(QOS_ONE, topic, "p1s0 payload 2")
+	receipt = p.Publish(QOS_ONE, topic, []byte("p1s0 payload 2"))
 	<-receipt
 	wait(choke)
 	wait(choke)
 
-	receipt = p.Publish(QOS_ONE, topic, "p1s0 payload 3")
+	receipt = p.Publish(QOS_ONE, topic, []byte("p1s0 payload 3"))
 	<-receipt
 	wait(choke)
 
@@ -571,14 +571,14 @@ func Test_p1s1(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error on MqttClient.Start(): ", err)
 	}
-	receipt = p.Publish(QOS_ONE, topic, "p1s1 payload 1")
+	receipt = p.Publish(QOS_ONE, topic, []byte("p1s1 payload 1"))
 	<-receipt
-	receipt = p.Publish(QOS_ONE, topic, "p1s1 payload 2")
+	receipt = p.Publish(QOS_ONE, topic, []byte("p1s1 payload 2"))
 	<-receipt
 	wait(choke)
 	wait(choke)
 
-	receipt = p.Publish(QOS_ONE, topic, "p1s1 payload 3")
+	receipt = p.Publish(QOS_ONE, topic, []byte("p1s1 payload 3"))
 	<-receipt
 	wait(choke)
 
@@ -629,14 +629,14 @@ func Test_p1s2(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error on MqttClient.Start(): ", err)
 	}
-	receipt = p.Publish(QOS_ONE, topic, "p1s2 payload 1")
+	receipt = p.Publish(QOS_ONE, topic, []byte("p1s2 payload 1"))
 	<-receipt
-	receipt = p.Publish(QOS_ONE, topic, "p1s2 payload 2")
+	receipt = p.Publish(QOS_ONE, topic, []byte("p1s2 payload 2"))
 	<-receipt
 	wait(choke)
 	wait(choke)
 
-	receipt = p.Publish(QOS_ONE, topic, "p1s2 payload 3")
+	receipt = p.Publish(QOS_ONE, topic, []byte("p1s2 payload 3"))
 	<-receipt
 	wait(choke)
 
@@ -688,12 +688,12 @@ func Test_p2s0(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error on MqttClient.Start(): ", err)
 	}
-	p.Publish(QOS_TWO, topic, "p2s0 payload 1")
-	p.Publish(QOS_TWO, topic, "p2s0 payload 2")
+	p.Publish(QOS_TWO, topic, []byte("p2s0 payload 1"))
+	p.Publish(QOS_TWO, topic, []byte("p2s0 payload 2"))
 	wait(choke)
 	wait(choke)
 
-	p.Publish(QOS_TWO, topic, "p2s0 payload 3")
+	p.Publish(QOS_TWO, topic, []byte("p2s0 payload 3"))
 	wait(choke)
 
 	p.Disconnect(250)
@@ -744,14 +744,14 @@ func Test_p2s1(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error on MqttClient.Start(): ", err)
 	}
-	receipt = p.Publish(QOS_TWO, topic, "p2s1 payload 1")
+	receipt = p.Publish(QOS_TWO, topic, []byte("p2s1 payload 1"))
 	<-receipt
-	receipt = p.Publish(QOS_TWO, topic, "p2s1 payload 2")
+	receipt = p.Publish(QOS_TWO, topic, []byte("p2s1 payload 2"))
 	<-receipt
 	wait(choke)
 	wait(choke)
 
-	receipt = p.Publish(QOS_TWO, topic, "p2s1 payload 3")
+	receipt = p.Publish(QOS_TWO, topic, []byte("p2s1 payload 3"))
 	<-receipt
 	wait(choke)
 
@@ -803,14 +803,14 @@ func Test_p2s2(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error on MqttClient.Start(): ", err)
 	}
-	receipt = p.Publish(QOS_TWO, topic, "p2s2 payload 1")
+	receipt = p.Publish(QOS_TWO, topic, []byte("p2s2 payload 1"))
 	<-receipt
-	receipt = p.Publish(QOS_TWO, topic, "p2s2 payload 2")
+	receipt = p.Publish(QOS_TWO, topic, []byte("p2s2 payload 2"))
 	<-receipt
 	wait(choke)
 	wait(choke)
 
-	receipt = p.Publish(QOS_TWO, topic, "p2s2 payload 3")
+	receipt = p.Publish(QOS_TWO, topic, []byte("p2s2 payload 3"))
 	<-receipt
 	wait(choke)
 
@@ -865,7 +865,7 @@ func Test_PublishMessage(t *testing.T) {
 	}
 
 	text := "pubmsg payload"
-	m := NewMessage(text)
+	m := NewMessage([]byte(text))
 	p.PublishMessage(topic, m)
 	p.PublishMessage(topic, m)
 	wait(choke)
@@ -985,7 +985,7 @@ func Test_Cleanstore(t *testing.T) {
 		t.Fatalf("Error on MqttClient.Start(): ", err)
 	}
 
-	m := NewMessage("test message")
+	m := NewMessage([]byte("test message"))
 	p.PublishMessage(topic, m)
 	p.PublishMessage(topic, m)
 	p.PublishMessage(topic, m)

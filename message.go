@@ -40,18 +40,12 @@ type sendable struct {
 // Create a default PUBLISH Message with the specified payload
 // If message == nil, create a zero length message
 // Defaults: QoS=1, Retained=False
-func NewMessage(message interface{}) *Message {
+func NewMessage(message []byte) *Message {
 	m := newMsg(PUBLISH, false, QOS_ONE, false)
-
 	if message == nil {
 		m.appendPayloadField([]byte{})
 	} else {
-		switch msg := message.(type) {
-		case string:
-			m.appendPayloadField([]byte(msg))
-		case []byte:
-			m.appendPayloadField(msg)
-		}
+		m.appendPayloadField(message)
 	}
 	return m
 }

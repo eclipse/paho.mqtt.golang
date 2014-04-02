@@ -253,17 +253,9 @@ func (c *MqttClient) disconnect() {
 // and content to the specified topic.
 // Returns a read only channel used to track
 // the delivery of the message.
-func (c *MqttClient) Publish(qos QoS, topic string, message interface{}) <-chan Receipt {
-	var pub *Message
-	switch msg := message.(type) {
-	case string:
-		pub = newPublishMsg(qos, topic, []byte(msg))
-	case []byte:
-		pub = newPublishMsg(qos, topic, msg)
-	}
-
+func (c *MqttClient) Publish(qos QoS, topic string, payload []byte) <-chan Receipt {
+	pub := newPublishMsg(qos, topic, payload)
 	r := make(chan Receipt, 1)
-
 	c.trace_v(CLI, "sending publish message, topic: %s", topic)
 
 	select {

@@ -693,7 +693,7 @@ func Test_newUnsubscribeMessage_unsb3(t *testing.T) {
 }
 
 func Test_NewMessage(t *testing.T) {
-	m := NewMessage("test message")
+	m := NewMessage([]byte("test message"))
 
 	exp := []byte{
 		/* msg type */
