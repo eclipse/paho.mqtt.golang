@@ -299,17 +299,17 @@ func (c *MqttClient) PublishMessage(topic string, message *Message) <-chan Recei
 
 // Start a new subscription. Provide a MessageHandler to be executed when
 // a message is published on one of the topics provided.
-func (c *MqttClient) StartSubscription(callback MessageHandler, topics ...interface{}) (<-chan Receipt, error) {
+func (c *MqttClient) StartSubscription(callback MessageHandler, filters ...*TopicFilter) (<-chan Receipt, error) {
 	if !c.IsConnected() {
 		return nil, ErrNotConnected
 	}
 	c.trace_v(CLI, "enter StartSubscription")
-	submsg := newSubscribeMsg(topics...)
+	submsg := newSubscribeMsg(filters...)
 	chkcond(submsg != nil)
 
 	if callback != nil {
-		for i := 0; i < len(topics); i += 2 {
-			c.options.msgRouter.addRoute(topics[i].(string), callback)
+		for i := range filters {
+			c.options.msgRouter.addRoute(filters[i].string, callback)
 		}
 	}
 

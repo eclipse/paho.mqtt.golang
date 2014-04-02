@@ -167,7 +167,9 @@ func Test_Subscribe(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error on MqttClient.Start(): ", err)
 	}
-	s.StartSubscription(nil, "/test/sub", QOS_ZERO)
+
+	filter, _ := NewTopicFilter("/test/sub", 0)
+	s.StartSubscription(nil, filter)
 
 	_, err = p.Start()
 	if err != nil {
@@ -205,7 +207,9 @@ func Test_Will(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error on MqttClient.Start(): ", err)
 	}
-	wsub.StartSubscription(nil, "/wills", QOS_ZERO)
+
+	filter, _ := NewTopicFilter("/wills", 0)
+	wsub.StartSubscription(nil, filter)
 
 	_, err = c.Start()
 	if err != nil {
@@ -252,7 +256,9 @@ func Test_Binary_Will(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error on MqttClient.Start(): ", err)
 	}
-	wsub.StartSubscription(nil, "/wills", QOS_ZERO)
+
+	filter, _ := NewTopicFilter("/wills", 0)
+	wsub.StartSubscription(nil, filter)
 
 	_, err = c.Start()
 	if err != nil {
@@ -314,7 +320,9 @@ func Test_p0s0(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error on MqttClient.Start(): ", err)
 	}
-	receipt, err := s.StartSubscription(nil, topic, QOS_ZERO)
+
+	filter, _ := NewTopicFilter(topic, 0)
+	receipt, err := s.StartSubscription(nil, filter)
 	if err != nil {
 		t.Fatalf("Error on MqttClient.StartSubscription(): ", err)
 	}
@@ -372,7 +380,9 @@ func Test_p0s1(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error on MqttClient.Start(): ", err)
 	}
-	receipt, err := s.StartSubscription(nil, topic, QOS_ONE)
+
+	filter, _ := NewTopicFilter(topic, 0)
+	receipt, err := s.StartSubscription(nil, filter)
 	if err != nil {
 		t.Fatalf("Error on MqttClient.StartSubscription(): ", err)
 	}
@@ -429,7 +439,9 @@ func Test_p0s2(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error on MqttClient.Start(): ", err)
 	}
-	receipt, err := s.StartSubscription(nil, topic, QOS_TWO)
+
+	filter, _ := NewTopicFilter(topic, 2)
+	receipt, err := s.StartSubscription(nil, filter)
 	if err != nil {
 		t.Fatalf("Error on MqttClient.StartSubscription(): ", err)
 	}
@@ -486,7 +498,9 @@ func Test_p1s0(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error on MqttClient.Start(): ", err)
 	}
-	receipt, err := s.StartSubscription(nil, topic, QOS_ZERO)
+
+	filter, _ := NewTopicFilter(topic, 0)
+	receipt, err := s.StartSubscription(nil, filter)
 	if err != nil {
 		t.Fatalf("Error on MqttClient.StartSubscription(): ", err)
 	}
@@ -543,7 +557,9 @@ func Test_p1s1(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error on MqttClient.Start()", err)
 	}
-	receipt, err := s.StartSubscription(nil, topic, QOS_ONE)
+
+	filter, _ := NewTopicFilter(topic, 1)
+	receipt, err := s.StartSubscription(nil, filter)
 	if err != nil {
 		t.Fatalf("Error on MqttClient.StartSubscription()", err)
 	}
@@ -600,7 +616,8 @@ func Test_p1s2(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error on MqttClient.Start(): ", err)
 	}
-	receipt, err := s.StartSubscription(nil, topic, QOS_TWO)
+	filter, _ := NewTopicFilter(topic, 2)
+	receipt, err := s.StartSubscription(nil, filter)
 	if err != nil {
 		t.Fatalf("Error on MqttClient.StartSubscription(): ", err)
 	}
@@ -657,7 +674,9 @@ func Test_p2s0(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error on MqttClient.Start(): ", err)
 	}
-	receipt, err := s.StartSubscription(nil, topic, QOS_ZERO)
+
+	filter, _ := NewTopicFilter(topic, 0)
+	receipt, err := s.StartSubscription(nil, filter)
 	if err != nil {
 		t.Fatalf("Error on MqttClient.StartSubscription(): ", err)
 	}
@@ -711,7 +730,9 @@ func Test_p2s1(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error on MqttClient.Start(): ", err)
 	}
-	receipt, err := s.StartSubscription(nil, topic, QOS_ONE)
+
+	filter, _ := NewTopicFilter(topic, 1)
+	receipt, err := s.StartSubscription(nil, filter)
 	if err != nil {
 		t.Fatalf("Error on MqttClient.StartSubscription(): ", err)
 	}
@@ -768,7 +789,9 @@ func Test_p2s2(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error on MqttClient.Start(): ", err)
 	}
-	receipt, err := s.StartSubscription(nil, topic, QOS_TWO)
+
+	filter, _ := NewTopicFilter(topic, 2)
+	receipt, err := s.StartSubscription(nil, filter)
 	if err != nil {
 		t.Fatalf("Error on MqttClient.StartSubscription(): ", err)
 	}
@@ -826,7 +849,9 @@ func Test_PublishMessage(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error on MqttClient.Start(): ", err)
 	}
-	receipt, err := s.StartSubscription(nil, topic, QOS_TWO)
+
+	filter, _ := NewTopicFilter(topic, 2)
+	receipt, err := s.StartSubscription(nil, filter)
 	if err != nil {
 		t.Fatalf("Error on MqttClient.StartSubscription(): ", err)
 	}
@@ -884,7 +909,9 @@ func Test_PublishEmptyMessage(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error on MqttClient.Start(): ", err)
 	}
-	receipt, err := s.StartSubscription(nil, topic, QOS_TWO)
+
+	filter, _ := NewTopicFilter(topic, 2)
+	receipt, err := s.StartSubscription(nil, filter)
 	if err != nil {
 		t.Fatalf("Error on MqttClient.StartSubscription(): ", err)
 	}
@@ -943,7 +970,9 @@ func Test_Cleanstore(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error on MqttClient.Start(): ", err)
 	}
-	receipt, err := s.StartSubscription(nil, topic, QOS_TWO)
+
+	filter, _ := NewTopicFilter(topic, 2)
+	receipt, err := s.StartSubscription(nil, filter)
 	if err != nil {
 		t.Fatalf("Error on MqttClient.StartSubscription(): ", err)
 	}

@@ -534,7 +534,8 @@ func Test_newPubRelMessage(t *testing.T) {
 }
 
 func Test_newSubscribeMessage(t *testing.T) {
-	sm := newSubscribeMsg("/a", QOS_ZERO)
+	filter, _ := NewTopicFilter("/a", 0)
+	sm := newSubscribeMsg(filter)
 	sm.setMsgId(32)
 	bs := sm.Bytes()
 	exp := []byte{
@@ -564,7 +565,10 @@ func Test_newSubscribeMessage(t *testing.T) {
 }
 
 func Test_newSubscribeMessage_multi(t *testing.T) {
-	sm := newSubscribeMsg("/a", QOS_ONE, "/b", QOS_ZERO, "/x/y/z", QOS_TWO)
+	filter1, _ := NewTopicFilter("/a", 1)
+	filter2, _ := NewTopicFilter("/b", 0)
+	filter3, _ := NewTopicFilter("/x/y/z", 2)
+	sm := newSubscribeMsg(filter1, filter2, filter3)
 	sm.setMsgId(3432)
 	if sm == nil {
 		t.Fatalf("newSubscribe message is nil")

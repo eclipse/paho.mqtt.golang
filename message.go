@@ -312,39 +312,17 @@ func (m *Message) setMsgId(id MId) {
 	}
 }
 
-//newSubscribeMsg takes a list of topics and QoS values that are to be subscribed
-//to and returns a Message initialized with these values
-func newSubscribeMsg(subscriptions ...interface{}) *Message {
-	// Note: SUBSCRIBE is always QoS 1, what we specify is the
-	// QoS we wish to receive new messages at
-
-	if len(subscriptions)%2 != 0 {
-		return nil
-	}
+//newSubscribeMsg takes a list of TopicFilter
+//and returns a Message initialized with these values
+func newSubscribeMsg(filters ...*TopicFilter) *Message {
 
 	m := newMsg(SUBSCRIBE, false, QOS_ONE, false)
 
-	// verify subscriptions is in the form ("topicstring", qos, ...)
-	for i := range subscriptions {
-		if i%2 == 0 {
-			switch subscriptions[i].(type) {
-			case string:
-			default:
-				chkcond(false)
-			}
-			switch subscriptions[i+1].(type) {
-			case QoS:
-			default:
-				chkcond(false)
-			}
-
-			topicname := subscriptions[i].(string)
-			topicqos := subscriptions[i+1].(QoS)
-
-			m.appendPayloadSizedField(topicname)
-			m.appendPayloadField([]byte{byte(topicqos)})
-		}
+	for i := range filters {
+		m.appendPayloadSizedField(filters[i].string)
+		m.appendPayloadField([]byte{byte(filters[i].QoS)})
 	}
+
 	numbytes := uint(len(m.vheader) + len(m.payload) + 2)
 	m.remlen = encodeLength(numbytes)
 	return m

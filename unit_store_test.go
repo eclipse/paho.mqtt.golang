@@ -232,7 +232,8 @@ func Test_persist_obound_pubcomp(t *testing.T) {
 
 func Test_persist_obound_subscribe(t *testing.T) {
 	ts := &TestStore{}
-	m := newSubscribeMsg("/posub", QOS_ONE)
+	filter, _ := NewTopicFilter("/posub", 1)
+	m := newSubscribeMsg(filter)
 	m.setMsgId(44)
 	persist_obound(ts, m)
 
