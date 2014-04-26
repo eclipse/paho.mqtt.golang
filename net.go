@@ -17,6 +17,7 @@ package mqtt
 import (
 	"code.google.com/p/go.net/websocket"
 	"crypto/tls"
+	"io"
 	"net"
 	"net/url"
 	"time"
@@ -43,30 +44,19 @@ func openConnection(uri *url.URL, tlsc *tls.Config) (conn net.Conn, err error) {
 // This prevents receiving incoming data while resume
 // is in progress if clean session is false.
 func connect(c *MqttClient) {
-	var data []byte
-	var length, pOffset int
-
 	c.trace_v(NET, "connect started")
 
-	for (length == 0) || (pOffset > length) {
-		// Just receive the connack and nothing more.
-		incomingBuf := make([]byte, 4)
-		c.trace_v(NET, "connect waiting for network data")
-		incLength, err := c.conn.Read(incomingBuf)
-		c.trace_v(NET, "connect read %d bytes of network data", incLength)
-		if err != nil {
-			c.trace_e(NET, "connect got error")
-			c.errors <- err
-		}
-		length += incLength
-		data = append(data, incomingBuf[0:incLength]...)
-		if len(data) > 0 {
-			// length should be 4 and pOffset should be 0
-			pOffset = packet_offset(data)
-		}
+	fixedHeader := make([]byte, 2)
+	_, err := io.ReadFull(c.bufferedConn, fixedHeader)
+	if err != nil {
+		c.trace_e(NET, "connect got error")
+		c.errors <- err
 	}
-	c.trace_v(NET, "data: %v", data[:pOffset])
-	msg := decode(data[:pOffset])
+	_, remLen := decode_remlen(fixedHeader)
+	data := make([]byte, remLen)
+	io.ReadFull(c.bufferedConn, data)
+	msg := decode(append(fixedHeader, data...))
+
 	if msg != nil {
 		c.trace_v(NET, "connect received inbound message, type %v", msg.msgType())
 		c.ibound <- msg
@@ -81,41 +71,34 @@ func connect(c *MqttClient) {
 // send Message object into ibound channel
 func incoming(c *MqttClient) {
 
-	var data []byte
-	var length, pOffset int
 	var err error
 
 	c.trace_v(NET, "incoming started")
 
 readdata:
 	for {
-		for (length == 0) || (pOffset > length) {
-			incomingBuf := make([]byte, 2048)
-			c.trace_v(NET, "incoming waiting for network data")
-			incLength, rerr := c.conn.Read(incomingBuf)
-			c.trace_v(NET, "incoming read %d bytes of network data", incLength)
-			if rerr != nil {
-				err = rerr
-				break readdata
-			}
-			length += incLength
-			data = append(data, incomingBuf[0:incLength]...)
-			if len(data) > 0 {
-				pOffset = packet_offset(data)
-			}
+		fixedHeader := make([]byte, 2)
+		c.trace_v(NET, "incoming waiting for network data")
+		_, rerr := io.ReadFull(c.bufferedConn, fixedHeader)
+		if rerr != nil {
+			err = rerr
+			break readdata
 		}
-		c.trace_v(NET, "data: %v", data[:pOffset])
-		msg := decode(data[:pOffset])
+		_, remLen := decode_remlen(fixedHeader)
+		data := make([]byte, remLen)
+		c.trace_v(NET, "%d more incoming bytes to read", remLen)
+		_, rerr = io.ReadFull(c.bufferedConn, data)
+		if rerr != nil {
+			err = rerr
+			break readdata
+		}
+		c.trace_v(NET, "data: %v", data)
+		msg := decode(append(fixedHeader, data...))
 		if msg != nil {
 			c.trace_v(NET, "incoming received inbound message, type %v", msg.msgType())
 			c.ibound <- msg
 		} else {
 			c.trace_c(NET, "incoming msg was nil")
-		}
-		length -= pOffset
-		data = data[pOffset:]
-		if length > pOffset {
-			pOffset = packet_offset(data)
 		}
 	}
 	// We received an error on read.

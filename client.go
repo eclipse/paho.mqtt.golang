@@ -16,6 +16,7 @@
 package mqtt
 
 import (
+	"bufio"
 	"errors"
 	"math/rand"
 	"net"
@@ -44,6 +45,7 @@ import (
 type MqttClient struct {
 	sync.RWMutex
 	conn            net.Conn
+	bufferedConn    *bufio.ReadWriter
 	ibound          chan *Message
 	obound          chan sendable
 	oboundP         chan *Message
@@ -127,6 +129,7 @@ func (c *MqttClient) Start() ([]Receipt, error) {
 		c.trace_e(CLI, "Failed to connect to a broker")
 		return nil, errors.New("Failed to connect to a broker")
 	}
+	c.bufferedConn = bufio.NewReadWriter(bufio.NewReader(c.conn), bufio.NewWriter(c.conn))
 
 	c.persist.Open()
 	c.receipts = newReceiptMap()
