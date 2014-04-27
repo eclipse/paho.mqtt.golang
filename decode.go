@@ -15,6 +15,7 @@
 package mqtt
 
 import (
+	"bufio"
 	"encoding/binary"
 )
 
@@ -62,6 +63,26 @@ func decode_remlen(bytes []byte) (int, uint32) {
 		}
 	}
 	return int(idx), value
+}
+
+func decode_remlen_from_network(src *bufio.ReadWriter) ([]byte, uint32) {
+	var bytes []byte
+	var rLength uint32
+	var count int
+	var multiplier uint32 = 1
+	var digit byte
+	count = 1
+	for {
+		digit, _ = src.ReadByte()
+		bytes = append(bytes, digit)
+		rLength += uint32(digit&127) * multiplier
+		if (digit & 128) == 0 {
+			break
+		}
+		multiplier *= 128
+		count++
+	}
+	return bytes, rLength
 }
 
 // return length of topic string, the topic string

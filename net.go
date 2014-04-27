@@ -77,14 +77,16 @@ func incoming(c *MqttClient) {
 
 readdata:
 	for {
-		fixedHeader := make([]byte, 2)
+		msgType := make([]byte, 1)
 		c.trace_v(NET, "incoming waiting for network data")
-		_, rerr := io.ReadFull(c.bufferedConn, fixedHeader)
+		_, rerr := io.ReadFull(c.bufferedConn, msgType)
 		if rerr != nil {
 			err = rerr
 			break readdata
 		}
-		_, remLen := decode_remlen(fixedHeader)
+		bytes, remLen := decode_remlen_from_network(c.bufferedConn)
+		fixedHeader := make([]byte, len(bytes)+1)
+		copy(fixedHeader, append(msgType, bytes...))
 		data := make([]byte, remLen)
 		c.trace_v(NET, "%d more incoming bytes to read", remLen)
 		_, rerr = io.ReadFull(c.bufferedConn, data)
