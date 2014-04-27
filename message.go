@@ -50,7 +50,7 @@ func NewMessage(message []byte) *Message {
 	return m
 }
 
-//newMsh takes a message type, a boolean indicating if this message
+//newMsg takes a message type, a boolean indicating if this message
 //is a duplicate, a QoS value for the message and a boolean indicating
 //if this message is to be retained by the server. It returns a
 //pointer to a Message initialized with these values
@@ -71,6 +71,7 @@ func newMsg(msgtype MsgType, duplicate bool, qos QoS, retained bool) *Message {
 //the clientid to be used for the connection, username and password
 //strings and a keep alive value.
 //It returns a pointer to a Message initialized with these values
+
 func newConnectMsg(
 	cleansess bool,
 	will bool,
@@ -125,6 +126,56 @@ func newConnectMsg(
 
 	/* Keep Alive Time Interval (2 Bytes [MSB, LSB]) */
 	m.appendVHeaderField(keepalive)
+
+	numbytes := uint(len(m.vheader) + len(m.payload))
+	m.remlen = encodeLength(numbytes)
+	return m
+}
+
+func newConnectMsgFromOptions(options ClientOptions) *Message {
+	m := newMsg(CONNECT, false, 0, false)
+
+	m.remlen = uint32(0)
+
+	/* Protocol Name */
+	m.appendVHeaderField("MQIsdp")
+
+	/* Protocol Version */
+	m.vheader = append(m.vheader, 0x03)
+
+	/* Connect Byte */
+	b := byte(0)
+	if options.cleanses {
+		b |= 0x02
+	}
+	if options.will_enabled {
+		b |= 0x04
+	}
+	b |= byte(options.will_qos) << 3
+	if options.will_retained {
+		b |= 0x20
+	}
+
+	m.appendPayloadSizedField(options.clientId)
+	if options.will_enabled {
+		m.appendPayloadSizedField(options.will_topic)
+		m.appendPayloadSizedField(options.will_payload)
+	}
+
+	if options.username != "" {
+		b |= 0x80
+		m.appendPayloadSizedField(options.username)
+		//mustn't have password without user as well
+		if options.password != "" {
+			b |= 0x40
+			m.appendPayloadSizedField(options.password)
+		}
+	}
+
+	m.vheader = append(m.vheader, b)
+
+	/* Keep Alive Time Interval (2 Bytes [MSB, LSB]) */
+	m.appendVHeaderField(uint16(options.timeout))
 
 	numbytes := uint(len(m.vheader) + len(m.payload))
 	m.remlen = encodeLength(numbytes)
@@ -300,8 +351,7 @@ func (m *Message) MsgId() MId {
 //setMsgId takes a MId and sets the message id field of the Message to this
 //value
 func (m *Message) setMsgId(id MId) {
-	if m.msgType() == PUBLISH && m.QoS() == QOS_ZERO {
-	} else {
+	if m.QoS() != QOS_ZERO || m.msgType() != PUBLISH {
 		m.messageId = id
 	}
 }

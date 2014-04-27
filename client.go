@@ -142,28 +142,18 @@ func (c *MqttClient) Start() ([]Receipt, error) {
 	c.oboundP = make(chan *Message)
 	c.errors = make(chan error)
 	c.begin = make(chan ConnRC)
-	c.stopPing = make(chan bool, 1)
-	c.stopNet = make(chan bool, 2)
+	c.stopPing = make(chan bool)
+	c.stopNet = make(chan bool)
 
 	go connect(c)
 	go outgoing(c)
 	go alllogic(c)
 
-	cm := newConnectMsg(
-		c.options.cleanses,
-		c.options.will_enabled,
-		c.options.will_qos,
-		c.options.will_retained,
-		c.options.will_topic,
-		c.options.will_payload,
-		c.options.clientId,
-		c.options.username,
-		c.options.password,
-		uint16(c.options.timeout))
+	cm := newConnectMsgFromOptions(c.options)
 
 	c.trace_v(CLI, "about to write new connect msg")
 
-	c.obound <- sendable{cm, nil}
+	c.oboundP <- cm
 
 	c.options.pubChanZero = make(chan *Message, 1000)
 	c.options.pubChanOne = make(chan *Message, 1000)
@@ -239,10 +229,7 @@ func (c *MqttClient) disconnect() {
 	dm := newDisconnectMsg()
 
 	// Stop all go routines except outgoing
-	c.stopPing <- true
 	close(c.stopPing)
-	c.stopNet <- true // first for alllogic
-	c.stopNet <- true // then for incoming
 	close(c.stopNet)
 
 	// Send disconnect message and stop outgoing
@@ -256,8 +243,17 @@ func (c *MqttClient) disconnect() {
 // and content to the specified topic.
 // Returns a read only channel used to track
 // the delivery of the message.
-func (c *MqttClient) Publish(qos QoS, topic string, payload []byte) <-chan Receipt {
-	pub := newPublishMsg(qos, topic, payload)
+func (c *MqttClient) Publish(qos QoS, topic string, payload interface{}) <-chan Receipt {
+	var pub *Message
+	switch payload.(type) {
+	case string:
+		pub = newPublishMsg(qos, topic, []byte(payload.(string)))
+	case []byte:
+		pub = newPublishMsg(qos, topic, payload.([]byte))
+	default:
+		return nil
+	}
+
 	r := make(chan Receipt, 1)
 	c.trace_v(CLI, "sending publish message, topic: %s", topic)
 

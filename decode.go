@@ -105,6 +105,7 @@ func decode(bytes []byte) *Message {
 	m.setRemLen(r)
 
 	bytes = bytes[n+1:] // skip past fixed header and variable length byte(s)
+
 	switch m.msgType() {
 	case CONNACK:
 		m.vheader = append(m.vheader, 0x00) // bytes[0] of vheader not used

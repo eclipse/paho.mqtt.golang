@@ -46,24 +46,23 @@ func openConnection(uri *url.URL, tlsc *tls.Config) (conn net.Conn, err error) {
 func connect(c *MqttClient) {
 	c.trace_v(NET, "connect started")
 
-	fixedHeader := make([]byte, 2)
-	_, err := io.ReadFull(c.bufferedConn, fixedHeader)
+	//connack is always 4 bytes
+	ca := make([]byte, 4)
+	_, err := io.ReadFull(c.bufferedConn, ca)
 	if err != nil {
 		c.trace_e(NET, "connect got error")
 		c.errors <- err
 	}
-	_, remLen := decode_remlen(fixedHeader)
-	data := make([]byte, remLen)
-	io.ReadFull(c.bufferedConn, data)
-	msg := decode(append(fixedHeader, data...))
+	msg := decode(ca)
 
-	if msg != nil {
-		c.trace_v(NET, "connect received inbound message, type %v", msg.msgType())
-		c.ibound <- msg
+	if msg == nil || msg.msgType() != CONNACK {
+		close(c.begin)
+		c.trace_e(NET, "received msg that was nil or not CONNACK")
 	} else {
-		c.trace_e(NET, "connect msg was nil")
+		c.trace_v(NET, "received connack")
+		c.begin <- msg.connRC()
+		close(c.begin)
 	}
-
 	return
 }
 
@@ -75,27 +74,32 @@ func incoming(c *MqttClient) {
 
 	c.trace_v(NET, "incoming started")
 
-readdata:
 	for {
+		var rerr error
+		var msg *Message
 		msgType := make([]byte, 1)
 		c.trace_v(NET, "incoming waiting for network data")
-		_, rerr := io.ReadFull(c.bufferedConn, msgType)
+		msgType[0], rerr = c.bufferedConn.ReadByte()
 		if rerr != nil {
 			err = rerr
-			break readdata
+			break
 		}
 		bytes, remLen := decode_remlen_from_network(c.bufferedConn)
 		fixedHeader := make([]byte, len(bytes)+1)
 		copy(fixedHeader, append(msgType, bytes...))
-		data := make([]byte, remLen)
-		c.trace_v(NET, "%d more incoming bytes to read", remLen)
-		_, rerr = io.ReadFull(c.bufferedConn, data)
-		if rerr != nil {
-			err = rerr
-			break readdata
+		if remLen > 0 {
+			data := make([]byte, remLen)
+			c.trace_v(NET, "%d more incoming bytes to read", remLen)
+			_, rerr = io.ReadFull(c.bufferedConn, data)
+			if rerr != nil {
+				err = rerr
+				break
+			}
+			c.trace_v(NET, "data: %v", data)
+			msg = decode(append(fixedHeader, data...))
+		} else {
+			msg = decode(fixedHeader)
 		}
-		c.trace_v(NET, "data: %v", data)
-		msg := decode(append(fixedHeader, data...))
 		if msg != nil {
 			c.trace_v(NET, "incoming received inbound message, type %v", msg.msgType())
 			c.ibound <- msg
@@ -190,10 +194,6 @@ func alllogic(c *MqttClient) {
 			case PINGRESP:
 				c.trace_v(NET, "received pingresp")
 				c.pingOutstanding = false
-			case CONNACK:
-				c.trace_v(NET, "received connack")
-				c.begin <- msg.connRC()
-				close(c.begin)
 			case SUBACK:
 				c.trace_v(NET, "received suback, id: %v", msg.MsgId())
 				c.receipts.get(msg.MsgId()) <- Receipt{}
@@ -262,12 +262,9 @@ func alllogic(c *MqttClient) {
 		case err := <-c.errors:
 			c.trace_e(NET, "logic got error")
 			// clean up go routines
-			c.stopPing <- true
 			// incoming most likely stopped if outgoing stopped,
 			// but let it know to stop anyways.
-			c.stopNet <- true
-			c.options.stopRouter <- true
-
+			close(c.options.stopRouter)
 			close(c.stopPing)
 			close(c.stopNet)
 			c.conn.Close()
