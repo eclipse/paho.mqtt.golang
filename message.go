@@ -21,7 +21,7 @@ import (
 
 type MsgType byte
 type QoS byte
-type ConnRC byte
+type ConnRC int8
 
 type Message struct {
 	lastActivity time.Time
@@ -523,6 +523,7 @@ const (
 
 /* Connection Return Codes */
 const (
+	CONN_FAILURE           ConnRC = -1
 	CONN_ACCEPTED          ConnRC = 0x00
 	CONN_REF_BAD_PROTO_VER ConnRC = 0x01
 	CONN_REF_ID_REJ        ConnRC = 0x02

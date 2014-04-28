@@ -48,7 +48,7 @@ func keepalive(c *MqttClient) {
 
 	for {
 		select {
-		case <-c.stopPing:
+		case <-c.stop:
 			c.trace_w(PNG, "keepalive stopped")
 			return
 		default:

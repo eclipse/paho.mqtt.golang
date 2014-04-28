@@ -51,8 +51,7 @@ type MqttClient struct {
 	oboundP         chan *Message
 	begin           chan ConnRC
 	errors          chan error
-	stopPing        chan bool
-	stopNet         chan bool
+	stop            chan bool
 	receipts        *receiptMap
 	t               *Tracer
 	sessId          uint
@@ -141,19 +140,20 @@ func (c *MqttClient) Start() ([]Receipt, error) {
 	c.ibound = make(chan *Message)
 	c.oboundP = make(chan *Message)
 	c.errors = make(chan error)
-	c.begin = make(chan ConnRC)
-	c.stopPing = make(chan bool)
-	c.stopNet = make(chan bool)
+	c.stop = make(chan bool)
 
-	go connect(c)
 	go outgoing(c)
 	go alllogic(c)
 
 	cm := newConnectMsgFromOptions(c.options)
-
 	c.trace_v(CLI, "about to write new connect msg")
-
 	c.oboundP <- cm
+
+	rc := connect(c)
+	if rc != CONN_ACCEPTED {
+		c.trace_c(CLI, "CONNACK was not CONN_ACCEPTED, but rather %s", rc2str(rc))
+		return nil, chkrc(rc)
+	}
 
 	c.options.pubChanZero = make(chan *Message, 1000)
 	c.options.pubChanOne = make(chan *Message, 1000)
@@ -161,12 +161,6 @@ func (c *MqttClient) Start() ([]Receipt, error) {
 	c.options.msgRouter.matchAndDispatch(c.options.pubChanZero, c.options.order, c)
 	c.options.msgRouter.matchAndDispatch(c.options.pubChanOne, c.options.order, c)
 	c.options.msgRouter.matchAndDispatch(c.options.pubChanTwo, c.options.order, c)
-
-	rc := <-c.begin // wait for connack
-	if rc != CONN_ACCEPTED {
-		c.trace_c(CLI, "CONNACK was not CONN_ACCEPTED, but rather %s", rc2str(rc))
-		return nil, chkrc(rc)
-	}
 
 	c.connected = true
 	c.trace_v(CLI, "client is connected")
@@ -229,8 +223,7 @@ func (c *MqttClient) disconnect() {
 	dm := newDisconnectMsg()
 
 	// Stop all go routines except outgoing
-	close(c.stopPing)
-	close(c.stopNet)
+	close(c.stop)
 
 	// Send disconnect message and stop outgoing
 	c.oboundP <- dm

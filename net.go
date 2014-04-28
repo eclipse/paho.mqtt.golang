@@ -43,7 +43,8 @@ func openConnection(uri *url.URL, tlsc *tls.Config) (conn net.Conn, err error) {
 // when the connection is first started.
 // This prevents receiving incoming data while resume
 // is in progress if clean session is false.
-func connect(c *MqttClient) {
+func connect(c *MqttClient) (rc ConnRC) {
+	rc = CONN_FAILURE
 	c.trace_v(NET, "connect started")
 
 	//connack is always 4 bytes
@@ -52,6 +53,7 @@ func connect(c *MqttClient) {
 	if err != nil {
 		c.trace_e(NET, "connect got error")
 		c.errors <- err
+		return
 	}
 	msg := decode(ca)
 
@@ -60,8 +62,7 @@ func connect(c *MqttClient) {
 		c.trace_e(NET, "received msg that was nil or not CONNACK")
 	} else {
 		c.trace_v(NET, "received connack")
-		c.begin <- msg.connRC()
-		close(c.begin)
+		rc = msg.connRC()
 	}
 	return
 }
@@ -110,7 +111,7 @@ func incoming(c *MqttClient) {
 	// We received an error on read.
 	// If disconnect is in progress, swallow error and return
 	select {
-	case <-c.stopNet:
+	case <-c.stop:
 		c.trace_v(NET, "incoming stopped")
 		return
 		// Not trying to disconnect, send the error to the errors channel
@@ -256,7 +257,7 @@ func alllogic(c *MqttClient) {
 				c.receipts.end(msg.MsgId())
 				go c.options.mids.freeId(msg.MsgId())
 			}
-		case <-c.stopNet:
+		case <-c.stop:
 			c.trace_w(NET, "logic stopped")
 			return
 		case err := <-c.errors:
@@ -265,8 +266,7 @@ func alllogic(c *MqttClient) {
 			// incoming most likely stopped if outgoing stopped,
 			// but let it know to stop anyways.
 			close(c.options.stopRouter)
-			close(c.stopPing)
-			close(c.stopNet)
+			close(c.stop)
 			c.conn.Close()
 
 			// Call onConnectionLost or default error handler
