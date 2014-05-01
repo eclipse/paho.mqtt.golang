@@ -34,20 +34,20 @@ func newReceiptMap() *receiptMap {
 }
 
 func (m *receiptMap) put(mid MId, c chan Receipt) {
-	defer m.Unlock()
 	m.Lock()
+	defer m.Unlock()
 	m.contents[mid] = c
 }
 
 func (m *receiptMap) get(mid MId) chan Receipt {
-	defer m.RUnlock()
 	m.RLock()
+	defer m.RUnlock()
 	return m.contents[mid]
 }
 
 func (m *receiptMap) end(mid MId) {
-	defer m.Unlock()
 	m.Lock()
+	defer m.Unlock()
 	close(m.contents[mid])
 	delete(m.contents, mid)
 }

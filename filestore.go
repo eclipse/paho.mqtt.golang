@@ -52,8 +52,8 @@ func NewFileStore(directory string) *FileStore {
 
 // Open will allow the FileStore to be used.
 func (store *FileStore) Open() {
-	defer store.Unlock()
 	store.Lock()
+	defer store.Unlock()
 	// if no store directory was specified in ClientOpts, by default use the
 	// current working directory
 	if store.directory == "" {
@@ -72,8 +72,8 @@ func (store *FileStore) Open() {
 
 // Close will disallow the FileStore from being used.
 func (store *FileStore) Close() {
-	defer store.Unlock()
 	store.Lock()
+	defer store.Unlock()
 	store.opened = false
 	store.t.Trace_W(STR, "store is not open")
 }
@@ -81,8 +81,8 @@ func (store *FileStore) Close() {
 // Put will put a message into the store, associated with the provided
 // key value.
 func (store *FileStore) Put(key string, m *Message) {
-	defer store.Unlock()
 	store.Lock()
+	defer store.Unlock()
 	chkcond(store.opened)
 	full := fullpath(store.directory, key)
 	if exists(full) {
@@ -96,8 +96,8 @@ func (store *FileStore) Put(key string, m *Message) {
 // Get will retrieve a message from the store, the one associated with
 // the provided key value.
 func (store *FileStore) Get(key string) (m *Message) {
-	defer store.RUnlock()
 	store.RLock()
+	defer store.RUnlock()
 	chkcond(store.opened)
 	filepath := fullpath(store.directory, key)
 	if !exists(filepath) {
@@ -116,23 +116,23 @@ func (store *FileStore) Get(key string) (m *Message) {
 // All will provide a list of all of the keys associated with messages
 // currenly residing in the FileStore.
 func (store *FileStore) All() []string {
-	defer store.RUnlock()
 	store.RLock()
+	defer store.RUnlock()
 	return store.all()
 }
 
 // Del will remove the persisted message associated with the provided
 // key from the FileStore.
 func (store *FileStore) Del(key string) {
-	defer store.Unlock()
 	store.Lock()
+	defer store.Unlock()
 	store.del(key)
 }
 
 // Reset will remove all persisted messages from the FileStore.
 func (store *FileStore) Reset() {
-	defer store.Unlock()
 	store.Lock()
+	defer store.Unlock()
 	store.t.Trace_W(STR, "FileStore Reset")
 	for _, key := range store.all() {
 		store.del(key)

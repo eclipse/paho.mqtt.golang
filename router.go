@@ -89,8 +89,8 @@ func newRouter() (*router, chan bool) {
 // routes to see if there is already a matching Route. If there is it replaces the current
 // callback with the new one. If not it add a new entry to the list of Routes.
 func (r *router) addRoute(topic string, callback MessageHandler) {
-	defer r.Unlock()
 	r.Lock()
+	defer r.Unlock()
 	for e := r.routes.Front(); e != nil; e = e.Next() {
 		if e.Value.(*route).match(topic) {
 			r := e.Value.(*route)
@@ -104,8 +104,8 @@ func (r *router) addRoute(topic string, callback MessageHandler) {
 // deleteRoute takes a route string, looks for a matching Route in the list of Routes. If
 // found it removes the Route from the list.
 func (r *router) deleteRoute(topic string) {
-	defer r.Unlock()
 	r.Lock()
+	defer r.Unlock()
 	for e := r.routes.Front(); e != nil; e = e.Next() {
 		if e.Value.(*route).match(topic) {
 			r.routes.Remove(e)

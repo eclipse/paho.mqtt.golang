@@ -25,15 +25,15 @@ type lastcontact struct {
 }
 
 func (l *lastcontact) update() {
-	defer l.Unlock()
 	l.Lock()
+	defer l.Unlock()
 	l.lasttime = time.Now()
 
 }
 
 func (l *lastcontact) get() time.Time {
-	defer l.Unlock()
 	l.Lock()
+	defer l.Unlock()
 	return l.lasttime
 }
 

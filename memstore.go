@@ -33,7 +33,7 @@ type MemoryStore struct {
 // use until Open() has been called on it.
 func NewMemoryStore() *MemoryStore {
 	store := &MemoryStore{
-		messages: nil,
+		messages: make(map[string]*Message),
 		opened:   false,
 		t:        nil,
 	}
@@ -42,9 +42,8 @@ func NewMemoryStore() *MemoryStore {
 
 // Open initializes a MemoryStore instance.
 func (store *MemoryStore) Open() {
-	defer store.Unlock()
 	store.Lock()
-	store.messages = make(map[string]*Message)
+	defer store.Unlock()
 	store.opened = true
 	store.t.Trace_V(STR, "memorystore initialized")
 }
@@ -52,8 +51,8 @@ func (store *MemoryStore) Open() {
 // Put takes a key and a pointer to a Message and stores the
 // message.
 func (store *MemoryStore) Put(key string, message *Message) {
-	defer store.Unlock()
 	store.Lock()
+	defer store.Unlock()
 	chkcond(store.opened)
 	store.messages[key] = message
 }
@@ -61,8 +60,8 @@ func (store *MemoryStore) Put(key string, message *Message) {
 // Get takes a key and looks in the store for a matching Message
 // returning either the Message pointer or nil.
 func (store *MemoryStore) Get(key string) *Message {
-	defer store.RUnlock()
 	store.RLock()
+	defer store.RUnlock()
 	chkcond(store.opened)
 	mid := key2mid(key)
 	m := store.messages[key]
@@ -77,8 +76,8 @@ func (store *MemoryStore) Get(key string) *Message {
 // All returns a slice of strings containing all the keys currently
 // in the MemoryStore.
 func (store *MemoryStore) All() []string {
-	defer store.RUnlock()
 	store.RLock()
+	defer store.RUnlock()
 	chkcond(store.opened)
 	keys := []string{}
 	for k, _ := range store.messages {
@@ -90,8 +89,8 @@ func (store *MemoryStore) All() []string {
 // Del takes a key, searches the MemoryStore and if the key is found
 // deletes the Message pointer associated with it.
 func (store *MemoryStore) Del(key string) {
-	defer store.Unlock()
 	store.Lock()
+	defer store.Unlock()
 	mid := key2mid(key)
 	m := store.messages[key]
 	if m == nil {
@@ -104,8 +103,8 @@ func (store *MemoryStore) Del(key string) {
 
 // Close will disallow modifications to the state of the store.
 func (store *MemoryStore) Close() {
-	defer store.Unlock()
 	store.Lock()
+	defer store.Unlock()
 	chkcond(store.opened)
 	store.opened = false
 	store.t.Trace_V(STR, "memorystore closed")
@@ -113,15 +112,15 @@ func (store *MemoryStore) Close() {
 
 // Reset eliminates all persisted message data in the store.
 func (store *MemoryStore) Reset() {
-	defer store.Unlock()
 	store.Lock()
+	defer store.Unlock()
 	chkcond(store.opened)
 	store.messages = make(map[string]*Message)
 	store.t.Trace_W(STR, "memorystore wiped")
 }
 
 func (store *MemoryStore) SetTracer(tracer *Tracer) {
-	defer store.Unlock()
 	store.Lock()
+	defer store.Unlock()
 	store.t = tracer
 }

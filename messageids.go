@@ -52,15 +52,12 @@ func (mids *messageIds) generateMsgIds() {
 }
 
 func (mids *messageIds) freeId(id MId) {
-	defer mids.Unlock()
 	mids.Lock()
+	defer mids.Unlock()
 	//trace_v(MID, "freeing message id: %v", id)
 	mids.index[id] = false
 }
 
 func (mids *messageIds) getId() MId {
-	// defer mids.Unlock()
-	// mids.Lock()
-	id := <-mids.idChan // Does this need to be locked?
-	return id
+	return <-mids.idChan
 }
