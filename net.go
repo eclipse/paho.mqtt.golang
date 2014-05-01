@@ -85,7 +85,7 @@ func incoming(c *MqttClient) {
 			err = rerr
 			break
 		}
-		bytes, remLen := decode_remlen_from_network(c.bufferedConn)
+		bytes, remLen := decodeRemlenFromNetwork(c.bufferedConn)
 		fixedHeader := make([]byte, len(bytes)+1)
 		copy(fixedHeader, append(msgType, bytes...))
 		if remLen > 0 {

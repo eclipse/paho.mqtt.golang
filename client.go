@@ -51,7 +51,7 @@ type MqttClient struct {
 	oboundP         chan *Message
 	begin           chan ConnRC
 	errors          chan error
-	stop            chan bool
+	stop            chan struct{}
 	receipts        *receiptMap
 	t               *Tracer
 	sessId          uint
@@ -81,8 +81,8 @@ func NewClient(ops *ClientOptions) *MqttClient {
 }
 
 func (c *MqttClient) IsConnected() bool {
-	defer c.RUnlock()
 	c.RLock()
+	defer c.RUnlock()
 	return c.connected
 }
 
@@ -140,7 +140,7 @@ func (c *MqttClient) Start() ([]Receipt, error) {
 	c.ibound = make(chan *Message)
 	c.oboundP = make(chan *Message)
 	c.errors = make(chan error)
-	c.stop = make(chan bool)
+	c.stop = make(chan struct{})
 
 	go outgoing(c)
 	go alllogic(c)

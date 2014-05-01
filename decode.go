@@ -19,37 +19,21 @@ import (
 	"encoding/binary"
 )
 
-//bytes2id converts two bytes as transmitted over the network
-//into a message id
-func bytes2id(byteH, byteL byte) MId {
-	mid := MId(byteH) << 8
-	mid |= MId(byteL)
-	return mid
-}
-
-//decode_qos returns the QoS of the message
-func decode_qos(header byte) QoS {
+//decodeQos returns the QoS of the message
+func decodeQos(header byte) QoS {
 	qos := (header & 0x06) >> 1
 	return QoS(qos)
 }
 
-//decode_msgtype returns the type of the message
-func decode_msgtype(header byte) MsgType {
+//decodeMsgType returns the type of the message
+func decodeMsgType(header byte) MsgType {
 	mtype := (header & 0xF0) >> 4
 	return MsgType(mtype)
 }
 
-//packet_offset returns the number of bytes to the next MQTT
-//packet in the slice
-func packet_offset(bytes []byte) int {
-	rlSize, rlValue := decode_remlen(bytes[:])
-	return rlSize + int(rlValue) + 1
-}
-
 // return (number of bytes needed, the remaining length)
-func decode_remlen(bytes []byte) (int, uint32) {
+func decodeRemlen(bytes []byte) (int, uint32) {
 	// bytes[1,2,3,4] are the only ones we could care about
-
 	idx := uint32(0)
 	mult := uint32(1)
 	value := uint32(0)
@@ -65,7 +49,7 @@ func decode_remlen(bytes []byte) (int, uint32) {
 	return int(idx), value
 }
 
-func decode_remlen_from_network(src *bufio.ReadWriter) ([]byte, uint32) {
+func decodeRemlenFromNetwork(src *bufio.ReadWriter) ([]byte, uint32) {
 	var bytes []byte
 	var rLength uint32
 	var count int
@@ -86,7 +70,7 @@ func decode_remlen_from_network(src *bufio.ReadWriter) ([]byte, uint32) {
 }
 
 // return length of topic string, the topic string
-func decode_topic(bytes []byte) (tlen uint16, t string) {
+func decodeTopic(bytes []byte) (tlen uint16, t string) {
 	tlen = binary.BigEndian.Uint16(bytes[:2])
 	t = string(bytes[2 : 2+tlen])
 	return tlen, t
@@ -97,11 +81,11 @@ func decode_topic(bytes []byte) (tlen uint16, t string) {
 func decode(bytes []byte) *Message {
 	m := &Message{}
 
-	m.SetQoS(decode_qos(bytes[0]))
+	m.SetQoS(decodeQos(bytes[0]))
 
-	m.setMsgType(decode_msgtype(bytes[0]))
+	m.setMsgType(decodeMsgType(bytes[0]))
 
-	n, r := decode_remlen(bytes)
+	n, r := decodeRemlen(bytes)
 	m.setRemLen(r)
 
 	bytes = bytes[n+1:] // skip past fixed header and variable length byte(s)
@@ -145,7 +129,7 @@ func decode(bytes []byte) *Message {
 		// bytes[n+3]+ are the payload (if any)
 
 		// bytes 0 and 1 are topic length
-		tlen, topic := decode_topic(bytes)
+		tlen, topic := decodeTopic(bytes)
 
 		m.appendVHeaderField(topic) // auto inserts length
 

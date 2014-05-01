@@ -17,103 +17,103 @@ package mqtt
 import "bytes"
 import "testing"
 
-func Test_decode_qos_2(t *testing.T) {
+func Test_decodeQos_2(t *testing.T) {
 	b := byte(0xFD) // "4" is qos 2
-	qos := decode_qos(b)
+	qos := decodeQos(b)
 	if qos != QOS_TWO {
 		t.Fatalf("decod_qos expected 2, got %d", qos)
 	}
 }
 
-func Test_decode_qos_1(t *testing.T) {
+func Test_decodeQos_1(t *testing.T) {
 	b := byte(0xFB) // "2" is qos 1
-	qos := decode_qos(b)
+	qos := decodeQos(b)
 	if qos != QOS_ONE {
 		t.Fatalf("decod_qos expected 1, got %d", qos)
 	}
 }
 
-func Test_decode_qos_0(t *testing.T) {
+func Test_decodeQos_0(t *testing.T) {
 	b := byte(0xF9) // "0" is qos 0
-	qos := decode_qos(b)
+	qos := decodeQos(b)
 	if qos != QOS_ZERO {
-		t.Fatalf("decode_qos expected 0, got %d", qos)
+		t.Fatalf("decodeQos expected 0, got %d", qos)
 	}
 }
 
-func Test_decode_msgtype_connect(t *testing.T) {
+func Test_decodeMsgType_connect(t *testing.T) {
 	b := byte(0x1F)
-	mtype := decode_msgtype(b)
+	mtype := decodeMsgType(b)
 	if mtype != CONNECT {
-		t.Fatalf("decode_msgtype expected %d, got %d", CONNECT, mtype)
+		t.Fatalf("decodeMsgType expected %d, got %d", CONNECT, mtype)
 	}
 }
 
-func helper_test_decode_remlen(t *testing.T, bs []byte, exp_n int, exp_v uint32) {
-	n, v := decode_remlen(bs)
+func helper_test_decodeRemlen(t *testing.T, bs []byte, exp_n int, exp_v uint32) {
+	n, v := decodeRemlen(bs)
 	if n != exp_n {
-		t.Fatalf("decode_remlen n expected: %d, got %d", exp_n, n)
+		t.Fatalf("decodeRemlen n expected: %d, got %d", exp_n, n)
 	}
 	if v != exp_v {
-		t.Fatalf("decode_remlen v expected: %d, got %d", exp_v, v)
+		t.Fatalf("decodeRemlen v expected: %d, got %d", exp_v, v)
 	}
 }
 
-func Test_decode_remlen_1_low(t *testing.T) {
+func Test_decodeRemlen_1_low(t *testing.T) {
 	bs := []byte{
 		0xAB,
 		0x00, // 1 remlen byte (value 0)
 	}
-	helper_test_decode_remlen(t, bs, 1, 0)
+	helper_test_decodeRemlen(t, bs, 1, 0)
 }
 
-func Test_decode_remlen_1_high(t *testing.T) {
+func Test_decodeRemlen_1_high(t *testing.T) {
 	bs := []byte{
 		0xAB,
 		0x7F, // 1 remlen byte (value 127)
 	}
-	helper_test_decode_remlen(t, bs, 1, 127)
+	helper_test_decodeRemlen(t, bs, 1, 127)
 }
 
-func Test_decode_remlen_2_low(t *testing.T) {
+func Test_decodeRemlen_2_low(t *testing.T) {
 	bs := []byte{
 		0xAB,
 		0x80, // 2 remlen byte (value 128)
 		0x01,
 	}
-	helper_test_decode_remlen(t, bs, 2, 128)
+	helper_test_decodeRemlen(t, bs, 2, 128)
 }
 
-func Test_decode_remlen_2_high(t *testing.T) {
+func Test_decodeRemlen_2_high(t *testing.T) {
 	bs := []byte{
 		0xAB,
 		0xFF, // 2 remlen byte (value 16383)
 		0x7F,
 	}
-	helper_test_decode_remlen(t, bs, 2, 16383)
+	helper_test_decodeRemlen(t, bs, 2, 16383)
 }
 
-func Test_decode_remlen_3_low(t *testing.T) {
+func Test_decodeRemlen_3_low(t *testing.T) {
 	bs := []byte{
 		0xAB,
 		0x80, // 3 remlen byte (value 16384)
 		0x80,
 		0x01,
 	}
-	helper_test_decode_remlen(t, bs, 3, 16384)
+	helper_test_decodeRemlen(t, bs, 3, 16384)
 }
 
-func Test_decode_remlen_3_high(t *testing.T) {
+func Test_decodeRemlen_3_high(t *testing.T) {
 	bs := []byte{
 		0xAB,
 		0xFF, // 3 remlen byte (value 2097151)
 		0xFF,
 		0x7F,
 	}
-	helper_test_decode_remlen(t, bs, 3, 2097151)
+	helper_test_decodeRemlen(t, bs, 3, 2097151)
 }
 
-func Test_decode_remlen_4_low(t *testing.T) {
+func Test_decodeRemlen_4_low(t *testing.T) {
 	bs := []byte{
 		0xAB,
 		0x80, // 4 remlen byte (value 2097152)
@@ -121,10 +121,10 @@ func Test_decode_remlen_4_low(t *testing.T) {
 		0x80,
 		0x01,
 	}
-	helper_test_decode_remlen(t, bs, 4, 2097152)
+	helper_test_decodeRemlen(t, bs, 4, 2097152)
 }
 
-func Test_decode_remlen_4_high(t *testing.T) {
+func Test_decodeRemlen_4_high(t *testing.T) {
 	bs := []byte{
 		0xAB,
 		0xFF, // 4 remlen byte (value 268435455)
@@ -132,10 +132,10 @@ func Test_decode_remlen_4_high(t *testing.T) {
 		0xFF,
 		0x7F,
 	}
-	helper_test_decode_remlen(t, bs, 4, 268435455)
+	helper_test_decodeRemlen(t, bs, 4, 268435455)
 }
 
-func Test_decode_topic(t *testing.T) {
+func Test_decodeTopic(t *testing.T) {
 	bs := []byte{
 		0x00,
 		0x03,
@@ -143,12 +143,12 @@ func Test_decode_topic(t *testing.T) {
 		0x42,
 		0x43,
 	}
-	n, s := decode_topic(bs)
+	n, s := decodeTopic(bs)
 	if n != 3 {
 		t.Fatalf("decod_topic n expected %d, got %d", 3, n)
 	}
 	if s != "ABC" {
-		t.Fatalf("decode_topic t expected %s, got %s", "ABC", s)
+		t.Fatalf("decodeTopic t expected %s, got %s", "ABC", s)
 	}
 }
 
