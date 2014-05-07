@@ -31,7 +31,7 @@ func Test_Start(t *testing.T) {
 
 	_, err := c.Start()
 	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): ", err)
+		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
 
 	c.Disconnect(250)
@@ -86,7 +86,7 @@ func Test_Start_Ssl(t *testing.T) {
 
 	_, err := c.Start()
 	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): ", err)
+		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
 
 	c.Disconnect(250)
@@ -102,7 +102,7 @@ func Test_Publish_1(t *testing.T) {
 	c := NewClient(ops)
 	_, err := c.Start()
 	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): ", err)
+		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
 
 	c.Publish(QOS_ZERO, "/test/Publish", []byte("Publish qo0"))
@@ -119,7 +119,7 @@ func Test_Publish_2(t *testing.T) {
 	c := NewClient(ops)
 	_, err := c.Start()
 	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): ", err)
+		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
 
 	c.Publish(QOS_ZERO, "/test/Publish", []byte("Publish1 qos0"))
@@ -137,7 +137,7 @@ func Test_Publish_3(t *testing.T) {
 	c := NewClient(ops)
 	_, err := c.Start()
 	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): ", err)
+		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
 
 	c.Publish(QOS_ZERO, "/test/Publish", []byte("Publish1 qos0"))
@@ -167,7 +167,7 @@ func Test_Subscribe(t *testing.T) {
 
 	_, err := s.Start()
 	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): ", err)
+		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
 
 	filter, _ := NewTopicFilter("/test/sub", 0)
@@ -175,7 +175,7 @@ func Test_Subscribe(t *testing.T) {
 
 	_, err = p.Start()
 	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): ", err)
+		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
 
 	p.Publish(QOS_ZERO, "/test/sub", []byte("Publish qos0"))
@@ -208,7 +208,7 @@ func Test_Will(t *testing.T) {
 
 	_, err := wsub.Start()
 	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): ", err)
+		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
 
 	filter, _ := NewTopicFilter("/wills", 0)
@@ -216,7 +216,7 @@ func Test_Will(t *testing.T) {
 
 	_, err = c.Start()
 	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): ", err)
+		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
 	time.Sleep(time.Duration(1) * time.Second)
 
@@ -257,7 +257,7 @@ func Test_Binary_Will(t *testing.T) {
 
 	_, err := wsub.Start()
 	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): ", err)
+		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
 
 	filter, _ := NewTopicFilter("/wills", 0)
@@ -265,7 +265,7 @@ func Test_Binary_Will(t *testing.T) {
 
 	_, err = c.Start()
 	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): ", err)
+		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
 	time.Sleep(time.Duration(1) * time.Second)
 
@@ -321,19 +321,19 @@ func Test_p0s0(t *testing.T) {
 	s := NewClient(sops)
 	_, err := s.Start()
 	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): ", err)
+		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
 
 	filter, _ := NewTopicFilter(topic, 0)
 	receipt, err := s.StartSubscription(nil, filter)
 	if err != nil {
-		t.Fatalf("Error on MqttClient.StartSubscription(): ", err)
+		t.Fatalf("Error on MqttClient.StartSubscription(): %v", err)
 	}
 	<-receipt
 
 	_, err = p.Start()
 	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): ", err)
+		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
 	receipt = p.Publish(QOS_ZERO, topic, []byte("p0s0 payload 1"))
 	<-receipt
@@ -381,19 +381,19 @@ func Test_p0s1(t *testing.T) {
 	s := NewClient(sops)
 	_, err := s.Start()
 	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): ", err)
+		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
 
 	filter, _ := NewTopicFilter(topic, 0)
 	receipt, err := s.StartSubscription(nil, filter)
 	if err != nil {
-		t.Fatalf("Error on MqttClient.StartSubscription(): ", err)
+		t.Fatalf("Error on MqttClient.StartSubscription(): %v", err)
 	}
 	<-receipt
 
 	_, err = p.Start()
 	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): ", err)
+		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
 	receipt = p.Publish(QOS_ZERO, topic, []byte("p0s1 payload 1"))
 	<-receipt
@@ -440,19 +440,19 @@ func Test_p0s2(t *testing.T) {
 	s := NewClient(sops)
 	_, err := s.Start()
 	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): ", err)
+		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
 
 	filter, _ := NewTopicFilter(topic, 2)
 	receipt, err := s.StartSubscription(nil, filter)
 	if err != nil {
-		t.Fatalf("Error on MqttClient.StartSubscription(): ", err)
+		t.Fatalf("Error on MqttClient.StartSubscription(): %v", err)
 	}
 	<-receipt
 
 	_, err = p.Start()
 	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): ", err)
+		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
 	receipt = p.Publish(QOS_ZERO, topic, []byte("p0s2 payload 1"))
 	<-receipt
@@ -499,19 +499,19 @@ func Test_p1s0(t *testing.T) {
 	s := NewClient(sops)
 	_, err := s.Start()
 	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): ", err)
+		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
 
 	filter, _ := NewTopicFilter(topic, 0)
 	receipt, err := s.StartSubscription(nil, filter)
 	if err != nil {
-		t.Fatalf("Error on MqttClient.StartSubscription(): ", err)
+		t.Fatalf("Error on MqttClient.StartSubscription(): %v", err)
 	}
 	<-receipt
 
 	_, err = p.Start()
 	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): ", err)
+		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
 	receipt = p.Publish(QOS_ONE, topic, []byte("p1s0 payload 1"))
 	<-receipt
@@ -558,19 +558,19 @@ func Test_p1s1(t *testing.T) {
 	s := NewClient(sops)
 	_, err := s.Start()
 	if err != nil {
-		t.Fatalf("Error on MqttClient.Start()", err)
+		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
 
 	filter, _ := NewTopicFilter(topic, 1)
 	receipt, err := s.StartSubscription(nil, filter)
 	if err != nil {
-		t.Fatalf("Error on MqttClient.StartSubscription()", err)
+		t.Fatalf("Error on MqttClient.StartSubscription(): %v", err)
 	}
 	<-receipt
 
 	_, err = p.Start()
 	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): ", err)
+		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
 	receipt = p.Publish(QOS_ONE, topic, []byte("p1s1 payload 1"))
 	<-receipt
@@ -617,18 +617,18 @@ func Test_p1s2(t *testing.T) {
 	s := NewClient(sops)
 	_, err := s.Start()
 	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): ", err)
+		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
 	filter, _ := NewTopicFilter(topic, 2)
 	receipt, err := s.StartSubscription(nil, filter)
 	if err != nil {
-		t.Fatalf("Error on MqttClient.StartSubscription(): ", err)
+		t.Fatalf("Error on MqttClient.StartSubscription(): %v", err)
 	}
 	<-receipt
 
 	_, err = p.Start()
 	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): ", err)
+		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
 	receipt = p.Publish(QOS_ONE, topic, []byte("p1s2 payload 1"))
 	<-receipt
@@ -675,19 +675,19 @@ func Test_p2s0(t *testing.T) {
 	s := NewClient(sops)
 	_, err := s.Start()
 	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): ", err)
+		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
 
 	filter, _ := NewTopicFilter(topic, 0)
 	receipt, err := s.StartSubscription(nil, filter)
 	if err != nil {
-		t.Fatalf("Error on MqttClient.StartSubscription(): ", err)
+		t.Fatalf("Error on MqttClient.StartSubscription(): %v", err)
 	}
 	<-receipt
 
 	_, err = p.Start()
 	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): ", err)
+		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
 	p.Publish(QOS_TWO, topic, []byte("p2s0 payload 1"))
 	p.Publish(QOS_TWO, topic, []byte("p2s0 payload 2"))
@@ -731,19 +731,19 @@ func Test_p2s1(t *testing.T) {
 	s := NewClient(sops)
 	_, err := s.Start()
 	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): ", err)
+		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
 
 	filter, _ := NewTopicFilter(topic, 1)
 	receipt, err := s.StartSubscription(nil, filter)
 	if err != nil {
-		t.Fatalf("Error on MqttClient.StartSubscription(): ", err)
+		t.Fatalf("Error on MqttClient.StartSubscription(): %v", err)
 	}
 	<-receipt
 
 	_, err = p.Start()
 	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): ", err)
+		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
 	receipt = p.Publish(QOS_TWO, topic, []byte("p2s1 payload 1"))
 	<-receipt
@@ -790,19 +790,19 @@ func Test_p2s2(t *testing.T) {
 	s := NewClient(sops)
 	_, err := s.Start()
 	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): ", err)
+		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
 
 	filter, _ := NewTopicFilter(topic, 2)
 	receipt, err := s.StartSubscription(nil, filter)
 	if err != nil {
-		t.Fatalf("Error on MqttClient.StartSubscription(): ", err)
+		t.Fatalf("Error on MqttClient.StartSubscription(): %v", err)
 	}
 	<-receipt
 
 	_, err = p.Start()
 	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): ", err)
+		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
 	receipt = p.Publish(QOS_TWO, topic, []byte("p2s2 payload 1"))
 	<-receipt
@@ -850,19 +850,19 @@ func Test_PublishMessage(t *testing.T) {
 	s := NewClient(sops)
 	_, err := s.Start()
 	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): ", err)
+		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
 
 	filter, _ := NewTopicFilter(topic, 2)
 	receipt, err := s.StartSubscription(nil, filter)
 	if err != nil {
-		t.Fatalf("Error on MqttClient.StartSubscription(): ", err)
+		t.Fatalf("Error on MqttClient.StartSubscription(): %v", err)
 	}
 	<-receipt
 
 	_, err = p.Start()
 	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): ", err)
+		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
 
 	text := "pubmsg payload"
@@ -910,19 +910,19 @@ func Test_PublishEmptyMessage(t *testing.T) {
 	s := NewClient(sops)
 	_, err := s.Start()
 	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): ", err)
+		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
 
 	filter, _ := NewTopicFilter(topic, 2)
 	receipt, err := s.StartSubscription(nil, filter)
 	if err != nil {
-		t.Fatalf("Error on MqttClient.StartSubscription(): ", err)
+		t.Fatalf("Error on MqttClient.StartSubscription(): %v", err)
 	}
 	<-receipt
 
 	_, err = p.Start()
 	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): ", err)
+		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
 
 	m := NewMessage(nil)
@@ -971,19 +971,19 @@ func Test_Cleanstore(t *testing.T) {
 	s = NewClient(sops)
 	_, err := s.Start()
 	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): ", err)
+		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
 
 	filter, _ := NewTopicFilter(topic, 2)
 	receipt, err := s.StartSubscription(nil, filter)
 	if err != nil {
-		t.Fatalf("Error on MqttClient.StartSubscription(): ", err)
+		t.Fatalf("Error on MqttClient.StartSubscription(): %v", err)
 	}
 	<-receipt
 
 	_, err = p.Start()
 	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): ", err)
+		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
 
 	m := NewMessage([]byte("test message"))
@@ -1003,7 +1003,7 @@ func Test_Cleanstore(t *testing.T) {
 	s2 := NewClient(sops)
 	_, err = s2.Start()
 	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): ", err)
+		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
 
 	// at this point existing state should be cleared...
@@ -1023,7 +1023,7 @@ func Test_ping3_idle10(t *testing.T) {
 	c := NewClient(ops)
 	_, err := c.Start()
 	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): ", err)
+		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
 	time.Sleep(time.Duration(10) * time.Second)
 	c.Disconnect(250)
