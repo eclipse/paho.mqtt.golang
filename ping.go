@@ -15,6 +15,7 @@
 package mqtt
 
 import (
+	"errors"
 	"sync"
 	"time"
 )
@@ -62,6 +63,7 @@ func keepalive(c *MqttClient) {
 					c.pingOutstanding = true
 				} else {
 					c.trace_c(PNG, "pingresp not received, disconnecting")
+					go c.options.onconnlost(c, errors.New("pingresp not received, disconnecting"))
 					c.disconnect()
 				}
 			}

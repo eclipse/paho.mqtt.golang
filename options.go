@@ -18,6 +18,7 @@ import (
 	"crypto/tls"
 	"net/url"
 	"os"
+	"time"
 )
 
 // MessageHandler is a callback type which can be set to be
@@ -58,6 +59,7 @@ type ClientOptions struct {
 	pubChanTwo    chan *Message
 	onconnlost    OnConnectionLost
 	mids          messageIds
+	writeTimeout  time.Duration
 }
 
 // NewClientClientOptions will create a new ClientClientOptions type with some
@@ -91,6 +93,7 @@ func NewClientOptions() *ClientOptions {
 		pubChanTwo:    nil,
 		onconnlost:    DefaultErrorHandler,
 		mids:          messageIds{index: make(map[MId]bool)},
+		writeTimeout:  0, // 0 represents timeout disabled
 	}
 	o.msgRouter, o.stopRouter = newRouter()
 	return o
@@ -249,4 +252,10 @@ func (opts *ClientOptions) SetDefaultPublishHandler(defaultHandler MessageHandle
 func (opts *ClientOptions) SetOnConnectionLost(onLost OnConnectionLost) *ClientOptions {
 	opts.onconnlost = onLost
 	return opts
+}
+
+// SetWriteTimeout puts a limit on how long a mqtt publish should block until it unblocks with a
+// timeout error. A duration of 0 never times out.
+func (opts *ClientOptions) SetWriteTimeout(t time.Duration) {
+	opts.writeTimeout = t
 }

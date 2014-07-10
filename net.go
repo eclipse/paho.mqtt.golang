@@ -147,11 +147,21 @@ func outgoing(c *MqttClient) {
 			}
 			msg.setTime()
 			persist_obound(c.persist, msg)
-			_, err := c.conn.Write(msg.Bytes())
-			if err != nil {
+
+			if c.options.writeTimeout > 0 {
+				c.conn.SetWriteDeadline(time.Now().Add(c.options.writeTimeout))
+			}
+
+			if _, err := c.conn.Write(msg.Bytes()); err != nil {
 				c.trace_e(NET, "outgoing stopped with error")
 				c.errors <- err
 				return
+			}
+
+			if c.options.writeTimeout > 0 {
+				// If we successfully wrote, we don't want the timeout to happen during an idle period
+				// so we reset it to infinite.
+				c.conn.SetWriteDeadline(time.Time{})
 			}
 
 			if (msg.QoS() == QOS_ZERO) &&
@@ -230,8 +240,19 @@ func alllogic(c *MqttClient) {
 					c.obound <- sendable{pubackMsg, nil}
 					c.trace_v(NET, "done putting puback msg on obound")
 				case QOS_ZERO:
-					c.options.pubChanZero <- msg
-					c.trace_v(NET, "done putting msg on pubChanZero")
+					select {
+					case c.options.pubChanZero <- msg:
+						c.trace_v(NET, "done putting msg on pubChanZero")
+					case err, ok := <-c.errors:
+						c.trace_v(NET, "error while putting msg on pubChanZero")
+						// We are unblocked, but need to put the error back on so the outer
+						// select can handle it appropriately.
+						if ok {
+							go func(errVal error, errChan chan error) {
+								errChan <- errVal
+							}(err, c.errors)
+						}
+					}
 				}
 			case PUBACK:
 				c.trace_v(NET, "received puback, id: %v", msg.MsgId())
@@ -265,6 +286,7 @@ func alllogic(c *MqttClient) {
 			c.trace_w(NET, "logic stopped")
 			return
 		case err := <-c.errors:
+			c.connected = false
 			c.trace_e(NET, "logic got error")
 			// clean up go routines
 			// incoming most likely stopped if outgoing stopped,

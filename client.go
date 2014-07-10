@@ -252,11 +252,10 @@ func (c *MqttClient) Publish(qos QoS, topic string, payload interface{}) <-chan 
 
 	select {
 	case c.obound <- sendable{pub, r}:
-		return r
 	case <-time.After(time.Second):
 		close(r)
-		return nil
 	}
+	return r
 }
 
 // PublishMessage will publish a Message to the specified topic.
