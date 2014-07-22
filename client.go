@@ -152,6 +152,9 @@ func (c *MqttClient) Start() ([]Receipt, error) {
 	rc := connect(c)
 	if rc != CONN_ACCEPTED {
 		c.trace_c(CLI, "CONNACK was not CONN_ACCEPTED, but rather %s", rc2str(rc))
+		// Stop all go routines except outgoing
+		close(c.stop)
+		c.conn.Close()
 		return nil, chkrc(rc)
 	}
 
@@ -181,6 +184,11 @@ func (c *MqttClient) Start() ([]Receipt, error) {
 	go incoming(c)
 
 	c.trace_v(CLI, "exit startMqttClient")
+	if chkrc(rc) != nil {
+		// Cleanup before returning.
+		close(c.stop)
+		c.conn.Close()
+	}
 	return leftovers, chkrc(rc)
 }
 
