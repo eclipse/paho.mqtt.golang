@@ -34,8 +34,7 @@ type OnConnectionLost func(client *MqttClient, reason error)
 
 // ClientOptions contains configurable options for an MqttClient.
 type ClientOptions struct {
-	server        *url.URL
-	server2       *url.URL
+	servers       []*url.URL
 	clientId      string
 	username      string
 	password      string
@@ -70,8 +69,7 @@ type ClientOptions struct {
 //   Tracefile: os.Stdout
 func NewClientOptions() *ClientOptions {
 	o := &ClientOptions{
-		server:        nil,
-		server2:       nil,
+		servers:       nil,
 		clientId:      "",
 		username:      "",
 		password:      "",
@@ -99,23 +97,14 @@ func NewClientOptions() *ClientOptions {
 	return o
 }
 
-// SetBroker will allow you to set the URI for your broker. The format should be
+// AddBroker adds a broker URI to the list of brokers to be used. The format should be
 // scheme://host:port
 // Where "scheme" is one of "tcp", "ssl", or "ws", "host" is the ip-address (or hostname)
 // and "port" is the port on which the broker is accepting connections.
-// For example, one could connect to tcp://test.mosquitto.org:1883
-func (opts *ClientOptions) SetBroker(server string) *ClientOptions {
-	opts.server, _ = url.Parse(server)
-	return opts
-}
-
-// SetStandbyBroker will allow you to set a second URI to which the client will attempt
-// to connect in the event of a connection failure. This is for use only in cases where
-// two brokers are configured as a highly available pair. (For example, two IBM MessageSight
-// appliances configured in High Availability mode).
-func (opts *ClientOptions) SetStandbyBroker(server string) *ClientOptions {
-	opts.server2, _ = url.Parse(server)
-	return opts
+func (o *ClientOptions) AddBroker(server string) *ClientOptions {
+	brokerURI, _ := url.Parse(server)
+	o.servers = append(o.servers, brokerURI)
+	return o
 }
 
 // SetClientId will set the client id to be used by this client when

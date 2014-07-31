@@ -18,7 +18,6 @@ package mqtt
 import (
 	"bufio"
 	"errors"
-	"math/rand"
 	"net"
 	"sync"
 	"time"
@@ -54,7 +53,6 @@ type MqttClient struct {
 	stop            chan struct{}
 	receipts        *receiptMap
 	t               *Tracer
-	sessId          uint
 	persist         Store
 	options         ClientOptions
 	lastContact     lastcontact
@@ -68,8 +66,6 @@ type MqttClient struct {
 // connection) are created before the application is actually ready.
 func NewClient(ops *ClientOptions) *MqttClient {
 	c := &MqttClient{}
-	c.sessId = uint(rand.Int())
-	c.sessId = 0
 	c.options = *ops
 
 	if c.options.store == nil {
@@ -104,24 +100,15 @@ func (c *MqttClient) Start() ([]Receipt, error) {
 
 	c.trace_v(CLI, "Start()")
 
-	c1, err1 := openConnection(c.options.server, c.options.tlsconfig)
-	if err1 != nil {
-		c.trace_w(CLI, "failed to connect to primary broker")
-		if c.options.server2 != nil {
-			c2, err2 := openConnection(c.options.server2, c.options.tlsconfig)
-			if err2 != nil {
-				c.trace_w(CLI, "failed to connect to standby broker")
-				return nil, err1
-			}
-			c.conn = c2
-			c.trace_v(CLI, "connected to standby broker")
+	for _, broker := range c.options.servers {
+		conn, err := openConnection(broker, c.options.tlsconfig)
+		if err == nil {
+			c.conn = conn
+			c.trace_v(CLI, "connected to broker")
+			break
 		} else {
-			c.trace_w(CLI, "standby broker is not configured")
-			return nil, err1
+			c.trace_w(CLI, "failed to connect to broker, trying next")
 		}
-	} else {
-		c.conn = c1
-		c.trace_v(CLI, "connected to primary broker")
 	}
 
 	if c.conn == nil {

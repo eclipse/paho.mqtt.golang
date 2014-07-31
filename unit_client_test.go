@@ -17,7 +17,7 @@ package mqtt
 import "testing"
 
 func Test_NewClient_simple(t *testing.T) {
-	ops := NewClientOptions().SetClientId("foo").SetBroker("tcp://10.10.0.1:1883")
+	ops := NewClientOptions().SetClientId("foo").AddBroker("tcp://10.10.0.1:1883")
 	c := NewClient(ops)
 
 	if c == nil {
@@ -28,11 +28,11 @@ func Test_NewClient_simple(t *testing.T) {
 		t.Fatalf("bad client id")
 	}
 
-	if c.options.server.Scheme != "tcp" {
+	if c.options.servers[0].Scheme != "tcp" {
 		t.Fatalf("bad server scheme")
 	}
 
-	if c.options.server.Host != "10.10.0.1:1883" {
+	if c.options.servers[0].Host != "10.10.0.1:1883" {
 		t.Fatalf("bad server host")
 	}
 }

@@ -69,7 +69,7 @@ func Test_NewClientOptions_default(t *testing.T) {
 
 func Test_NewClientOptions_mix(t *testing.T) {
 	o := NewClientOptions()
-	o.SetBroker("tcp://192.168.1.2:9999")
+	o.AddBroker("tcp://192.168.1.2:9999")
 	o.SetClientId("myclientid")
 	o.SetUsername("myuser")
 	o.SetPassword("mypassword")
@@ -77,11 +77,11 @@ func Test_NewClientOptions_mix(t *testing.T) {
 	o.SetTracefile(os.Stderr)
 	o.SetTraceLevel(Warn)
 
-	if o.server.Scheme != "tcp" {
+	if o.servers[0].Scheme != "tcp" {
 		t.Fatalf("bad scheme")
 	}
 
-	if o.server.Host != "192.168.1.2:9999" {
+	if o.servers[0].Host != "192.168.1.2:9999" {
 		t.Fatalf("bad host")
 	}
 
@@ -112,12 +112,12 @@ func Test_NewClientOptions_mix(t *testing.T) {
 
 func Test_ModifyOptions(t *testing.T) {
 	o := NewClientOptions()
-	o.SetBroker("tcp://3.3.3.3:12345")
+	o.AddBroker("tcp://3.3.3.3:12345")
 	c := NewClient(o)
-	o.SetBroker("ws://2.2.2.2:9999")
+	o.AddBroker("ws://2.2.2.2:9999")
 	o.SetOrderMatters(false)
 
-	if c.options.server.Scheme != "tcp" {
+	if c.options.servers[0].Scheme != "tcp" {
 		t.Fatalf("client options.server.Scheme was modified")
 	}
 

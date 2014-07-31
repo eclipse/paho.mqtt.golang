@@ -25,7 +25,7 @@ import "testing"
 
 func Test_Start(t *testing.T) {
 	ops := NewClientOptions().SetClientId("Start").
-		SetBroker(FVT_TCP).
+		AddBroker(FVT_TCP).
 		SetStore(NewFileStore("/tmp/fvt/Start"))
 	c := NewClient(ops)
 
@@ -40,7 +40,7 @@ func Test_Start(t *testing.T) {
 /* uncomment this if you have connection policy disallowing FailClientID
 func Test_InvalidConnRc(t *testing.T) {
 	ops := NewClientOptions().SetClientId("FailClientID").
-		SetBroker("tcp://" + FVT_IP + ":17003").
+		AddBroker("tcp://" + FVT_IP + ":17003").
 		SetStore(NewFileStore("/tmp/fvt/InvalidConnRc"))
 
 	c := NewClient(ops)
@@ -78,7 +78,7 @@ func NewTlsConfig() *tls.Config {
 func Test_Start_Ssl(t *testing.T) {
 	tlsconfig := NewTlsConfig()
 	ops := NewClientOptions().SetClientId("StartSsl").
-		SetBroker(FVT_SSL).
+		AddBroker(FVT_SSL).
 		SetStore(NewFileStore("/tmp/fvt/Start_Ssl")).
 		SetTlsConfig(tlsconfig)
 
@@ -95,7 +95,7 @@ func Test_Start_Ssl(t *testing.T) {
 
 func Test_Publish_1(t *testing.T) {
 	ops := NewClientOptions()
-	ops.SetBroker(FVT_TCP)
+	ops.AddBroker(FVT_TCP)
 	ops.SetClientId("Publish_1")
 	ops.SetStore(NewFileStore("/tmp/fvt/Publish_1"))
 
@@ -112,7 +112,7 @@ func Test_Publish_1(t *testing.T) {
 
 func Test_Publish_2(t *testing.T) {
 	ops := NewClientOptions()
-	ops.SetBroker(FVT_TCP)
+	ops.AddBroker(FVT_TCP)
 	ops.SetClientId("Publish_2")
 	ops.SetStore(NewFileStore("/tmp/fvt/Publish_2"))
 
@@ -130,7 +130,7 @@ func Test_Publish_2(t *testing.T) {
 
 func Test_Publish_3(t *testing.T) {
 	ops := NewClientOptions()
-	ops.SetBroker(FVT_TCP)
+	ops.AddBroker(FVT_TCP)
 	ops.SetClientId("Publish_3")
 	ops.SetStore(NewFileStore("/tmp/fvt/Publish_3"))
 
@@ -149,13 +149,13 @@ func Test_Publish_3(t *testing.T) {
 
 func Test_Subscribe(t *testing.T) {
 	pops := NewClientOptions()
-	pops.SetBroker(FVT_TCP)
+	pops.AddBroker(FVT_TCP)
 	pops.SetClientId("Subscribe_tx")
 	pops.SetStore(NewFileStore("/tmp/fvt/Subscribe/p"))
 	p := NewClient(pops)
 
 	sops := NewClientOptions()
-	sops.SetBroker(FVT_TCP)
+	sops.AddBroker(FVT_TCP)
 	sops.SetClientId("Subscribe_rx")
 	sops.SetStore(NewFileStore("/tmp/fvt/Subscribe/s"))
 	var f MessageHandler = func(client *MqttClient, msg Message) {
@@ -187,7 +187,7 @@ func Test_Subscribe(t *testing.T) {
 func Test_Will(t *testing.T) {
 	willmsgc := make(chan string)
 
-	sops := NewClientOptions().SetBroker(FVT_TCP)
+	sops := NewClientOptions().AddBroker(FVT_TCP)
 	sops.SetClientId("will-giver")
 	sops.SetWill("/wills", "good-byte!", QOS_ZERO, false)
 	sops.SetOnConnectionLost(func(client *MqttClient, err error) {
@@ -196,7 +196,7 @@ func Test_Will(t *testing.T) {
 	c := NewClient(sops)
 
 	wops := NewClientOptions()
-	wops.SetBroker(FVT_TCP)
+	wops.AddBroker(FVT_TCP)
 	wops.SetClientId("will-subscriber")
 	wops.SetStore(NewFileStore("/tmp/fvt/Will"))
 	wops.SetDefaultPublishHandler(func(client *MqttClient, msg Message) {
@@ -238,14 +238,14 @@ func Test_Binary_Will(t *testing.T) {
 		0xEF,
 	}
 
-	sops := NewClientOptions().SetBroker(FVT_TCP)
+	sops := NewClientOptions().AddBroker(FVT_TCP)
 	sops.SetClientId("will-giver")
 	sops.SetBinaryWill("/wills", will, QOS_ZERO, false)
 	sops.SetOnConnectionLost(func(client *MqttClient, err error) {
 	})
 	c := NewClient(sops)
 
-	wops := NewClientOptions().SetBroker(FVT_TCP)
+	wops := NewClientOptions().AddBroker(FVT_TCP)
 	wops.SetClientId("will-subscriber")
 	wops.SetStore(NewFileStore("/tmp/fvt/Binary_Will"))
 	wops.SetDefaultPublishHandler(func(client *MqttClient, msg Message) {
@@ -302,13 +302,13 @@ func Test_p0s0(t *testing.T) {
 	choke := make(chan bool)
 
 	pops := NewClientOptions()
-	pops.SetBroker(FVT_TCP)
+	pops.AddBroker(FVT_TCP)
 	pops.SetClientId("p0s0-pub")
 	pops.SetStore(NewFileStore(store + "/p"))
 	p := NewClient(pops)
 
 	sops := NewClientOptions()
-	sops.SetBroker(FVT_TCP)
+	sops.AddBroker(FVT_TCP)
 	sops.SetClientId("p0s0-sub")
 	sops.SetStore(NewFileStore(store + "/s"))
 	var f MessageHandler = func(client *MqttClient, msg Message) {
@@ -362,13 +362,13 @@ func Test_p0s1(t *testing.T) {
 	choke := make(chan bool)
 
 	pops := NewClientOptions()
-	pops.SetBroker(FVT_TCP)
+	pops.AddBroker(FVT_TCP)
 	pops.SetClientId("p0s1-pub")
 	pops.SetStore(NewFileStore(store + "/p"))
 	p := NewClient(pops)
 
 	sops := NewClientOptions()
-	sops.SetBroker(FVT_TCP)
+	sops.AddBroker(FVT_TCP)
 	sops.SetClientId("p0s1-sub")
 	sops.SetStore(NewFileStore(store + "/s"))
 	var f MessageHandler = func(client *MqttClient, msg Message) {
@@ -421,13 +421,13 @@ func Test_p0s2(t *testing.T) {
 	choke := make(chan bool)
 
 	pops := NewClientOptions()
-	pops.SetBroker(FVT_TCP)
+	pops.AddBroker(FVT_TCP)
 	pops.SetClientId("p0s2-pub")
 	pops.SetStore(NewFileStore(store + "/p"))
 	p := NewClient(pops)
 
 	sops := NewClientOptions()
-	sops.SetBroker(FVT_TCP)
+	sops.AddBroker(FVT_TCP)
 	sops.SetClientId("p0s2-sub")
 	sops.SetStore(NewFileStore(store + "/s"))
 	var f MessageHandler = func(client *MqttClient, msg Message) {
@@ -480,13 +480,13 @@ func Test_p1s0(t *testing.T) {
 	choke := make(chan bool)
 
 	pops := NewClientOptions()
-	pops.SetBroker(FVT_TCP)
+	pops.AddBroker(FVT_TCP)
 	pops.SetClientId("p1s0-pub")
 	pops.SetStore(NewFileStore(store + "/p"))
 	p := NewClient(pops)
 
 	sops := NewClientOptions()
-	sops.SetBroker(FVT_TCP)
+	sops.AddBroker(FVT_TCP)
 	sops.SetClientId("p1s0-sub")
 	sops.SetStore(NewFileStore(store + "/s"))
 	var f MessageHandler = func(client *MqttClient, msg Message) {
@@ -539,13 +539,13 @@ func Test_p1s1(t *testing.T) {
 	choke := make(chan bool)
 
 	pops := NewClientOptions()
-	pops.SetBroker(FVT_TCP)
+	pops.AddBroker(FVT_TCP)
 	pops.SetClientId("p1s1-pub")
 	pops.SetStore(NewFileStore(store + "/p"))
 	p := NewClient(pops)
 
 	sops := NewClientOptions()
-	sops.SetBroker(FVT_TCP)
+	sops.AddBroker(FVT_TCP)
 	sops.SetClientId("p1s1-sub")
 	sops.SetStore(NewFileStore(store + "/s"))
 	var f MessageHandler = func(client *MqttClient, msg Message) {
@@ -598,13 +598,13 @@ func Test_p1s2(t *testing.T) {
 	choke := make(chan bool)
 
 	pops := NewClientOptions()
-	pops.SetBroker(FVT_TCP)
+	pops.AddBroker(FVT_TCP)
 	pops.SetClientId("p1s2-pub")
 	pops.SetStore(NewFileStore(store + "/p"))
 	p := NewClient(pops)
 
 	sops := NewClientOptions()
-	sops.SetBroker(FVT_TCP)
+	sops.AddBroker(FVT_TCP)
 	sops.SetClientId("p1s2-sub")
 	sops.SetStore(NewFileStore(store + "/s"))
 	var f MessageHandler = func(client *MqttClient, msg Message) {
@@ -656,13 +656,13 @@ func Test_p2s0(t *testing.T) {
 	choke := make(chan bool)
 
 	pops := NewClientOptions()
-	pops.SetBroker(FVT_TCP)
+	pops.AddBroker(FVT_TCP)
 	pops.SetClientId("p2s0-pub")
 	pops.SetStore(NewFileStore(store + "/p"))
 	p := NewClient(pops)
 
 	sops := NewClientOptions()
-	sops.SetBroker(FVT_TCP)
+	sops.AddBroker(FVT_TCP)
 	sops.SetClientId("p2s0-sub")
 	sops.SetStore(NewFileStore(store + "/s"))
 	var f MessageHandler = func(client *MqttClient, msg Message) {
@@ -712,13 +712,13 @@ func Test_p2s1(t *testing.T) {
 	choke := make(chan bool)
 
 	pops := NewClientOptions()
-	pops.SetBroker(FVT_TCP)
+	pops.AddBroker(FVT_TCP)
 	pops.SetClientId("p2s1-pub")
 	pops.SetStore(NewFileStore(store + "/p"))
 	p := NewClient(pops)
 
 	sops := NewClientOptions()
-	sops.SetBroker(FVT_TCP)
+	sops.AddBroker(FVT_TCP)
 	sops.SetClientId("p2s1-sub")
 	sops.SetStore(NewFileStore(store + "/s"))
 	var f MessageHandler = func(client *MqttClient, msg Message) {
@@ -771,13 +771,13 @@ func Test_p2s2(t *testing.T) {
 	choke := make(chan bool)
 
 	pops := NewClientOptions()
-	pops.SetBroker(FVT_TCP)
+	pops.AddBroker(FVT_TCP)
 	pops.SetClientId("p2s2-pub")
 	pops.SetStore(NewFileStore(store + "/p"))
 	p := NewClient(pops)
 
 	sops := NewClientOptions()
-	sops.SetBroker(FVT_TCP)
+	sops.AddBroker(FVT_TCP)
 	sops.SetClientId("p2s2-sub")
 	sops.SetStore(NewFileStore(store + "/s"))
 	var f MessageHandler = func(client *MqttClient, msg Message) {
@@ -828,13 +828,13 @@ func Test_PublishMessage(t *testing.T) {
 	choke := make(chan bool)
 
 	pops := NewClientOptions()
-	pops.SetBroker(FVT_TCP)
+	pops.AddBroker(FVT_TCP)
 	pops.SetClientId("pubmsg-pub")
 	pops.SetStore(NewFileStore(store + "/p"))
 	p := NewClient(pops)
 
 	sops := NewClientOptions()
-	sops.SetBroker(FVT_TCP)
+	sops.AddBroker(FVT_TCP)
 	sops.SetClientId("pubmsg-sub")
 	sops.SetStore(NewFileStore(store + "/s"))
 	var f MessageHandler = func(client *MqttClient, msg Message) {
@@ -888,13 +888,13 @@ func Test_PublishEmptyMessage(t *testing.T) {
 	choke := make(chan bool)
 
 	pops := NewClientOptions()
-	pops.SetBroker(FVT_TCP)
+	pops.AddBroker(FVT_TCP)
 	pops.SetClientId("pubmsgempty-pub")
 	pops.SetStore(NewFileStore(store + "/p"))
 	p := NewClient(pops)
 
 	sops := NewClientOptions()
-	sops.SetBroker(FVT_TCP)
+	sops.AddBroker(FVT_TCP)
 	sops.SetClientId("pubmsgempty-sub")
 	sops.SetStore(NewFileStore(store + "/s"))
 	var f MessageHandler = func(client *MqttClient, msg Message) {
@@ -942,14 +942,14 @@ func Test_Cleanstore(t *testing.T) {
 	topic := "/test/cleanstore"
 
 	pops := NewClientOptions()
-	pops.SetBroker(FVT_TCP)
+	pops.AddBroker(FVT_TCP)
 	pops.SetClientId("cleanstore-pub")
 	pops.SetStore(NewFileStore(store + "/p"))
 	p := NewClient(pops)
 
 	var s *MqttClient
 	sops := NewClientOptions()
-	sops.SetBroker(FVT_TCP)
+	sops.AddBroker(FVT_TCP)
 	sops.SetClientId("cleanstore-sub")
 	sops.SetCleanSession(false)
 	sops.SetStore(NewFileStore(store + "/s"))
@@ -994,7 +994,7 @@ func Test_Cleanstore(t *testing.T) {
 	p.Disconnect(250)
 
 	sops = NewClientOptions()
-	sops.SetBroker(FVT_TCP)
+	sops.AddBroker(FVT_TCP)
 	sops.SetClientId("cleanstore-sub")
 	sops.SetCleanSession(true)
 	sops.SetStore(NewFileStore(store + "/s"))
@@ -1010,13 +1010,31 @@ func Test_Cleanstore(t *testing.T) {
 	// how to check?
 }
 
+func Test_MultipleURLs(t *testing.T) {
+	ops := NewClientOptions()
+	ops.AddBroker("tcp://127.0.0.1:10000")
+	ops.AddBroker(FVT_TCP)
+	ops.SetClientId("MutliURL")
+	ops.SetStore(NewFileStore("/tmp/fvt/MultiURL"))
+
+	c := NewClient(ops)
+	_, err := c.Start()
+	if err != nil {
+		t.Fatalf("Error on MqttClient.Start(): %v", err)
+	}
+
+	c.Publish(QOS_ZERO, "/test/MultiURL", []byte("Publish qo0"))
+
+	c.Disconnect(250)
+}
+
 /*
 // A test to make sure ping mechanism is working
 // This test can be left commented out because it's annoying to wait for
 func Test_ping3_idle10(t *testing.T) {
 	ops := NewClientOptions()
-	ops.SetBroker(FVT_TCP)
-	//ops.SetBroker("tcp://test.mosquitto.org:1883")
+	ops.AddBroker(FVT_TCP)
+	//ops.AddBroker("tcp://test.mosquitto.org:1883")
 	ops.SetClientId("p3i10")
 	ops.SetTimeout(4)
 
