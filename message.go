@@ -73,7 +73,7 @@ func newMsg(msgtype MsgType, duplicate bool, qos QoS, retained bool) *Message {
 //It returns a pointer to a Message initialized with these values
 
 func newConnectMsg(
-	cleansess bool,
+	cleanSession bool,
 	will bool,
 	willqos QoS,
 	willretained bool,
@@ -95,7 +95,7 @@ func newConnectMsg(
 
 	/* Connect Byte */
 	b := byte(0)
-	if cleansess {
+	if cleanSession {
 		b |= 0x02
 	}
 	if will {
@@ -145,21 +145,21 @@ func newConnectMsgFromOptions(options ClientOptions) *Message {
 
 	/* Connect Byte */
 	b := byte(0)
-	if options.cleanses {
+	if options.cleanSession {
 		b |= 0x02
 	}
-	if options.will_enabled {
+	if options.willEnabled {
 		b |= 0x04
 	}
-	b |= byte(options.will_qos) << 3
-	if options.will_retained {
+	b |= byte(options.willQos) << 3
+	if options.willRetained {
 		b |= 0x20
 	}
 
 	m.appendPayloadSizedField(options.clientId)
-	if options.will_enabled {
-		m.appendPayloadSizedField(options.will_topic)
-		m.appendPayloadSizedField(options.will_payload)
+	if options.willEnabled {
+		m.appendPayloadSizedField(options.willTopic)
+		m.appendPayloadSizedField(options.willPayload)
 	}
 
 	if options.username != "" {
@@ -175,7 +175,7 @@ func newConnectMsgFromOptions(options ClientOptions) *Message {
 	m.vheader = append(m.vheader, b)
 
 	/* Keep Alive Time Interval (2 Bytes [MSB, LSB]) */
-	m.appendVHeaderField(uint16(options.timeout))
+	m.appendVHeaderField(uint16(options.keepAlive))
 
 	numbytes := uint(len(m.vheader) + len(m.payload))
 	m.remlen = encodeLength(numbytes)

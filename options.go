@@ -17,7 +17,6 @@ package mqtt
 import (
 	"crypto/tls"
 	"net/url"
-	"os"
 	"time"
 )
 
@@ -34,31 +33,27 @@ type OnConnectionLost func(client *MqttClient, reason error)
 
 // ClientOptions contains configurable options for an MqttClient.
 type ClientOptions struct {
-	servers       []*url.URL
-	clientId      string
-	username      string
-	password      string
-	cleanses      bool
-	order         bool
-	will_enabled  bool
-	will_topic    string
-	will_payload  []byte
-	will_qos      QoS
-	will_retained bool
-	maxinflight   uint
-	tlsconfig     *tls.Config
-	timeout       uint
-	store         Store
-	tracefile     *os.File
-	tracelevel    tracelevel
-	msgRouter     *router
-	stopRouter    chan bool
-	pubChanZero   chan *Message
-	pubChanOne    chan *Message
-	pubChanTwo    chan *Message
-	onconnlost    OnConnectionLost
-	mids          messageIds
-	writeTimeout  time.Duration
+	servers         []*url.URL
+	clientId        string
+	username        string
+	password        string
+	cleanSession    bool
+	order           bool
+	willEnabled     bool
+	willTopic       string
+	willPayload     []byte
+	willQos         QoS
+	willRetained    bool
+	maxInflight     uint
+	tlsConfig       *tls.Config
+	keepAlive       uint
+	store           Store
+	msgRouter       *router
+	stopRouter      chan bool
+	incomingPubChan chan *Message
+	onconnlost      OnConnectionLost
+	mids            messageIds
+	writeTimeout    time.Duration
 }
 
 // NewClientClientOptions will create a new ClientClientOptions type with some
@@ -69,29 +64,25 @@ type ClientOptions struct {
 //   Tracefile: os.Stdout
 func NewClientOptions() *ClientOptions {
 	o := &ClientOptions{
-		servers:       nil,
-		clientId:      "",
-		username:      "",
-		password:      "",
-		cleanses:      true,
-		order:         true,
-		will_enabled:  false,
-		will_topic:    "",
-		will_payload:  nil,
-		will_qos:      QOS_ZERO,
-		will_retained: false,
-		maxinflight:   10,
-		tlsconfig:     nil,
-		store:         nil,
-		timeout:       30,
-		tracefile:     os.Stdout,
-		tracelevel:    Verbose,
-		pubChanZero:   nil,
-		pubChanOne:    nil,
-		pubChanTwo:    nil,
-		onconnlost:    DefaultErrorHandler,
-		mids:          messageIds{index: make(map[MId]bool)},
-		writeTimeout:  0, // 0 represents timeout disabled
+		servers:         nil,
+		clientId:        "",
+		username:        "",
+		password:        "",
+		cleanSession:    true,
+		order:           true,
+		willEnabled:     false,
+		willTopic:       "",
+		willPayload:     nil,
+		willQos:         QOS_ZERO,
+		willRetained:    false,
+		maxInflight:     10,
+		tlsConfig:       nil,
+		store:           nil,
+		keepAlive:       30,
+		incomingPubChan: nil,
+		onconnlost:      DefaultErrorHandler,
+		mids:            messageIds{index: make(map[MId]bool)},
+		writeTimeout:    0, // 0 represents timeout disabled
 	}
 	o.msgRouter, o.stopRouter = newRouter()
 	return o
@@ -138,7 +129,7 @@ func (opts *ClientOptions) SetPassword(password string) *ClientOptions {
 // diconnecting previously but didn't will not be sent upon connecting to the
 // broker.
 func (opts *ClientOptions) SetCleanSession(clean bool) *ClientOptions {
-	opts.cleanses = clean
+	opts.cleanSession = clean
 	return opts
 }
 
@@ -161,8 +152,8 @@ func (opts *ClientOptions) SetOrderMatters(order bool) *ClientOptions {
 // SetTlsConfig will set an SSL/TLS configuration to be used when connecting
 // to an MQTT broker. Please read the official Go documentation for more
 // information.
-func (opts *ClientOptions) SetTlsConfig(tlsconfig *tls.Config) *ClientOptions {
-	opts.tlsconfig = tlsconfig
+func (opts *ClientOptions) SetTlsConfig(tlsConfig *tls.Config) *ClientOptions {
+	opts.tlsConfig = tlsConfig
 	return opts
 }
 
@@ -175,18 +166,18 @@ func (opts *ClientOptions) SetStore(store Store) *ClientOptions {
 	return opts
 }
 
-// SetTimeout will set the amount of time (in seconds) that the client
+// SetKeepAlive will set the amount of time (in seconds) that the client
 // should wait before sending a PING request to the broker. This will
 // allow the client to know that a connection has not been lost with the
 // server.
-func (opts *ClientOptions) SetTimeout(timeout uint) *ClientOptions {
-	opts.timeout = timeout
+func (opts *ClientOptions) SetKeepAlive(keepAlive uint) *ClientOptions {
+	opts.keepAlive = keepAlive
 	return opts
 }
 
 // UnsetWill will cause any set will message to be disregarded.
 func (opts *ClientOptions) UnsetWill() *ClientOptions {
-	opts.will_enabled = false
+	opts.willEnabled = false
 	return opts
 }
 
@@ -204,29 +195,11 @@ func (opts *ClientOptions) SetWill(topic string, payload string, qos QoS, retain
 // provided payload (the will) to any clients that are subscribed to the provided
 // topic.
 func (opts *ClientOptions) SetBinaryWill(topic string, payload []byte, qos QoS, retained bool) *ClientOptions {
-	opts.will_enabled = true
-	opts.will_topic = topic
-	opts.will_payload = payload
-	opts.will_qos = qos
-	opts.will_retained = retained
-	return opts
-}
-
-// SetTracefile will set the output for any trace statements that are generated
-// by the client. By default, trace statements will be directed to os.Stdout.
-func (opts *ClientOptions) SetTracefile(tracefile *os.File) *ClientOptions {
-	opts.tracefile = tracefile
-	return opts
-}
-
-// SetTraceLevel will set the trace level (verbosity) of the client.
-// Options are:
-//   Off
-//   Critical
-//   Warn
-//   Verbose
-func (opts *ClientOptions) SetTraceLevel(level tracelevel) *ClientOptions {
-	opts.tracelevel = level
+	opts.willEnabled = true
+	opts.willTopic = topic
+	opts.willPayload = payload
+	opts.willQos = qos
+	opts.willRetained = retained
 	return opts
 }
 

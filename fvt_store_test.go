@@ -17,7 +17,6 @@ package mqtt
 import (
 	"bytes"
 	"fmt"
-	"os"
 	"testing"
 )
 
@@ -71,16 +70,6 @@ func (ts *TestStore) Del(key string) {
 func (ts *TestStore) Reset() {
 }
 
-func (ts *TestStore) SetTracer(tracer *Tracer) {
-
-}
-
-var tr *Tracer = &Tracer{
-	Verbose,
-	os.Stderr,
-	"test",
-}
-
 /*******************
  **** FileStore ****
  *******************/
@@ -103,7 +92,6 @@ func Test_FileStore_Open(t *testing.T) {
 	storedir := "/tmp/TestStore/_open"
 
 	f := NewFileStore(storedir)
-	f.SetTracer(tr)
 	f.Open()
 	if !f.opened {
 		t.Fatalf("filestore was not set open")
@@ -119,7 +107,6 @@ func Test_FileStore_Open(t *testing.T) {
 func Test_FileStore_Close(t *testing.T) {
 	storedir := "/tmp/TestStore/_unopen"
 	f := NewFileStore(storedir)
-	f.SetTracer(tr)
 	f.Open()
 	if !f.opened {
 		t.Fatalf("filestore was not set open")
@@ -143,7 +130,6 @@ func Test_FileStore_Close(t *testing.T) {
 func Test_FileStore_write(t *testing.T) {
 	storedir := "/tmp/TestStore/_write"
 	f := NewFileStore(storedir)
-	f.SetTracer(tr)
 	f.Open()
 
 	pm := newPublishMsg(QOS_ONE, "/a/b/c", []byte{0xBE, 0xEF, 0xED})
@@ -161,7 +147,6 @@ func Test_FileStore_write(t *testing.T) {
 func Test_FileStore_Get(t *testing.T) {
 	storedir := "/tmp/TestStore/_get"
 	f := NewFileStore(storedir)
-	f.SetTracer(tr)
 	f.Open()
 	pm := newPublishMsg(QOS_ONE, "/a/b/c", []byte{0xBE, 0xEF, 0xED})
 	pm.setMsgId(120)
@@ -214,7 +199,6 @@ func Test_FileStore_Get(t *testing.T) {
 func Test_FileStore_All(t *testing.T) {
 	storedir := "/tmp/TestStore/_all"
 	f := NewFileStore(storedir)
-	f.SetTracer(tr)
 	f.Open()
 	pm := newPublishMsg(QOS_TWO, "/t/r/v", []byte{0x01, 0x02})
 	pm.setMsgId(121)
@@ -235,7 +219,6 @@ func Test_FileStore_All(t *testing.T) {
 func Test_FileStore_Del(t *testing.T) {
 	storedir := "/tmp/TestStore/_del"
 	f := NewFileStore(storedir)
-	f.SetTracer(tr)
 	f.Open()
 
 	pm := newPublishMsg(QOS_ONE, "/a/b/c", []byte{0xBE, 0xEF, 0xED})
@@ -258,7 +241,6 @@ func Test_FileStore_Del(t *testing.T) {
 func Test_FileStore_Reset(t *testing.T) {
 	storedir := "/tmp/TestStore/_reset"
 	f := NewFileStore(storedir)
-	f.SetTracer(tr)
 	f.Open()
 
 	pm1 := newPublishMsg(QOS_ONE, "/q/w/e", []byte{0xBB})
@@ -342,7 +324,6 @@ func Test_NewMemoryStore(t *testing.T) {
 
 func Test_MemoryStore_Open(t *testing.T) {
 	m := NewMemoryStore()
-	m.SetTracer(tr)
 	m.Open()
 	if !m.opened {
 		t.Fatalf("MemoryStore was not set open")
@@ -351,7 +332,6 @@ func Test_MemoryStore_Open(t *testing.T) {
 
 func Test_MemoryStore_Close(t *testing.T) {
 	m := NewMemoryStore()
-	m.SetTracer(tr)
 	m.Open()
 	if !m.opened {
 		t.Fatalf("MemoryStore was not set open")
@@ -365,7 +345,6 @@ func Test_MemoryStore_Close(t *testing.T) {
 
 func Test_MemoryStore_Reset(t *testing.T) {
 	m := NewMemoryStore()
-	m.SetTracer(tr)
 	m.Open()
 
 	pm := newPublishMsg(QOS_TWO, "/f/r/s", []byte{0xAB})
@@ -387,7 +366,6 @@ func Test_MemoryStore_Reset(t *testing.T) {
 
 func Test_MemoryStore_write(t *testing.T) {
 	m := NewMemoryStore()
-	m.SetTracer(tr)
 	m.Open()
 
 	pm := newPublishMsg(QOS_ONE, "/a/b/c", []byte{0xBE, 0xEF, 0xED})
@@ -403,7 +381,6 @@ func Test_MemoryStore_write(t *testing.T) {
 
 func Test_MemoryStore_Get(t *testing.T) {
 	m := NewMemoryStore()
-	m.SetTracer(tr)
 	m.Open()
 	pm := newPublishMsg(QOS_ONE, "/a/b/c", []byte{0xBE, 0xEF, 0xED})
 	pm.setMsgId(120)
@@ -455,7 +432,6 @@ func Test_MemoryStore_Get(t *testing.T) {
 
 func Test_MemoryStore_Del(t *testing.T) {
 	m := NewMemoryStore()
-	m.SetTracer(tr)
 	m.Open()
 
 	pm := newPublishMsg(QOS_ONE, "/a/b/c", []byte{0xBE, 0xEF, 0xED})

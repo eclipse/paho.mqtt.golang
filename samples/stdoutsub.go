@@ -51,7 +51,7 @@ func main() {
 	password := flag.String("password", "", "Password to match username")
 	flag.Parse()
 
-	connOpts := MQTT.NewClientOptions().SetBroker(*server).SetClientId(*clientid).SetCleanSession(true)
+	connOpts := MQTT.NewClientOptions().AddBroker(*server).SetClientId(*clientid).SetCleanSession(true)
 	if *username != "" {
 		connOpts.SetUsername(*username)
 		if *password != "" {

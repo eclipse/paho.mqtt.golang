@@ -14,10 +14,11 @@
 
 package mqtt
 
-import "os"
-import "crypto/tls"
-import "crypto/x509"
-import "testing"
+import (
+	"crypto/tls"
+	"crypto/x509"
+	"testing"
+)
 
 func Test_NewClientOptions_default(t *testing.T) {
 	o := NewClientOptions()
@@ -34,16 +35,12 @@ func Test_NewClientOptions_default(t *testing.T) {
 		t.Fatalf("bad default password")
 	}
 
-	if o.tlsconfig != nil {
+	if o.tlsConfig != nil {
 		t.Fatalf("bad default tlsconfig")
 	}
 
-	if o.timeout != 30 {
+	if o.keepAlive != 30 {
 		t.Fatalf("bad default timeout")
-	}
-
-	if o.tracefile != os.Stdout {
-		t.Fatalf("bad default tracefile")
 	}
 
 	if o.msgRouter == nil {
@@ -54,16 +51,8 @@ func Test_NewClientOptions_default(t *testing.T) {
 		t.Fatalf("bad stopRouter")
 	}
 
-	if o.pubChanZero != nil {
-		t.Fatalf("bad default pubChanZero")
-	}
-
-	if o.pubChanOne != nil {
-		t.Fatalf("bad default pubChanOne")
-	}
-
-	if o.pubChanTwo != nil {
-		t.Fatalf("bad default pubChanTwo")
+	if o.incomingPubChan != nil {
+		t.Fatalf("bad default incomingPubChan")
 	}
 }
 
@@ -73,9 +62,7 @@ func Test_NewClientOptions_mix(t *testing.T) {
 	o.SetClientId("myclientid")
 	o.SetUsername("myuser")
 	o.SetPassword("mypassword")
-	o.SetTimeout(88)
-	o.SetTracefile(os.Stderr)
-	o.SetTraceLevel(Warn)
+	o.SetKeepAlive(88)
 
 	if o.servers[0].Scheme != "tcp" {
 		t.Fatalf("bad scheme")
@@ -97,16 +84,8 @@ func Test_NewClientOptions_mix(t *testing.T) {
 		t.Fatalf("bad set password")
 	}
 
-	if o.timeout != 88 {
+	if o.keepAlive != 88 {
 		t.Fatalf("bad set timeout")
-	}
-
-	if o.tracefile != os.Stderr {
-		t.Fatalf("bad set tracefile")
-	}
-
-	if o.tracelevel != Warn {
-		t.Fatalf("bad set tracelevel")
 	}
 }
 
@@ -139,16 +118,16 @@ func Test_TlsConfig(t *testing.T) {
 
 	c := NewClient(o)
 
-	if c.options.tlsconfig == nil {
-		t.Fatalf("client options.tlsconfig was nil")
+	if c.options.tlsConfig == nil {
+		t.Fatalf("client options.tlsConfig was nil")
 	}
 
-	if c.options.tlsconfig.ClientAuth != tls.NoClientCert {
-		t.Fatalf("client options.tlsconfig ClientAuth incorrect")
+	if c.options.tlsConfig.ClientAuth != tls.NoClientCert {
+		t.Fatalf("client options.tlsConfig ClientAuth incorrect")
 	}
 
-	if c.options.tlsconfig.InsecureSkipVerify != true {
-		t.Fatalf("client options.tlsconfig InsecureSkipVerify incorrect")
+	if c.options.tlsConfig.InsecureSkipVerify != true {
+		t.Fatalf("client options.tlsConfig InsecureSkipVerify incorrect")
 	}
 }
 

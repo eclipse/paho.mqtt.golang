@@ -45,24 +45,24 @@ func newPingReqMsg() *Message {
 }
 
 func keepalive(c *MqttClient) {
-	c.trace_v(PNG, "keepalive starting")
+	DEBUG.Println(PNG, "keepalive starting")
 
 	for {
 		select {
 		case <-c.stop:
-			c.trace_w(PNG, "keepalive stopped")
+			WARN.Println(PNG, "keepalive stopped")
 			return
 		default:
 			last := uint(time.Since(c.lastContact.get()).Seconds())
-			//c.trace_v(PNG, "last contact: %d (timeout: %d)", last, c.options.timeout)
-			if last > c.options.timeout {
+			//DEBUG.Println(PNG, "last contact: %d (timeout: %d)", last, c.options.timeout)
+			if last > c.options.keepAlive {
 				if !c.pingOutstanding {
-					c.trace_v(PNG, "keepalive sending ping")
+					DEBUG.Println(PNG, "keepalive sending ping")
 					ping := newPingReqMsg()
 					c.oboundP <- ping
 					c.pingOutstanding = true
 				} else {
-					c.trace_c(PNG, "pingresp not received, disconnecting")
+					CRITICAL.Println(PNG, "pingresp not received, disconnecting")
 					go c.options.onconnlost(c, errors.New("pingresp not received, disconnecting"))
 					c.disconnect()
 				}

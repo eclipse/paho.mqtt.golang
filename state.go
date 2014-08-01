@@ -20,10 +20,10 @@ import (
 
 // Look into the store and finish any flows found in there.
 func (c *MqttClient) resume() []Receipt {
-	c.trace_v(STA, "resuming client from stored state")
+	DEBUG.Println(STA, "resuming client from stored state")
 
 	keys := c.persist.All()
-	c.trace_v(STA, "there are %d persisted msgs found", len(keys))
+	DEBUG.Println(STA, "there are", len(keys), "persisted msgs found")
 
 	out := []string{}
 	in := []string{}
@@ -43,7 +43,7 @@ func (c *MqttClient) resume() []Receipt {
 	for i := 0; i < len(in); i++ {
 		m := c.persist.Get(in[i])
 		if m.QoS() == QOS_TWO {
-			c.trace_v(STA, "resume inbound qos2")
+			DEBUG.Println(STA, "resume inbound qos2")
 			c.ibound <- m
 			// there needs to be some identifying information for receipts
 			receipts = append(receipts, Receipt{})
@@ -54,7 +54,7 @@ func (c *MqttClient) resume() []Receipt {
 	for i := 0; i < len(in); i++ {
 		m := c.persist.Get(in[i])
 		if m.QoS() == QOS_ONE {
-			c.trace_v(STA, "resume inbound qos1")
+			DEBUG.Println(STA, "resume inbound qos1")
 			c.ibound <- m
 			// there needs to be some identifying information for receipts
 			receipts = append(receipts, Receipt{})
@@ -65,7 +65,7 @@ func (c *MqttClient) resume() []Receipt {
 	for i := 0; i < len(out); i++ {
 		m := c.persist.Get(out[i])
 		if m.QoS() == QOS_TWO {
-			c.trace_v(STA, "resume outbound qos2")
+			DEBUG.Println(STA, "resume outbound qos2")
 			if c.receipts.get(m.MsgId()) == nil { // will be nil if client crashed
 				c.receipts.put(m.MsgId(), make(chan Receipt, 1))
 			}
@@ -77,7 +77,7 @@ func (c *MqttClient) resume() []Receipt {
 	for i := 0; i < len(out); i++ {
 		m := c.persist.Get(out[i])
 		if m.QoS() == QOS_ONE {
-			c.trace_v(STA, "resume outbound qos1")
+			DEBUG.Println(STA, "resume outbound qos1")
 			if c.receipts.get(m.MsgId()) == nil { // will be nil if client crashed
 				c.receipts.put(m.MsgId(), make(chan Receipt, 1))
 			}
@@ -85,7 +85,7 @@ func (c *MqttClient) resume() []Receipt {
 		}
 	}
 
-	c.trace_v(STA, "done resuming client")
+	DEBUG.Println(STA, "done resuming client")
 	return receipts
 }
 

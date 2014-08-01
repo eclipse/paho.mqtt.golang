@@ -14,7 +14,17 @@
 
 package mqtt
 
-import "testing"
+import (
+	"log"
+	"os"
+	"testing"
+)
+
+func init() {
+	DEBUG = log.New(os.Stderr, "DEBUG    ", log.Ltime)
+	WARN = log.New(os.Stderr, "WARNING  ", log.Ltime)
+	CRITICAL = log.New(os.Stderr, "CRITICAL ", log.Ltime)
+}
 
 func Test_NewClient_simple(t *testing.T) {
 	ops := NewClientOptions().SetClientId("foo").AddBroker("tcp://10.10.0.1:1883")

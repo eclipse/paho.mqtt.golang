@@ -97,10 +97,9 @@ func main() {
 	tlsconfig := NewTlsConfig()
 
 	opts := MQTT.NewClientOptions()
-	opts.SetBroker("ssl://hushbox.net:17004")
+	opts.AddBroker("ssl://hushbox.net:17004")
 	opts.SetClientId("ssl-sample").SetTlsConfig(tlsconfig)
 	opts.SetDefaultPublishHandler(f)
-	opts.SetTraceLevel(MQTT.Verbose)
 
 	// Start the connection
 	c := MQTT.NewClient(opts)

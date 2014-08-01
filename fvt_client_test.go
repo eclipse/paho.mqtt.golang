@@ -1036,7 +1036,7 @@ func Test_ping3_idle10(t *testing.T) {
 	ops.AddBroker(FVT_TCP)
 	//ops.AddBroker("tcp://test.mosquitto.org:1883")
 	ops.SetClientId("p3i10")
-	ops.SetTimeout(4)
+	ops.SetKeepAlive(4)
 
 	c := NewClient(ops)
 	_, err := c.Start()

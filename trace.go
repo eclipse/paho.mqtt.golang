@@ -15,86 +15,20 @@
 package mqtt
 
 import (
-	"fmt"
-	"os"
-	"strings"
-	"time"
+	"io/ioutil"
+	"log"
 )
 
-type tracelevel byte
-
-type Tracer struct {
-	level    tracelevel
-	output   *os.File
-	clientid string
-}
-
-const (
-	Off      tracelevel = 0
-	Critical tracelevel = 10
-	Warn     tracelevel = 20
-	Verbose  tracelevel = 30
-	// [comp] [timestamp] [clientid] message
-	frmt = "%s %s [%s] %s\n"
+var (
+	ERROR    *log.Logger
+	CRITICAL *log.Logger
+	WARN     *log.Logger
+	DEBUG    *log.Logger
 )
 
-func timestamp() string {
-	raw := fmt.Sprintf("%v", time.Now())
-	tks := strings.Fields(raw)
-	tme := tks[1]
-	max := 14
-	nzeroes := max - len(tme)
-	for i := 0; i < nzeroes; i++ {
-		tme += "0"
-	}
-	tme = tme[0:max]
-	return tme
-}
-
-func (t *Tracer) Trace_V(cm component, f string, v ...interface{}) {
-	if t.level >= Verbose && t.output != nil {
-		x := fmt.Sprintf(f, v...)
-		m := fmt.Sprintf(frmt, cm, timestamp(), t.clientid, x)
-		t.output.WriteString(m)
-	}
-}
-
-func (c *MqttClient) trace_v(cm component, f string, v ...interface{}) {
-	c.t.Trace_V(cm, f, v...)
-}
-
-func (t *Tracer) Trace_W(cm component, f string, v ...interface{}) {
-	if t.level >= Warn && t.output != nil {
-		x := fmt.Sprintf(f, v...)
-		m := fmt.Sprintf(frmt, cm, timestamp(), t.clientid, x)
-		t.output.WriteString(m)
-	}
-}
-
-func (c *MqttClient) trace_w(cm component, f string, v ...interface{}) {
-	c.t.Trace_W(cm, f, v...)
-}
-
-func (t *Tracer) Trace_C(cm component, f string, v ...interface{}) {
-	if t.level >= Critical && t.output != nil {
-		x := fmt.Sprintf(f, v...)
-		m := fmt.Sprintf(frmt, cm, timestamp(), t.clientid, x)
-		t.output.WriteString(m)
-	}
-}
-
-func (c *MqttClient) trace_c(cm component, f string, v ...interface{}) {
-	c.t.Trace_C(cm, f, v...)
-}
-
-func (t *Tracer) Trace_E(cm component, f string, v ...interface{}) {
-	if t.level >= Critical && t.output != nil {
-		x := fmt.Sprintf(f, v...)
-		m := fmt.Sprintf(frmt, cm, timestamp(), t.clientid, x)
-		t.output.WriteString(m)
-	}
-}
-
-func (c *MqttClient) trace_e(cm component, f string, v ...interface{}) {
-	c.t.Trace_E(cm, f, v...)
+func init() {
+	ERROR = log.New(ioutil.Discard, "", 0)
+	CRITICAL = log.New(ioutil.Discard, "", 0)
+	WARN = log.New(ioutil.Discard, "", 0)
+	DEBUG = log.New(ioutil.Discard, "", 0)
 }

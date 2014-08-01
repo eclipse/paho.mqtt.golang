@@ -52,7 +52,6 @@ type MqttClient struct {
 	errors          chan error
 	stop            chan struct{}
 	receipts        *receiptMap
-	t               *Tracer
 	persist         Store
 	options         ClientOptions
 	lastContact     lastcontact
@@ -89,30 +88,21 @@ func (c *MqttClient) IsConnected() bool {
 // If clean session is true, then any existing client
 // state will be removed.
 func (c *MqttClient) Start() ([]Receipt, error) {
-
-	c.t = &Tracer{
-		c.options.tracelevel,
-		c.options.tracefile,
-		c.options.clientId,
-	}
-
-	c.options.store.SetTracer(c.t)
-
-	c.trace_v(CLI, "Start()")
+	DEBUG.Println(CLI, "Start()")
 
 	for _, broker := range c.options.servers {
-		conn, err := openConnection(broker, c.options.tlsconfig)
+		conn, err := openConnection(broker, c.options.tlsConfig)
 		if err == nil {
 			c.conn = conn
-			c.trace_v(CLI, "connected to broker")
+			DEBUG.Println(CLI, "connected to broker")
 			break
 		} else {
-			c.trace_w(CLI, "failed to connect to broker, trying next")
+			WARN.Println(CLI, "failed to connect to broker, trying next")
 		}
 	}
 
 	if c.conn == nil {
-		c.trace_e(CLI, "Failed to connect to a broker")
+		ERROR.Println(CLI, "Failed to connect to a broker")
 		return nil, errors.New("Failed to connect to a broker")
 	}
 	c.bufferedConn = bufio.NewReadWriter(bufio.NewReader(c.conn), bufio.NewWriter(c.conn))
@@ -120,7 +110,7 @@ func (c *MqttClient) Start() ([]Receipt, error) {
 	c.persist.Open()
 	c.receipts = newReceiptMap()
 
-	c.trace_v(CLI, "about to start generateMsgIds")
+	DEBUG.Println(CLI, "about to start generateMsgIds")
 	c.options.mids.generateMsgIds()
 
 	c.obound = make(chan sendable)
@@ -133,35 +123,31 @@ func (c *MqttClient) Start() ([]Receipt, error) {
 	go alllogic(c)
 
 	cm := newConnectMsgFromOptions(c.options)
-	c.trace_v(CLI, "about to write new connect msg")
+	DEBUG.Println(CLI, "about to write new connect msg")
 	c.oboundP <- cm
 
 	rc := connect(c)
 	if rc != CONN_ACCEPTED {
-		c.trace_c(CLI, "CONNACK was not CONN_ACCEPTED, but rather %s", rc2str(rc))
+		CRITICAL.Println(CLI, "CONNACK was not CONN_ACCEPTED, but rather", rc2str(rc))
 		// Stop all go routines except outgoing
 		close(c.stop)
 		c.conn.Close()
 		return nil, chkrc(rc)
 	}
 
-	c.options.pubChanZero = make(chan *Message, 1000)
-	c.options.pubChanOne = make(chan *Message, 1000)
-	c.options.pubChanTwo = make(chan *Message, 1000)
-	c.options.msgRouter.matchAndDispatch(c.options.pubChanZero, c.options.order, c)
-	c.options.msgRouter.matchAndDispatch(c.options.pubChanOne, c.options.order, c)
-	c.options.msgRouter.matchAndDispatch(c.options.pubChanTwo, c.options.order, c)
+	c.options.incomingPubChan = make(chan *Message, 100)
+	c.options.msgRouter.matchAndDispatch(c.options.incomingPubChan, c.options.order, c)
 
 	c.connected = true
-	c.trace_v(CLI, "client is connected")
+	DEBUG.Println(CLI, "client is connected")
 
-	if c.options.timeout != 0 {
+	if c.options.keepAlive != 0 {
 		go keepalive(c)
 	}
 
 	// Take care of any messages in the store
 	var leftovers []Receipt
-	if c.options.cleanses == false {
+	if c.options.cleanSession == false {
 		leftovers = c.resume()
 	} else {
 		c.persist.Reset()
@@ -170,7 +156,7 @@ func (c *MqttClient) Start() ([]Receipt, error) {
 	// Do not start incoming until resume has completed
 	go incoming(c)
 
-	c.trace_v(CLI, "exit startMqttClient")
+	DEBUG.Println(CLI, "exit startMqttClient")
 	if chkrc(rc) != nil {
 		// Cleanup before returning.
 		close(c.stop)
@@ -184,10 +170,10 @@ func (c *MqttClient) Start() ([]Receipt, error) {
 // completed.
 func (c *MqttClient) Disconnect(quiesce uint) {
 	if !c.IsConnected() {
-		c.trace_w(CLI, "already disconnected")
+		WARN.Println(CLI, "already disconnected")
 		return
 	}
-	c.trace_v(CLI, "disconnecting")
+	DEBUG.Println(CLI, "disconnecting")
 	c.connected = false
 
 	// wait for work to finish, or quiesce time consumed
@@ -196,9 +182,9 @@ func (c *MqttClient) Disconnect(quiesce uint) {
 	// for now we just wait for the time specified and hope the work is done
 	select {
 	case <-end:
-		c.trace_v(CLI, "quiesce expired, forcing disconnect")
+		DEBUG.Println(CLI, "quiesce expired, forcing disconnect")
 		// case <- other:
-		// 	c.trace_v(CLI, "finished processing work, graceful disconnect")
+		// 	DEBUG.Println(CLI, "finished processing work, graceful disconnect")
 	}
 	c.disconnect()
 }
@@ -206,10 +192,10 @@ func (c *MqttClient) Disconnect(quiesce uint) {
 // ForceDisconnect will end the connection with the mqtt broker immediately.
 func (c *MqttClient) ForceDisconnect() {
 	if !c.IsConnected() {
-		c.trace_w(CLI, "already disconnected")
+		WARN.Println(CLI, "already disconnected")
 		return
 	}
-	c.trace_v(CLI, "forcefully disconnecting")
+	DEBUG.Println(CLI, "forcefully disconnecting")
 	c.disconnect()
 }
 
@@ -223,7 +209,7 @@ func (c *MqttClient) disconnect() {
 	// Send disconnect message and stop outgoing
 	c.oboundP <- dm
 
-	c.trace_v(CLI, "disconnected")
+	DEBUG.Println(CLI, "disconnected")
 	c.persist.Close()
 }
 
@@ -243,7 +229,7 @@ func (c *MqttClient) Publish(qos QoS, topic string, payload interface{}) <-chan 
 	}
 
 	r := make(chan Receipt, 1)
-	c.trace_v(CLI, "sending publish message, topic: %s", topic)
+	DEBUG.Println(CLI, "sending publish message, topic:", topic)
 
 	select {
 	case c.obound <- sendable{pub, r}:
@@ -264,7 +250,7 @@ func (c *MqttClient) PublishMessage(topic string, message *Message) <-chan Recei
 
 	r := make(chan Receipt, 1)
 
-	c.trace_v(CLI, "sending publish message, topic: %s", topic)
+	DEBUG.Println(CLI, "sending publish message, topic:", topic)
 
 	select {
 	case c.obound <- sendable{pub, r}:
@@ -281,7 +267,7 @@ func (c *MqttClient) StartSubscription(callback MessageHandler, filters ...*Topi
 	if !c.IsConnected() {
 		return nil, ErrNotConnected
 	}
-	c.trace_v(CLI, "enter StartSubscription")
+	DEBUG.Println(CLI, "enter StartSubscription")
 	submsg := newSubscribeMsg(filters...)
 	chkcond(submsg != nil)
 
@@ -295,7 +281,7 @@ func (c *MqttClient) StartSubscription(callback MessageHandler, filters ...*Topi
 
 	c.obound <- sendable{submsg, r}
 
-	c.trace_v(CLI, "exit StartSubscription")
+	DEBUG.Println(CLI, "exit StartSubscription")
 	return r, nil
 }
 
@@ -306,7 +292,7 @@ func (c *MqttClient) EndSubscription(topics ...string) (<-chan Receipt, error) {
 	if !c.IsConnected() {
 		return nil, ErrNotConnected
 	}
-	c.trace_v(CLI, "enter EndSubscription")
+	DEBUG.Println(CLI, "enter EndSubscription")
 	usmsg := newUnsubscribeMsg(topics...)
 
 	r := make(chan Receipt, 1)
@@ -316,6 +302,6 @@ func (c *MqttClient) EndSubscription(topics ...string) (<-chan Receipt, error) {
 		c.options.msgRouter.deleteRoute(topic)
 	}
 
-	c.trace_v(CLI, "exit EndSubscription")
+	DEBUG.Println(CLI, "exit EndSubscription")
 	return r, nil
 }

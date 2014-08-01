@@ -36,7 +36,6 @@ type FileStore struct {
 	sync.RWMutex
 	directory string
 	opened    bool
-	t         *Tracer
 }
 
 // NewFileStore will create a new FileStore which stores its messages in the
@@ -45,7 +44,6 @@ func NewFileStore(directory string) *FileStore {
 	store := &FileStore{
 		directory: directory,
 		opened:    false,
-		t:         nil,
 	}
 	return store
 }
@@ -67,7 +65,7 @@ func (store *FileStore) Open() {
 		chkerr(merr)
 	}
 	store.opened = true
-	store.t.Trace_V(STR, "store is opened at %s", store.directory)
+	DEBUG.Println(STR, "store is opened at", store.directory)
 }
 
 // Close will disallow the FileStore from being used.
@@ -75,7 +73,7 @@ func (store *FileStore) Close() {
 	store.Lock()
 	defer store.Unlock()
 	store.opened = false
-	store.t.Trace_W(STR, "store is not open")
+	WARN.Println(STR, "store is not open")
 }
 
 // Put will put a message into the store, associated with the provided
@@ -133,7 +131,7 @@ func (store *FileStore) Del(key string) {
 func (store *FileStore) Reset() {
 	store.Lock()
 	defer store.Unlock()
-	store.t.Trace_W(STR, "FileStore Reset")
+	WARN.Println(STR, "FileStore Reset")
 	for _, key := range store.all() {
 		store.del(key)
 	}
@@ -146,7 +144,7 @@ func (store *FileStore) all() []string {
 	files, rderr := ioutil.ReadDir(store.directory)
 	chkerr(rderr)
 	for _, f := range files {
-		store.t.Trace_V(STR, "file in All(): %s", f.Name())
+		DEBUG.Println(STR, "file in All():", f.Name())
 		key := f.Name()[0 : len(f.Name())-4] // remove file extension
 		keys = append(keys, key)
 	}
@@ -156,22 +154,18 @@ func (store *FileStore) all() []string {
 // lockless
 func (store *FileStore) del(key string) {
 	chkcond(store.opened)
-	store.t.Trace_V(STR, "store del filepath: %s", store.directory)
-	store.t.Trace_V(STR, "store delete key: %v", key)
+	DEBUG.Println(STR, "store del filepath:", store.directory)
+	DEBUG.Println(STR, "store delete key:", key)
 	filepath := fullpath(store.directory, key)
-	store.t.Trace_V(STR, "path of deletion: `%s`", filepath)
+	DEBUG.Println(STR, "path of deletion:", filepath)
 	if !exists(filepath) {
-		store.t.Trace_W(STR, "store could not delete key: %v", key)
+		WARN.Println(STR, "store could not delete key:", key)
 		return
 	}
 	rerr := os.Remove(filepath)
 	chkerr(rerr)
-	store.t.Trace_V(STR, "del msg: %v", key)
+	DEBUG.Println(STR, "del msg:", key)
 	chkcond(!exists(filepath))
-}
-
-func (store *FileStore) SetTracer(trace *Tracer) {
-	store.t = trace
 }
 
 func fullpath(store string, key string) string {

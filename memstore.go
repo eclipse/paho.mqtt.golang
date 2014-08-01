@@ -25,7 +25,6 @@ type MemoryStore struct {
 	sync.RWMutex
 	messages map[string]*Message
 	opened   bool
-	t        *Tracer
 }
 
 // NewMemoryStore returns a pointer to a new instance of
@@ -35,7 +34,6 @@ func NewMemoryStore() *MemoryStore {
 	store := &MemoryStore{
 		messages: make(map[string]*Message),
 		opened:   false,
-		t:        nil,
 	}
 	return store
 }
@@ -45,7 +43,7 @@ func (store *MemoryStore) Open() {
 	store.Lock()
 	defer store.Unlock()
 	store.opened = true
-	store.t.Trace_V(STR, "memorystore initialized")
+	DEBUG.Println(STR, "memorystore initialized")
 }
 
 // Put takes a key and a pointer to a Message and stores the
@@ -66,9 +64,9 @@ func (store *MemoryStore) Get(key string) *Message {
 	mid := key2mid(key)
 	m := store.messages[key]
 	if m == nil {
-		store.t.Trace_C(STR, "memorystore get: message %v not found", mid)
+		CRITICAL.Println(STR, "memorystore get: message", mid, "not found")
 	} else {
-		store.t.Trace_V(STR, "memorystore get: message %v found", mid)
+		DEBUG.Println(STR, "memorystore get: message", mid, "found")
 	}
 	return m
 }
@@ -94,10 +92,10 @@ func (store *MemoryStore) Del(key string) {
 	mid := key2mid(key)
 	m := store.messages[key]
 	if m == nil {
-		store.t.Trace_W(STR, "memorystore del: message %v not found", mid)
+		WARN.Println(STR, "memorystore del: message", mid, "not found")
 	} else {
 		store.messages[key] = nil
-		store.t.Trace_V(STR, "memorystore del: message %v was deleted", mid)
+		DEBUG.Println(STR, "memorystore del: message", mid, "was deleted")
 	}
 }
 
@@ -107,7 +105,7 @@ func (store *MemoryStore) Close() {
 	defer store.Unlock()
 	chkcond(store.opened)
 	store.opened = false
-	store.t.Trace_V(STR, "memorystore closed")
+	DEBUG.Println(STR, "memorystore closed")
 }
 
 // Reset eliminates all persisted message data in the store.
@@ -116,11 +114,5 @@ func (store *MemoryStore) Reset() {
 	defer store.Unlock()
 	chkcond(store.opened)
 	store.messages = make(map[string]*Message)
-	store.t.Trace_W(STR, "memorystore wiped")
-}
-
-func (store *MemoryStore) SetTracer(tracer *Tracer) {
-	store.Lock()
-	defer store.Unlock()
-	store.t = tracer
+	WARN.Println(STR, "memorystore wiped")
 }

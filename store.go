@@ -37,7 +37,6 @@ type Store interface {
 	Del(string)
 	Close()
 	Reset()
-	SetTracer(*Tracer)
 }
 
 // A key MUST have the form "X.[messageid]"

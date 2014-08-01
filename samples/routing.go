@@ -59,8 +59,7 @@ var brokerClientsHandler MQTT.MessageHandler = func(client *MQTT.MqttClient, msg
 }
 
 func main() {
-	opts := MQTT.NewClientOptions().SetBroker("tcp://test.mosquitto.org:1883").SetClientId("router-sample")
-	opts.SetTraceLevel(MQTT.Off)
+	opts := MQTT.NewClientOptions().AddBroker("tcp://test.mosquitto.org:1883").SetClientId("router-sample")
 	opts.SetCleanSession(true)
 
 	c := MQTT.NewClient(opts)

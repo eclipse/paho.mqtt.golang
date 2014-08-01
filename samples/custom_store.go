@@ -69,7 +69,7 @@ func main() {
 	myNoOpStore := &NoOpStore{}
 
 	opts := MQTT.NewClientOptions()
-	opts.SetBroker("tcp://test.mosquitto.org:1883")
+	opts.AddBroker("tcp://test.mosquitto.org:1883")
 	opts.SetClientId("custom-store")
 	opts.SetStore(myNoOpStore)
 

@@ -82,8 +82,7 @@ func main() {
 	fmt.Printf("\tstore:     %s\n", *store)
 
 	opts := MQTT.NewClientOptions()
-	opts.SetBroker(*broker)
-	opts.SetTraceLevel(MQTT.Off)
+	opts.AddBroker(*broker)
 	opts.SetClientId(*id)
 	opts.SetUsername(*user)
 	opts.SetPassword(*password)

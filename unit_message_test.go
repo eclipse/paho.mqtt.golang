@@ -760,10 +760,10 @@ func Test_Topic_from_publish(t *testing.T) {
 	}
 }
 
-func Test_set_cleanses(t *testing.T) {
+func Test_set_cleanSession(t *testing.T) {
 	ops := NewClientOptions().SetCleanSession(false)
 	c := NewClient(ops)
-	if c.options.cleanses {
-		t.Fatalf("cleanses was true but was set false")
+	if c.options.cleanSession {
+		t.Fatalf("cleanSession was true but was set false")
 	}
 }
