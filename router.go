@@ -146,9 +146,9 @@ func (r *router) matchAndDispatch(messages <-chan *Message, order bool, client *
 				r.RUnlock()
 				if !sent {
 					if order {
-						r.RUnlock()
-						r.defaultHandler(client, *message)
 						r.RLock()
+						r.defaultHandler(client, *message)
+						r.RUnlock()
 					} else {
 						go r.defaultHandler(client, *message)
 					}
