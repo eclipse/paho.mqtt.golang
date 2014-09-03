@@ -21,6 +21,6 @@ package mqtt
 // Set these values to the URI of your MQTT Broker before running go-test
 const (
 	FVT_IP  = "127.0.0.1"
-	FVT_TCP = "tcp://" + FVT_IP + ":17001"
-	FVT_SSL = "ssl://" + FVT_IP + ":17004"
+	FVT_TCP = "tcp://" + FVT_IP + ":1883"
+	FVT_SSL = "ssl://" + FVT_IP + ":8883"
 )

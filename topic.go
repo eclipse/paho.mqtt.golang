@@ -35,61 +35,23 @@ import (
 // - A TopicFilter with a # will match the absense of a level
 //     Example:  a subscription to "foo/#" will match messages published to "foo".
 
-type TopicName struct {
-	QoS
-	string
+func validateSubscribeMap(subs map[string]byte) ([]string, []byte, error) {
+	var topics []string
+	var qoss []byte
+	for topic, qos := range subs {
+		if err := validateTopicAndQos(topic, qos); err != nil {
+			return nil, nil, err
+		}
+		topics = append(topics, topic)
+		qoss = append(qoss, qos)
+	}
+
+	return topics, qoss, nil
 }
 
-func NewTopicName(topic string, qos byte) (*TopicName, error) {
-	if qos < 0 || qos > 2 {
-		return nil, ErrInvalidQoS
-	}
-	tn := &TopicName{
-		QoS(qos),
-		topic,
-	}
-	if e := validateTopicName(topic); e != nil {
-		return nil, e
-	}
-	return tn, nil
-}
-
-func validateTopicName(topic string) error {
+func validateTopicAndQos(topic string, qos byte) error {
 	if len(topic) == 0 {
 		return ErrInvalidTopicNameEmptyString
-	}
-
-	levels := strings.Split(topic, "/")
-	for _, level := range levels {
-		if level == "#" || level == "+" {
-			return ErrInvalidTopicNameWildcard
-		}
-	}
-	return nil
-}
-
-type TopicFilter struct {
-	QoS
-	string
-}
-
-func NewTopicFilter(topic string, qos byte) (*TopicFilter, error) {
-	if qos < 0 || qos > 2 {
-		return nil, ErrInvalidQoS
-	}
-	tf := &TopicFilter{
-		QoS(qos),
-		topic,
-	}
-	if e := validateTopicFilter(topic); e != nil {
-		return nil, e
-	}
-	return tf, nil
-}
-
-func validateTopicFilter(topic string) error {
-	if len(topic) == 0 {
-		return ErrInvalidTopicFilterEmptyString
 	}
 
 	levels := strings.Split(topic, "/")
@@ -97,6 +59,10 @@ func validateTopicFilter(topic string) error {
 		if level == "#" && i != len(levels)-1 {
 			return ErrInvalidTopicFilterMultilevel
 		}
+	}
+
+	if qos < 0 || qos > 2 {
+		return ErrInvalidQoS
 	}
 	return nil
 }

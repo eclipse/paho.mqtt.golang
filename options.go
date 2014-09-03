@@ -16,6 +16,7 @@ package mqtt
 
 import (
 	"crypto/tls"
+	. "github.com/alsm/hrotti/packets"
 	"net/url"
 	"time"
 )
@@ -42,15 +43,16 @@ type ClientOptions struct {
 	willEnabled     bool
 	willTopic       string
 	willPayload     []byte
-	willQos         QoS
+	willQos         byte
 	willRetained    bool
 	maxInflight     uint
+	protocolVersion uint
 	tlsConfig       *tls.Config
 	keepAlive       uint
 	store           Store
 	msgRouter       *router
 	stopRouter      chan bool
-	incomingPubChan chan *Message
+	incomingPubChan chan *PublishPacket
 	onconnlost      OnConnectionLost
 	mids            messageIds
 	writeTimeout    time.Duration
@@ -73,7 +75,7 @@ func NewClientOptions() *ClientOptions {
 		willEnabled:     false,
 		willTopic:       "",
 		willPayload:     nil,
-		willQos:         QOS_ZERO,
+		willQos:         0,
 		willRetained:    false,
 		maxInflight:     10,
 		tlsConfig:       nil,
@@ -81,7 +83,7 @@ func NewClientOptions() *ClientOptions {
 		keepAlive:       30,
 		incomingPubChan: nil,
 		onconnlost:      DefaultErrorHandler,
-		mids:            messageIds{index: make(map[MId]bool)},
+		mids:            messageIds{index: make(map[uint16]bool)},
 		writeTimeout:    0, // 0 represents timeout disabled
 	}
 	o.msgRouter, o.stopRouter = newRouter()
@@ -185,7 +187,7 @@ func (opts *ClientOptions) UnsetWill() *ClientOptions {
 // it will give this will message to the broker, which will then publish the
 // provided payload (the will) to any clients that are subscribed to the provided
 // topic.
-func (opts *ClientOptions) SetWill(topic string, payload string, qos QoS, retained bool) *ClientOptions {
+func (opts *ClientOptions) SetWill(topic string, payload string, qos byte, retained bool) *ClientOptions {
 	opts.SetBinaryWill(topic, []byte(payload), qos, retained)
 	return opts
 }
@@ -194,7 +196,7 @@ func (opts *ClientOptions) SetWill(topic string, payload string, qos QoS, retain
 // it will give this will message to the broker, which will then publish the
 // provided payload (the will) to any clients that are subscribed to the provided
 // topic.
-func (opts *ClientOptions) SetBinaryWill(topic string, payload []byte, qos QoS, retained bool) *ClientOptions {
+func (opts *ClientOptions) SetBinaryWill(topic string, payload []byte, qos byte, retained bool) *ClientOptions {
 	opts.willEnabled = true
 	opts.willTopic = topic
 	opts.willPayload = payload

@@ -16,6 +16,7 @@ package mqtt
 
 import (
 	"fmt"
+	. "github.com/alsm/hrotti/packets"
 	"strconv"
 )
 
@@ -31,8 +32,8 @@ const (
 // possible by prepending "i." or "o." to each message id
 type Store interface {
 	Open()
-	Put(string, *Message)
-	Get(string) *Message
+	Put(string, ControlPacket)
+	Get(string) ControlPacket
 	All() []string
 	Del(string)
 	Close()
@@ -41,64 +42,48 @@ type Store interface {
 
 // A key MUST have the form "X.[messageid]"
 // where X is 'i' or 'o'
-func key2mid(key string) MId {
+func key2mid(key string) uint16 {
 	s := key[2:]
 	i, err := strconv.Atoi(s)
 	chkerr(err)
-	return MId(i)
+	return uint16(i)
 }
 
 // Return a string of the form "i.[id]"
-func ibound_mid2key(id MId) string {
+func ibound_mid2key(id uint16) string {
 	return fmt.Sprintf("%s%d", _IBOUND_PRE, id)
 }
 
 // Return a string of the form "o.[id]"
-func obound_mid2key(id MId) string {
+func obound_mid2key(id uint16) string {
 	return fmt.Sprintf("%s%d", _OBOUND_PRE, id)
 }
 
 // govern which outgoing messages are persisted
-func persist_obound(s Store, m *Message) {
-	switch m.QoS() {
-	case QOS_ZERO:
-		switch m.msgType() {
-		case PUBACK:
+func persist_obound(s Store, m ControlPacket) {
+	switch m.Details().Qos {
+	case 0:
+		switch m.(type) {
+		case *PubackPacket, *PubcompPacket:
 			// Sending puback. delete matching publish
 			// from ibound
-			s.Del(ibound_mid2key(m.MsgId()))
-		case PUBCOMP:
-			// Sending pubcomp. delete matching pubrel
-			// from ibound
-			s.Del(ibound_mid2key(m.MsgId()))
+			s.Del(ibound_mid2key(m.Details().MessageID))
 		}
-	case QOS_ONE:
-		switch m.msgType() {
-		case PUBLISH:
+	case 1:
+		switch m.(type) {
+		case *PublishPacket, *PubrelPacket, *SubscribePacket, *UnsubscribePacket:
 			// Sending publish. store in obound
 			// until puback received
-			s.Put(obound_mid2key(m.MsgId()), m)
-		case PUBREL:
-			// Sending pubrel. overwrite publish
-			// in obound until pubcomp received
-			s.Put(obound_mid2key(m.MsgId()), m)
-		case SUBSCRIBE:
-			// Sending subscribe. store in obound
-			// until suback received
-			s.Put(obound_mid2key(m.MsgId()), m)
-		case UNSUBSCRIBE:
-			// Sending unsubscribe. store in obound
-			// until unsuback received
-			s.Put(obound_mid2key(m.MsgId()), m)
+			s.Put(obound_mid2key(m.Details().MessageID), m)
 		default:
 			chkcond(false)
 		}
-	case QOS_TWO:
-		switch m.msgType() {
-		case PUBLISH:
+	case 2:
+		switch m.(type) {
+		case *PublishPacket:
 			// Sending publish. store in obound
 			// until pubrel received
-			s.Put(obound_mid2key(m.MsgId()), m)
+			s.Put(obound_mid2key(m.Details().MessageID), m)
 		default:
 			chkcond(false)
 		}
@@ -106,52 +91,33 @@ func persist_obound(s Store, m *Message) {
 }
 
 // govern which incoming messages are persisted
-func persist_ibound(s Store, m *Message) {
-	switch m.QoS() {
-	case QOS_ZERO:
-		switch m.msgType() {
-		case PUBACK:
+func persist_ibound(s Store, m ControlPacket) {
+	switch m.Details().Qos {
+	case 0:
+		switch m.(type) {
+		case *PubackPacket, *SubackPacket, *UnsubackPacket, *PubcompPacket:
 			// Received a puback. delete matching publish
 			// from obound
-			s.Del(obound_mid2key(m.MsgId()))
-		case SUBACK:
-			// Received a suback. delete matching subscribe
-			// from obound
-			s.Del(obound_mid2key(m.MsgId()))
-		case UNSUBACK:
-			// Received a unsuback. delete matching unsubscribe
-			// from obound
-			s.Del(obound_mid2key(m.MsgId()))
-		case PUBLISH:
-		case PUBREC:
-		case PUBCOMP:
-			// Received a pubcomp. delete matching pubrel
-			// from obound
-			s.Del(obound_mid2key(m.MsgId()))
-		case PINGRESP:
-		case CONNACK:
+			s.Del(obound_mid2key(m.Details().MessageID))
+		case *PublishPacket, *PubrecPacket, *PingrespPacket, *ConnackPacket:
 		default:
 			chkcond(false)
 		}
-	case QOS_ONE:
-		switch m.msgType() {
-		case PUBLISH:
+	case 1:
+		switch m.(type) {
+		case *PublishPacket, *PubrelPacket:
 			// Received a publish. store it in ibound
 			// until puback sent
-			s.Put(ibound_mid2key(m.MsgId()), m)
-		case PUBREL:
-			// Received a pubrel. Overwrite publish in ibound
-			// until pubcomp sent
-			s.Put(ibound_mid2key(m.MsgId()), m)
+			s.Put(ibound_mid2key(m.Details().MessageID), m)
 		default:
 			chkcond(false)
 		}
-	case QOS_TWO:
-		switch m.msgType() {
-		case PUBLISH:
+	case 2:
+		switch m.(type) {
+		case *PublishPacket:
 			// Received a publish. store it in ibound
 			// until pubrel received
-			s.Put(ibound_mid2key(m.MsgId()), m)
+			s.Put(ibound_mid2key(m.Details().MessageID), m)
 		default:
 			chkcond(false)
 		}

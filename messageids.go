@@ -25,17 +25,17 @@ type MId uint16
 
 type messageIds struct {
 	sync.Mutex
-	idChan chan MId
-	index  map[MId]bool
+	idChan chan uint16
+	index  map[uint16]bool
 }
 
 const (
-	MId_MAX MId = 65535
-	MId_MIN MId = 1
+	MId_MAX uint16 = 65535
+	MId_MIN uint16 = 1
 )
 
 func (mids *messageIds) generateMsgIds() {
-	mids.idChan = make(chan MId, 10)
+	mids.idChan = make(chan uint16, 10)
 	go func() {
 		for {
 			mids.Lock()
@@ -51,13 +51,13 @@ func (mids *messageIds) generateMsgIds() {
 	}()
 }
 
-func (mids *messageIds) freeId(id MId) {
+func (mids *messageIds) freeId(id uint16) {
 	mids.Lock()
 	defer mids.Unlock()
 	//trace_v(MID, "freeing message id: %v", id)
 	mids.index[id] = false
 }
 
-func (mids *messageIds) getId() MId {
+func (mids *messageIds) getId() uint16 {
 	return <-mids.idChan
 }

@@ -16,6 +16,7 @@ package mqtt
 
 import (
 	"errors"
+	. "github.com/alsm/hrotti/packets"
 	"sync"
 	"time"
 )
@@ -38,12 +39,6 @@ func (l *lastcontact) get() time.Time {
 	return l.lasttime
 }
 
-func newPingReqMsg() *Message {
-	m := newMsg(PINGREQ, false, QOS_ZERO, false)
-	m.remlen = uint32(0)
-	return m
-}
-
 func keepalive(c *MqttClient) {
 	DEBUG.Println(PNG, "keepalive starting")
 
@@ -58,7 +53,7 @@ func keepalive(c *MqttClient) {
 			if last > c.options.keepAlive {
 				if !c.pingOutstanding {
 					DEBUG.Println(PNG, "keepalive sending ping")
-					ping := newPingReqMsg()
+					ping := NewControlPacket(PINGREQ).(*PingreqPacket)
 					c.oboundP <- ping
 					c.pingOutstanding = true
 				} else {

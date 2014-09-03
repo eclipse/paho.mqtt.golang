@@ -105,7 +105,7 @@ func Test_Publish_1(t *testing.T) {
 		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
 
-	c.Publish(QOS_ZERO, "/test/Publish", []byte("Publish qo0"))
+	c.Publish("test/Publish", 0, false, "Publish qo0")
 
 	c.Disconnect(250)
 }
@@ -122,8 +122,8 @@ func Test_Publish_2(t *testing.T) {
 		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
 
-	c.Publish(QOS_ZERO, "/test/Publish", []byte("Publish1 qos0"))
-	c.Publish(QOS_ZERO, "/test/Publish", []byte("Publish2 qos0"))
+	c.Publish("/test/Publish", 0, false, "Publish1 qos0")
+	c.Publish("/test/Publish", 0, false, "Publish2 qos0")
 
 	c.Disconnect(250)
 }
@@ -140,9 +140,9 @@ func Test_Publish_3(t *testing.T) {
 		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
 
-	c.Publish(QOS_ZERO, "/test/Publish", []byte("Publish1 qos0"))
-	c.Publish(QOS_ONE, "/test/Publish", []byte("Publish2 qos1"))
-	c.Publish(QOS_TWO, "/test/Publish", []byte("Publish2 qos2"))
+	c.Publish("/test/Publish", 0, false, "Publish1 qos0")
+	c.Publish("/test/Publish", 1, false, "Publish2 qos1")
+	c.Publish("/test/Publish", 2, false, "Publish2 qos2")
 
 	c.Disconnect(250)
 }
@@ -170,15 +170,14 @@ func Test_Subscribe(t *testing.T) {
 		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
 
-	filter, _ := NewTopicFilter("/test/sub", 0)
-	s.StartSubscription(nil, filter)
+	s.Subscribe("/test/sub", 0, nil)
 
 	_, err = p.Start()
 	if err != nil {
 		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
 
-	p.Publish(QOS_ZERO, "/test/sub", []byte("Publish qos0"))
+	p.Publish("/test/sub", 0, false, "Publish qos0")
 
 	p.Disconnect(250)
 	s.Disconnect(250)
@@ -189,7 +188,7 @@ func Test_Will(t *testing.T) {
 
 	sops := NewClientOptions().AddBroker(FVT_TCP)
 	sops.SetClientId("will-giver")
-	sops.SetWill("/wills", "good-byte!", QOS_ZERO, false)
+	sops.SetWill("/wills", "good-byte!", 0, false)
 	sops.SetOnConnectionLost(func(client *MqttClient, err error) {
 		fmt.Println("OnConnectionLost!")
 	})
@@ -211,8 +210,7 @@ func Test_Will(t *testing.T) {
 		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
 
-	filter, _ := NewTopicFilter("/wills", 0)
-	wsub.StartSubscription(nil, filter)
+	wsub.Subscribe("/wills", 0, nil)
 
 	_, err = c.Start()
 	if err != nil {
@@ -240,7 +238,7 @@ func Test_Binary_Will(t *testing.T) {
 
 	sops := NewClientOptions().AddBroker(FVT_TCP)
 	sops.SetClientId("will-giver")
-	sops.SetBinaryWill("/wills", will, QOS_ZERO, false)
+	sops.SetBinaryWill("/wills", will, 0, false)
 	sops.SetOnConnectionLost(func(client *MqttClient, err error) {
 	})
 	c := NewClient(sops)
@@ -260,8 +258,7 @@ func Test_Binary_Will(t *testing.T) {
 		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
 
-	filter, _ := NewTopicFilter("/wills", 0)
-	wsub.StartSubscription(nil, filter)
+	wsub.Subscribe("/wills", 0, nil)
 
 	_, err = c.Start()
 	if err != nil {
@@ -324,27 +321,22 @@ func Test_p0s0(t *testing.T) {
 		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
 
-	filter, _ := NewTopicFilter(topic, 0)
-	receipt, err := s.StartSubscription(nil, filter)
+	err = s.Subscribe(topic, 0, nil)
 	if err != nil {
-		t.Fatalf("Error on MqttClient.StartSubscription(): %v", err)
+		t.Fatalf("Error on MqttClient.Subscribe(): %v", err)
 	}
-	<-receipt
 
 	_, err = p.Start()
 	if err != nil {
 		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
-	receipt = p.Publish(QOS_ZERO, topic, []byte("p0s0 payload 1"))
-	<-receipt
-	receipt = p.Publish(QOS_ZERO, topic, []byte("p0s0 payload 2"))
-	<-receipt
+	p.Publish(topic, 0, false, "p0s0 payload 1")
+	p.Publish(topic, 0, false, "p0s0 payload 2")
 
 	wait(choke)
 	wait(choke)
 
-	receipt = p.Publish(QOS_ZERO, topic, []byte("p0s0 payload 3"))
-	<-receipt
+	p.Publish(topic, 0, false, "p0s0 payload 3")
 	wait(choke)
 
 	p.Disconnect(250)
@@ -384,26 +376,22 @@ func Test_p0s1(t *testing.T) {
 		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
 
-	filter, _ := NewTopicFilter(topic, 0)
-	receipt, err := s.StartSubscription(nil, filter)
+	err = s.Subscribe(topic, 0, nil)
 	if err != nil {
-		t.Fatalf("Error on MqttClient.StartSubscription(): %v", err)
+		t.Fatalf("Error on MqttClient.Subscribe(): %v", err)
 	}
-	<-receipt
 
 	_, err = p.Start()
 	if err != nil {
 		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
-	receipt = p.Publish(QOS_ZERO, topic, []byte("p0s1 payload 1"))
-	<-receipt
-	receipt = p.Publish(QOS_ZERO, topic, []byte("p0s1 payload 2"))
-	<-receipt
+	p.Publish(topic, 0, false, "p0s1 payload 1")
+	p.Publish(topic, 0, false, "p0s1 payload 2")
+
 	wait(choke)
 	wait(choke)
 
-	receipt = p.Publish(QOS_ZERO, topic, []byte("p0s1 payload 3"))
-	<-receipt
+	p.Publish(topic, 0, false, "p0s1 payload 3")
 	wait(choke)
 
 	p.Disconnect(250)
@@ -443,26 +431,23 @@ func Test_p0s2(t *testing.T) {
 		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
 
-	filter, _ := NewTopicFilter(topic, 2)
-	receipt, err := s.StartSubscription(nil, filter)
+	err = s.Subscribe(topic, 2, nil)
 	if err != nil {
-		t.Fatalf("Error on MqttClient.StartSubscription(): %v", err)
+		t.Fatalf("Error on MqttClient.Subscribe(): %v", err)
 	}
-	<-receipt
 
 	_, err = p.Start()
 	if err != nil {
 		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
-	receipt = p.Publish(QOS_ZERO, topic, []byte("p0s2 payload 1"))
-	<-receipt
-	receipt = p.Publish(QOS_ZERO, topic, []byte("p0s2 payload 2"))
-	<-receipt
+	p.Publish(topic, 0, false, "p0s2 payload 1")
+	p.Publish(topic, 0, false, "p0s2 payload 2")
+
 	wait(choke)
 	wait(choke)
 
-	receipt = p.Publish(QOS_ZERO, topic, []byte("p0s2 payload 3"))
-	<-receipt
+	p.Publish(topic, 0, false, "p0s2 payload 3")
+
 	wait(choke)
 
 	p.Disconnect(250)
@@ -502,26 +487,23 @@ func Test_p1s0(t *testing.T) {
 		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
 
-	filter, _ := NewTopicFilter(topic, 0)
-	receipt, err := s.StartSubscription(nil, filter)
+	err = s.Subscribe(topic, 0, nil)
 	if err != nil {
-		t.Fatalf("Error on MqttClient.StartSubscription(): %v", err)
+		t.Fatalf("Error on MqttClient.Subscribe(): %v", err)
 	}
-	<-receipt
 
 	_, err = p.Start()
 	if err != nil {
 		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
-	receipt = p.Publish(QOS_ONE, topic, []byte("p1s0 payload 1"))
-	<-receipt
-	receipt = p.Publish(QOS_ONE, topic, []byte("p1s0 payload 2"))
-	<-receipt
+	p.Publish(topic, 1, false, "p1s0 payload 1")
+	p.Publish(topic, 1, false, "p1s0 payload 2")
+
 	wait(choke)
 	wait(choke)
 
-	receipt = p.Publish(QOS_ONE, topic, []byte("p1s0 payload 3"))
-	<-receipt
+	p.Publish(topic, 1, false, "p1s0 payload 3")
+
 	wait(choke)
 
 	p.Disconnect(250)
@@ -561,26 +543,22 @@ func Test_p1s1(t *testing.T) {
 		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
 
-	filter, _ := NewTopicFilter(topic, 1)
-	receipt, err := s.StartSubscription(nil, filter)
+	err = s.Subscribe(topic, 1, nil)
 	if err != nil {
-		t.Fatalf("Error on MqttClient.StartSubscription(): %v", err)
+		t.Fatalf("Error on MqttClient.Subscribe(): %v", err)
 	}
-	<-receipt
 
 	_, err = p.Start()
 	if err != nil {
 		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
-	receipt = p.Publish(QOS_ONE, topic, []byte("p1s1 payload 1"))
-	<-receipt
-	receipt = p.Publish(QOS_ONE, topic, []byte("p1s1 payload 2"))
-	<-receipt
+	p.Publish(topic, 1, false, "p1s1 payload 1")
+	p.Publish(topic, 1, false, "p1s1 payload 2")
+
 	wait(choke)
 	wait(choke)
 
-	receipt = p.Publish(QOS_ONE, topic, []byte("p1s1 payload 3"))
-	<-receipt
+	p.Publish(topic, 1, false, "p1s1 payload 3")
 	wait(choke)
 
 	p.Disconnect(250)
@@ -619,26 +597,23 @@ func Test_p1s2(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
-	filter, _ := NewTopicFilter(topic, 2)
-	receipt, err := s.StartSubscription(nil, filter)
+	err = s.Subscribe(topic, 1, nil)
 	if err != nil {
-		t.Fatalf("Error on MqttClient.StartSubscription(): %v", err)
+		t.Fatalf("Error on MqttClient.Subscribe(): %v", err)
 	}
-	<-receipt
 
 	_, err = p.Start()
 	if err != nil {
 		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
-	receipt = p.Publish(QOS_ONE, topic, []byte("p1s2 payload 1"))
-	<-receipt
-	receipt = p.Publish(QOS_ONE, topic, []byte("p1s2 payload 2"))
-	<-receipt
+	p.Publish(topic, 1, false, "p1s2 payload 1")
+	p.Publish(topic, 1, false, "p1s2 payload 2")
+
 	wait(choke)
 	wait(choke)
 
-	receipt = p.Publish(QOS_ONE, topic, []byte("p1s2 payload 3"))
-	<-receipt
+	p.Publish(topic, 1, false, "p1s2 payload 3")
+
 	wait(choke)
 
 	p.Disconnect(250)
@@ -678,23 +653,21 @@ func Test_p2s0(t *testing.T) {
 		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
 
-	filter, _ := NewTopicFilter(topic, 0)
-	receipt, err := s.StartSubscription(nil, filter)
+	err = s.Subscribe(topic, 0, nil)
 	if err != nil {
-		t.Fatalf("Error on MqttClient.StartSubscription(): %v", err)
+		t.Fatalf("Error on MqttClient.Subscribe(): %v", err)
 	}
-	<-receipt
 
 	_, err = p.Start()
 	if err != nil {
 		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
-	p.Publish(QOS_TWO, topic, []byte("p2s0 payload 1"))
-	p.Publish(QOS_TWO, topic, []byte("p2s0 payload 2"))
+	p.Publish(topic, 2, false, "p2s0 payload 1")
+	p.Publish(topic, 2, false, "p2s0 payload 2")
 	wait(choke)
 	wait(choke)
 
-	p.Publish(QOS_TWO, topic, []byte("p2s0 payload 3"))
+	p.Publish(topic, 2, false, "p2s0 payload 3")
 	wait(choke)
 
 	p.Disconnect(250)
@@ -734,26 +707,23 @@ func Test_p2s1(t *testing.T) {
 		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
 
-	filter, _ := NewTopicFilter(topic, 1)
-	receipt, err := s.StartSubscription(nil, filter)
+	err = s.Subscribe(topic, 1, nil)
 	if err != nil {
-		t.Fatalf("Error on MqttClient.StartSubscription(): %v", err)
+		t.Fatalf("Error on MqttClient.Subscribe(): %v", err)
 	}
-	<-receipt
 
 	_, err = p.Start()
 	if err != nil {
 		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
-	receipt = p.Publish(QOS_TWO, topic, []byte("p2s1 payload 1"))
-	<-receipt
-	receipt = p.Publish(QOS_TWO, topic, []byte("p2s1 payload 2"))
-	<-receipt
+	p.Publish(topic, 2, false, "p2s1 payload 1")
+	p.Publish(topic, 2, false, "p2s1 payload 2")
+
 	wait(choke)
 	wait(choke)
 
-	receipt = p.Publish(QOS_TWO, topic, []byte("p2s1 payload 3"))
-	<-receipt
+	p.Publish(topic, 2, false, "p2s1 payload 3")
+
 	wait(choke)
 
 	p.Disconnect(250)
@@ -793,26 +763,23 @@ func Test_p2s2(t *testing.T) {
 		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
 
-	filter, _ := NewTopicFilter(topic, 2)
-	receipt, err := s.StartSubscription(nil, filter)
+	err = s.Subscribe(topic, 2, nil)
 	if err != nil {
-		t.Fatalf("Error on MqttClient.StartSubscription(): %v", err)
+		t.Fatalf("Error on MqttClient.Subscribe(): %v", err)
 	}
-	<-receipt
 
 	_, err = p.Start()
 	if err != nil {
 		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
-	receipt = p.Publish(QOS_TWO, topic, []byte("p2s2 payload 1"))
-	<-receipt
-	receipt = p.Publish(QOS_TWO, topic, []byte("p2s2 payload 2"))
-	<-receipt
+	p.Publish(topic, 2, false, "p2s2 payload 1")
+	p.Publish(topic, 2, false, "p2s2 payload 2")
+
 	wait(choke)
 	wait(choke)
 
-	receipt = p.Publish(QOS_TWO, topic, []byte("p2s2 payload 3"))
-	<-receipt
+	p.Publish(topic, 2, false, "p2s2 payload 3")
+
 	wait(choke)
 
 	p.Disconnect(250)
@@ -841,6 +808,7 @@ func Test_PublishMessage(t *testing.T) {
 		fmt.Printf("TOPIC: %s\n", msg.Topic())
 		fmt.Printf("MSG: %s\n", msg.Payload())
 		if string(msg.Payload()) != "pubmsg payload" {
+			fmt.Println("Message payload incorrect", msg.Payload(), len("pubmsg payload"))
 			t.Fatalf("Message payload incorrect")
 		}
 		choke <- true
@@ -853,12 +821,10 @@ func Test_PublishMessage(t *testing.T) {
 		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
 
-	filter, _ := NewTopicFilter(topic, 2)
-	receipt, err := s.StartSubscription(nil, filter)
+	err = s.Subscribe(topic, 2, nil)
 	if err != nil {
-		t.Fatalf("Error on MqttClient.StartSubscription(): %v", err)
+		t.Fatalf("Error on MqttClient.Subscribe(): %v", err)
 	}
-	<-receipt
 
 	_, err = p.Start()
 	if err != nil {
@@ -866,13 +832,12 @@ func Test_PublishMessage(t *testing.T) {
 	}
 
 	text := "pubmsg payload"
-	m := NewMessage([]byte(text))
-	p.PublishMessage(topic, m)
-	p.PublishMessage(topic, m)
+	p.Publish(topic, 0, false, text)
+	p.Publish(topic, 0, false, text)
 	wait(choke)
 	wait(choke)
 
-	p.PublishMessage(topic, m)
+	p.Publish(topic, 0, false, text)
 	wait(choke)
 
 	p.Disconnect(250)
@@ -913,25 +878,22 @@ func Test_PublishEmptyMessage(t *testing.T) {
 		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
 
-	filter, _ := NewTopicFilter(topic, 2)
-	receipt, err := s.StartSubscription(nil, filter)
+	err = s.Subscribe(topic, 2, nil)
 	if err != nil {
-		t.Fatalf("Error on MqttClient.StartSubscription(): %v", err)
+		t.Fatalf("Error on MqttClient.Subscribe(): %v", err)
 	}
-	<-receipt
 
 	_, err = p.Start()
 	if err != nil {
 		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
 
-	m := NewMessage(nil)
-	p.PublishMessage(topic, m)
-	p.PublishMessage(topic, m)
+	p.Publish(topic, 0, false, "")
+	p.Publish(topic, 0, false, "")
 	wait(choke)
 	wait(choke)
 
-	p.PublishMessage(topic, m)
+	p.Publish(topic, 0, false, "")
 	wait(choke)
 
 	p.Disconnect(250)
@@ -974,22 +936,20 @@ func Test_Cleanstore(t *testing.T) {
 		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
 
-	filter, _ := NewTopicFilter(topic, 2)
-	receipt, err := s.StartSubscription(nil, filter)
+	err = s.Subscribe(topic, 2, nil)
 	if err != nil {
-		t.Fatalf("Error on MqttClient.StartSubscription(): %v", err)
+		t.Fatalf("Error on MqttClient.Subscribe(): %v", err)
 	}
-	<-receipt
 
 	_, err = p.Start()
 	if err != nil {
 		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
 
-	m := NewMessage([]byte("test message"))
-	p.PublishMessage(topic, m)
-	p.PublishMessage(topic, m)
-	p.PublishMessage(topic, m)
+	text := "test message"
+	p.Publish(topic, 0, false, text)
+	p.Publish(topic, 0, false, text)
+	p.Publish(topic, 0, false, text)
 
 	p.Disconnect(250)
 
@@ -1023,7 +983,7 @@ func Test_MultipleURLs(t *testing.T) {
 		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
 
-	c.Publish(QOS_ZERO, "/test/MultiURL", []byte("Publish qo0"))
+	c.Publish("/test/MultiURL", 0, false, "Publish qo0")
 
 	c.Disconnect(250)
 }

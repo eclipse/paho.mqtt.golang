@@ -20,37 +20,37 @@ import (
 )
 
 func Test_getId(t *testing.T) {
-	mids := &messageIds{index: make(map[MId]bool)}
+	mids := &messageIds{index: make(map[uint16]bool)}
 	mids.generateMsgIds()
 
 	i1 := mids.getId()
 
-	if i1 != MId(1) {
+	if i1 != 1 {
 		t.Fatalf("i1 was wrong: %v", i1)
 	}
 
 	i2 := mids.getId()
 
-	if i2 != MId(2) {
+	if i2 != 2 {
 		t.Fatalf("i2 was wrong: %v", i2)
 	}
 
-	for i := 3; i < 100; i++ {
+	for i := uint16(3); i < 100; i++ {
 		id := mids.getId()
-		if id != MId(i) {
+		if id != i {
 			t.Fatalf("id was wrong expected %v got %v", i, id)
 		}
 	}
 }
 
 func Test_freeId(t *testing.T) {
-	mids := &messageIds{index: make(map[MId]bool)}
+	mids := &messageIds{index: make(map[uint16]bool)}
 	mids.generateMsgIds()
 
 	i1 := mids.getId()
 	mids.freeId(i1)
 
-	if i1 != MId(1) {
+	if i1 != 1 {
 		t.Fatalf("i1 was wrong: %v", i1)
 	}
 
@@ -59,13 +59,13 @@ func Test_freeId(t *testing.T) {
 }
 
 func Test_messageids_mix(t *testing.T) {
-	mids := &messageIds{index: make(map[MId]bool)}
+	mids := &messageIds{index: make(map[uint16]bool)}
 	mids.generateMsgIds()
 
 	done := make(chan bool)
-	a := make(chan MId, 3)
-	b := make(chan MId, 20)
-	c := make(chan MId, 100)
+	a := make(chan uint16, 3)
+	b := make(chan uint16, 20)
+	c := make(chan uint16, 100)
 
 	go func() {
 		for i := 0; i < 10000; i++ {

@@ -108,8 +108,7 @@ func main() {
 		panic(err)
 	}
 
-	filter, _ := MQTT.NewTopicFilter("/go-mqtt/sample", 0)
-	c.StartSubscription(nil, filter)
+	c.Subscribe("/go-mqtt/sample", 0, nil)
 
 	i := 0
 	for _ = range time.Tick(time.Duration(1) * time.Second) {
@@ -117,7 +116,7 @@ func main() {
 			break
 		}
 		text := fmt.Sprintf("this is msg #%d!", i)
-		c.Publish(MQTT.QOS_ZERO, "/go-mqtt/sample", []byte(text))
+		c.Publish("/go-mqtt/sample", 0, false, text)
 		i++
 	}
 

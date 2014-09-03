@@ -17,18 +17,24 @@ package mqtt
 import (
 	"errors"
 	"fmt"
+	. "github.com/alsm/hrotti/packets"
 	"os"
 )
 
 /*
  * Connect Errors
  */
-var ErrInvalidProtocolVersion = errors.New("Unnacceptable protocol version")
-var ErrInvalidClientID = errors.New("Identifier rejected")
-var ErrServerUnavailable = errors.New("Server Unavailable")
-var ErrBadCredentials = errors.New("Bad user name or password")
-var ErrNotAuthorized = errors.New("Not Authorized")
-var ErrUnknownReason = errors.New("Unknown RC")
+var connErrors = map[byte]error{
+	CONN_ACCEPTED:           nil,
+	CONN_REF_BAD_PROTO_VER:  errors.New("Unnacceptable protocol version"),
+	CONN_REF_ID_REJ:         errors.New("Identifier rejected"),
+	CONN_REF_SERV_UNAVAIL:   errors.New("Server Unavailable"),
+	CONN_REF_BAD_USER_PASS:  errors.New("Bad user name or password"),
+	CONN_REF_NOT_AUTH:       errors.New("Not Authorized"),
+	CONN_NETWORK_ERROR:      errors.New("Network Error"),
+	CONN_PROTOCOL_VIOLATION: errors.New("Protocol Violation"),
+}
+
 var ErrNotConnected = errors.New("Not Connected")
 
 /*
@@ -58,44 +64,5 @@ func chkerr(e error) {
 func chkcond(b bool) {
 	if !b {
 		panic("oops")
-	}
-}
-
-func chkrc(rc ConnRC) error {
-	if rc != CONN_ACCEPTED {
-		switch rc {
-		case CONN_REF_BAD_PROTO_VER:
-			return ErrInvalidProtocolVersion
-		case CONN_REF_ID_REJ:
-			return ErrInvalidClientID
-		case CONN_REF_SERV_UNAVAIL:
-			return ErrServerUnavailable
-		case CONN_REF_BAD_USER_PASS:
-			return ErrBadCredentials
-		case CONN_REF_NOT_AUTH:
-			return ErrNotAuthorized
-		default:
-			return ErrUnknownReason
-		}
-	}
-	return nil
-}
-
-func rc2str(rc ConnRC) string {
-	switch rc {
-	case CONN_ACCEPTED:
-		return "CONN_ACCEPTED"
-	case CONN_REF_BAD_PROTO_VER:
-		return "CONN_REF_BAD_PROTO_VER"
-	case CONN_REF_ID_REJ:
-		return "CONN_REF_ID_REJ"
-	case CONN_REF_SERV_UNAVAIL:
-		return "CONN_REF_SERV_UNAVAIL"
-	case CONN_REF_BAD_USER_PASS:
-		return "CONN_REF_BAD_USER_PASS"
-	case CONN_REF_NOT_AUTH:
-		return "CONN_REF_NOT_AUTH"
-	default:
-		return "UNKNOWN"
 	}
 }

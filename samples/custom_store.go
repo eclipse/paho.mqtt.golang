@@ -22,6 +22,7 @@ import (
 	"time"
 
 	MQTT "git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
+	packets "github.com/alsm/hrotti/packets"
 )
 
 // This NoOpStore type implements the go-mqtt/Store interface, which
@@ -36,11 +37,11 @@ func (store *NoOpStore) Open() {
 	// Do nothing
 }
 
-func (store *NoOpStore) Put(string, *MQTT.Message) {
+func (store *NoOpStore) Put(string, packets.ControlPacket) {
 	// Do nothing
 }
 
-func (store *NoOpStore) Get(string) *MQTT.Message {
+func (store *NoOpStore) Get(string) packets.ControlPacket {
 	// Do nothing
 	return nil
 }
@@ -58,10 +59,6 @@ func (store *NoOpStore) Close() {
 }
 
 func (store *NoOpStore) Reset() {
-	// Do Nothing
-}
-
-func (store *NoOpStore) SetTracer(tracer *MQTT.Tracer) {
 	// Do Nothing
 }
 
@@ -84,12 +81,11 @@ func main() {
 		panic(err)
 	}
 
-	filter, _ := MQTT.NewTopicFilter("/go-mqtt/sample", 0)
-	c.StartSubscription(callback, filter)
+	c.Subscribe("/go-mqtt/sample", 0, callback)
 
 	for i := 0; i < 5; i++ {
 		text := fmt.Sprintf("this is msg #%d!", i)
-		c.Publish(MQTT.QOS_ONE, "/go-mqtt/sample", []byte(text))
+		c.Publish("/go-mqtt/sample", 0, false, text)
 	}
 
 	for i := 1; i < 5; i++ {

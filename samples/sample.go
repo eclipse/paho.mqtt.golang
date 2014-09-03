@@ -94,24 +94,13 @@ func main() {
 	if *action == "pub" {
 		client := MQTT.NewClient(opts)
 		_, err := client.Start()
-		gotareceipt := make(chan bool)
 		if err != nil {
 			panic(err)
 		}
 		fmt.Println("Sample Publisher Started")
 		for i := 0; i < *num; i++ {
 			fmt.Println("---- doing publish ----")
-			receipt := client.Publish(MQTT.QoS(*qos), *topic, []byte(*payload))
-
-			go func() {
-				<-receipt
-				fmt.Println("  message delivered!")
-				gotareceipt <- true
-			}()
-		}
-
-		for i := 0; i < *num; i++ {
-			<-gotareceipt
+			client.Publish(*topic, byte(*qos), false, *payload)
 		}
 
 		client.Disconnect(250)
@@ -130,13 +119,11 @@ func main() {
 			panic(err)
 		}
 
-		filter, e := MQTT.NewTopicFilter(*topic, byte(*qos))
-		if e != nil {
-			fmt.Println(e)
+		err = client.Subscribe(*topic, byte(*qos), nil)
+		if err != nil {
+			fmt.Println(err.Error())
 			os.Exit(1)
 		}
-
-		client.StartSubscription(nil, filter)
 
 		for num_received < *num {
 			incoming := <-choke

@@ -68,28 +68,19 @@ func main() {
 		panic(err)
 	}
 
-	loadFilter, _ := MQTT.NewTopicFilter("$SYS/broker/load/#", 0)
-	if receipt, err := c.StartSubscription(brokerLoadHandler, loadFilter); err != nil {
+	if err := c.Subscribe("$SYS/broker/load/#", 0, brokerLoadHandler); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
-	} else {
-		<-receipt
 	}
 
-	connectionFilter, _ := MQTT.NewTopicFilter("$SYS/broker/connection/#", 0)
-	if receipt, err := c.StartSubscription(brokerConnectionHandler, connectionFilter); err != nil {
+	if err := c.Subscribe("$SYS/broker/connection/#", 0, brokerConnectionHandler); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
-	} else {
-		<-receipt
 	}
 
-	clientsFilter, _ := MQTT.NewTopicFilter("$SYS/broker/clients/#", 0)
-	if receipt, err := c.StartSubscription(brokerClientsHandler, clientsFilter); err != nil {
+	if err := c.Subscribe("$SYS/broker/clients/#", 0, brokerClientsHandler); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
-	} else {
-		<-receipt
 	}
 
 	num_bload := 0

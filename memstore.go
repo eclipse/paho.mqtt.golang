@@ -15,6 +15,7 @@
 package mqtt
 
 import (
+	. "github.com/alsm/hrotti/packets"
 	"sync"
 )
 
@@ -23,7 +24,7 @@ import (
 // as long as the client instance exists.
 type MemoryStore struct {
 	sync.RWMutex
-	messages map[string]*Message
+	messages map[string]ControlPacket
 	opened   bool
 }
 
@@ -32,7 +33,7 @@ type MemoryStore struct {
 // use until Open() has been called on it.
 func NewMemoryStore() *MemoryStore {
 	store := &MemoryStore{
-		messages: make(map[string]*Message),
+		messages: make(map[string]ControlPacket),
 		opened:   false,
 	}
 	return store
@@ -48,7 +49,7 @@ func (store *MemoryStore) Open() {
 
 // Put takes a key and a pointer to a Message and stores the
 // message.
-func (store *MemoryStore) Put(key string, message *Message) {
+func (store *MemoryStore) Put(key string, message ControlPacket) {
 	store.Lock()
 	defer store.Unlock()
 	chkcond(store.opened)
@@ -57,7 +58,7 @@ func (store *MemoryStore) Put(key string, message *Message) {
 
 // Get takes a key and looks in the store for a matching Message
 // returning either the Message pointer or nil.
-func (store *MemoryStore) Get(key string) *Message {
+func (store *MemoryStore) Get(key string) ControlPacket {
 	store.RLock()
 	defer store.RUnlock()
 	chkcond(store.opened)
@@ -113,6 +114,6 @@ func (store *MemoryStore) Reset() {
 	store.Lock()
 	defer store.Unlock()
 	chkcond(store.opened)
-	store.messages = make(map[string]*Message)
+	store.messages = make(map[string]ControlPacket)
 	WARN.Println(STR, "memorystore wiped")
 }

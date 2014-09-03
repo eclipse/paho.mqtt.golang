@@ -37,27 +37,21 @@ func main() {
 		panic(err)
 	}
 
-	filter, _ := MQTT.NewTopicFilter("/go-mqtt/sample", 0)
-	if receipt, err := c.StartSubscription(nil, filter); err != nil {
+	if err = c.Subscribe("/go-mqtt/sample", 0, nil); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
-	} else {
-		<-receipt
 	}
 
 	for i := 0; i < 5; i++ {
 		text := fmt.Sprintf("this is msg #%d!", i)
-		receipt := c.Publish(MQTT.QOS_ONE, "/go-mqtt/sample", []byte(text))
-		<-receipt
+		c.Publish("/go-mqtt/sample", 0, false, text)
 	}
 
 	time.Sleep(3 * time.Second)
 
-	if receipt, err := c.EndSubscription("/go-mqtt/sample"); err != nil {
+	if err = c.Unsubscribe("/go-mqtt/sample"); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
-	} else {
-		<-receipt
 	}
 
 	c.Disconnect(250)

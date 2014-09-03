@@ -14,12 +14,14 @@
 
 package mqtt
 
-import "bufio"
-import "fmt"
-import "io/ioutil"
-import "os"
-
-import "testing"
+import (
+	"bufio"
+	"fmt"
+	. "github.com/alsm/hrotti/packets"
+	"io/ioutil"
+	"os"
+	"testing"
+)
 
 func Test_fullpath(t *testing.T) {
 	p := fullpath("/tmp/store", "o.44324")
@@ -52,7 +54,7 @@ func isemptydir(dir string) bool {
 
 func Test_key2mid(t *testing.T) {
 	key := "i.123"
-	exp := MId(123)
+	exp := uint16(123)
 	res := key2mid(key)
 	if exp != res {
 		t.Fatalf("key2mid failed")
@@ -60,7 +62,7 @@ func Test_key2mid(t *testing.T) {
 }
 
 func Test_ibound_mid2key(t *testing.T) {
-	id := MId(9876)
+	id := uint16(9876)
 	exp := "i.9876"
 	res := ibound_mid2key(id)
 	if exp != res {
@@ -69,7 +71,7 @@ func Test_ibound_mid2key(t *testing.T) {
 }
 
 func Test_obound_mid2key(t *testing.T) {
-	id := MId(7654)
+	id := uint16(7654)
 	exp := "o.7654"
 	res := obound_mid2key(id)
 	if exp != res {
@@ -83,7 +85,12 @@ func Test_obound_mid2key(t *testing.T) {
 
 func Test_persist_obound_connect(t *testing.T) {
 	ts := &TestStore{}
-	m := newConnectMsg(false, false, QOS_ZERO, false, "", nil, "cid", "user", "pass", 10)
+	m := NewControlPacket(CONNECT).(*ConnectPacket)
+	m.Qos = 0
+	m.Username = "user"
+	m.Password = []byte("pass")
+	m.ClientIdentifier = "cid"
+	//m := newConnectMsg(false, false, QOS_ZERO, false, "", nil, "cid", "user", "pass", 10)
 	persist_obound(ts, m)
 
 	if len(ts.mput) != 0 {
@@ -101,8 +108,11 @@ func Test_persist_obound_connect(t *testing.T) {
 
 func Test_persist_obound_publish_0(t *testing.T) {
 	ts := &TestStore{}
-	m := newPublishMsg(QOS_ZERO, "/popub0", []byte{0xBB, 0x00})
-	m.setMsgId(40)
+	m := NewControlPacket(PUBLISH).(*PublishPacket)
+	m.Qos = 0
+	m.TopicName = "/popub0"
+	m.Payload = []byte{0xBB, 0x00}
+	m.MessageID = 40
 	persist_obound(ts, m)
 
 	if len(ts.mput) != 0 {
@@ -120,8 +130,11 @@ func Test_persist_obound_publish_0(t *testing.T) {
 
 func Test_persist_obound_publish_1(t *testing.T) {
 	ts := &TestStore{}
-	m := newPublishMsg(QOS_ONE, "/popub1", []byte{0xBB, 0x01})
-	m.setMsgId(41)
+	m := NewControlPacket(PUBLISH).(*PublishPacket)
+	m.Qos = 1
+	m.TopicName = "/popub1"
+	m.Payload = []byte{0xBB, 0x00}
+	m.MessageID = 41
 	persist_obound(ts, m)
 
 	if len(ts.mput) != 1 || ts.mput[0] != 41 {
@@ -139,8 +152,11 @@ func Test_persist_obound_publish_1(t *testing.T) {
 
 func Test_persist_obound_publish_2(t *testing.T) {
 	ts := &TestStore{}
-	m := newPublishMsg(QOS_TWO, "/popub2", []byte{0xBB, 0x02})
-	m.setMsgId(42)
+	m := NewControlPacket(PUBLISH).(*PublishPacket)
+	m.Qos = 2
+	m.TopicName = "/popub2"
+	m.Payload = []byte{0xBB, 0x00}
+	m.MessageID = 42
 	persist_obound(ts, m)
 
 	if len(ts.mput) != 1 || ts.mput[0] != 42 {
@@ -158,7 +174,7 @@ func Test_persist_obound_publish_2(t *testing.T) {
 
 func Test_persist_obound_puback(t *testing.T) {
 	ts := &TestStore{}
-	m := newMsg(PUBACK, false, QOS_ZERO, false)
+	m := NewControlPacket(PUBACK).(*PubackPacket)
 	persist_obound(ts, m)
 
 	if len(ts.mput) != 0 {
@@ -176,7 +192,7 @@ func Test_persist_obound_puback(t *testing.T) {
 
 func Test_persist_obound_pubrec(t *testing.T) {
 	ts := &TestStore{}
-	m := newMsg(PUBREC, false, QOS_ZERO, false)
+	m := NewControlPacket(PUBREC).(*PubrecPacket)
 	persist_obound(ts, m)
 
 	if len(ts.mput) != 0 {
@@ -194,8 +210,8 @@ func Test_persist_obound_pubrec(t *testing.T) {
 
 func Test_persist_obound_pubrel(t *testing.T) {
 	ts := &TestStore{}
-	m := newPubRelMsg()
-	m.setMsgId(43)
+	m := NewControlPacket(PUBREL).(*PubrelPacket)
+	m.MessageID = 43
 
 	persist_obound(ts, m)
 
@@ -214,7 +230,7 @@ func Test_persist_obound_pubrel(t *testing.T) {
 
 func Test_persist_obound_pubcomp(t *testing.T) {
 	ts := &TestStore{}
-	m := newMsg(PUBCOMP, false, QOS_ZERO, false)
+	m := NewControlPacket(PUBCOMP).(*PubcompPacket)
 	persist_obound(ts, m)
 
 	if len(ts.mput) != 0 {
@@ -232,9 +248,10 @@ func Test_persist_obound_pubcomp(t *testing.T) {
 
 func Test_persist_obound_subscribe(t *testing.T) {
 	ts := &TestStore{}
-	filter, _ := NewTopicFilter("/posub", 1)
-	m := newSubscribeMsg(filter)
-	m.setMsgId(44)
+	m := NewControlPacket(SUBSCRIBE).(*SubscribePacket)
+	m.Topics = []string{"/posub"}
+	m.Qoss = []byte{1}
+	m.MessageID = 44
 	persist_obound(ts, m)
 
 	if len(ts.mput) != 1 || ts.mput[0] != 44 {
@@ -252,8 +269,9 @@ func Test_persist_obound_subscribe(t *testing.T) {
 
 func Test_persist_obound_unsubscribe(t *testing.T) {
 	ts := &TestStore{}
-	m := newUnsubscribeMsg("/posub")
-	m.setMsgId(45)
+	m := NewControlPacket(UNSUBSCRIBE).(*UnsubscribePacket)
+	m.Topics = []string{"/posub"}
+	m.MessageID = 45
 	persist_obound(ts, m)
 
 	if len(ts.mput) != 1 || ts.mput[0] != 45 {
@@ -271,7 +289,7 @@ func Test_persist_obound_unsubscribe(t *testing.T) {
 
 func Test_persist_obound_pingreq(t *testing.T) {
 	ts := &TestStore{}
-	m := newPingReqMsg()
+	m := NewControlPacket(PINGREQ)
 	persist_obound(ts, m)
 
 	if len(ts.mput) != 0 {
@@ -289,7 +307,7 @@ func Test_persist_obound_pingreq(t *testing.T) {
 
 func Test_persist_obound_disconnect(t *testing.T) {
 	ts := &TestStore{}
-	m := newDisconnectMsg()
+	m := NewControlPacket(DISCONNECT)
 	persist_obound(ts, m)
 
 	if len(ts.mput) != 0 {
@@ -311,7 +329,7 @@ func Test_persist_obound_disconnect(t *testing.T) {
 
 func Test_persist_ibound_connack(t *testing.T) {
 	ts := &TestStore{}
-	m := newMsg(CONNACK, false, QOS_ZERO, false)
+	m := NewControlPacket(CONNACK)
 	persist_ibound(ts, m)
 
 	if len(ts.mput) != 0 {
@@ -329,8 +347,11 @@ func Test_persist_ibound_connack(t *testing.T) {
 
 func Test_persist_ibound_publish_0(t *testing.T) {
 	ts := &TestStore{}
-	m := newPublishMsg(QOS_ZERO, "/pipub0", []byte{0xCC, 0x01})
-	m.setMsgId(50)
+	m := NewControlPacket(PUBLISH).(*PublishPacket)
+	m.Qos = 0
+	m.TopicName = "/pipub0"
+	m.Payload = []byte{0xCC, 0x01}
+	m.MessageID = 50
 	persist_ibound(ts, m)
 
 	if len(ts.mput) != 0 {
@@ -348,8 +369,11 @@ func Test_persist_ibound_publish_0(t *testing.T) {
 
 func Test_persist_ibound_publish_1(t *testing.T) {
 	ts := &TestStore{}
-	m := newPublishMsg(QOS_ONE, "/pipub1", []byte{0xCC, 0x02})
-	m.setMsgId(51)
+	m := NewControlPacket(PUBLISH).(*PublishPacket)
+	m.Qos = 1
+	m.TopicName = "/pipub1"
+	m.Payload = []byte{0xCC, 0x02}
+	m.MessageID = 51
 	persist_ibound(ts, m)
 
 	if len(ts.mput) != 1 || ts.mput[0] != 51 {
@@ -367,8 +391,11 @@ func Test_persist_ibound_publish_1(t *testing.T) {
 
 func Test_persist_ibound_publish_2(t *testing.T) {
 	ts := &TestStore{}
-	m := newPublishMsg(QOS_TWO, "/pipub2", []byte{0xCC, 0x03})
-	m.setMsgId(52)
+	m := NewControlPacket(PUBLISH).(*PublishPacket)
+	m.Qos = 2
+	m.TopicName = "/pipub2"
+	m.Payload = []byte{0xCC, 0x03}
+	m.MessageID = 52
 	persist_ibound(ts, m)
 
 	if len(ts.mput) != 1 || ts.mput[0] != 52 {
@@ -386,13 +413,16 @@ func Test_persist_ibound_publish_2(t *testing.T) {
 
 func Test_persist_ibound_puback(t *testing.T) {
 	ts := &TestStore{}
-	pub := newPublishMsg(QOS_ONE, "/pub1", []byte{0xCC, 0x04})
-	pub.setMsgId(53)
-	publish_key := ibound_mid2key(pub.MsgId())
+	pub := NewControlPacket(PUBLISH).(*PublishPacket)
+	pub.Qos = 1
+	pub.TopicName = "/pub1"
+	pub.Payload = []byte{0xCC, 0x04}
+	pub.MessageID = 53
+	publish_key := ibound_mid2key(pub.MessageID)
 	ts.Put(publish_key, pub)
 
-	m := newPubAckMsg()
-	m.setMsgId(53)
+	m := NewControlPacket(PUBACK).(*PubackPacket)
+	m.MessageID = 53
 
 	persist_ibound(ts, m) // "deletes" PUBLISH from store
 
@@ -411,13 +441,16 @@ func Test_persist_ibound_puback(t *testing.T) {
 
 func Test_persist_ibound_pubrec(t *testing.T) {
 	ts := &TestStore{}
-	pub := newPublishMsg(QOS_TWO, "/pub2", []byte{0xCC, 0x05})
-	pub.setMsgId(54)
-	publish_key := ibound_mid2key(pub.MsgId())
+	pub := NewControlPacket(PUBLISH).(*PublishPacket)
+	pub.Qos = 2
+	pub.TopicName = "/pub2"
+	pub.Payload = []byte{0xCC, 0x05}
+	pub.MessageID = 54
+	publish_key := ibound_mid2key(pub.MessageID)
 	ts.Put(publish_key, pub)
 
-	m := newPubRecMsg()
-	m.setMsgId(54)
+	m := NewControlPacket(PUBREC).(*PubrecPacket)
+	m.MessageID = 54
 
 	persist_ibound(ts, m)
 
@@ -436,13 +469,16 @@ func Test_persist_ibound_pubrec(t *testing.T) {
 
 func Test_persist_ibound_pubrel(t *testing.T) {
 	ts := &TestStore{}
-	pub := newPublishMsg(QOS_TWO, "/pub2", []byte{0xCC, 0x06})
-	pub.setMsgId(55)
-	publish_key := ibound_mid2key(pub.MsgId())
+	pub := NewControlPacket(PUBLISH).(*PublishPacket)
+	pub.Qos = 2
+	pub.TopicName = "/pub2"
+	pub.Payload = []byte{0xCC, 0x06}
+	pub.MessageID = 55
+	publish_key := ibound_mid2key(pub.MessageID)
 	ts.Put(publish_key, pub)
 
-	m := newPubRelMsg()
-	m.setMsgId(55)
+	m := NewControlPacket(PUBREL).(*PubrelPacket)
+	m.MessageID = 55
 
 	persist_ibound(ts, m) // will overwrite publish
 
@@ -462,8 +498,8 @@ func Test_persist_ibound_pubrel(t *testing.T) {
 func Test_persist_ibound_pubcomp(t *testing.T) {
 	ts := &TestStore{}
 
-	m := newPubCompMsg()
-	m.setMsgId(56)
+	m := NewControlPacket(PUBCOMP).(*PubcompPacket)
+	m.MessageID = 56
 
 	persist_ibound(ts, m)
 
@@ -483,8 +519,8 @@ func Test_persist_ibound_pubcomp(t *testing.T) {
 func Test_persist_ibound_suback(t *testing.T) {
 	ts := &TestStore{}
 
-	m := newSubackMsg()
-	m.setMsgId(57)
+	m := NewControlPacket(SUBACK).(*SubackPacket)
+	m.MessageID = 57
 
 	persist_ibound(ts, m)
 
@@ -504,8 +540,8 @@ func Test_persist_ibound_suback(t *testing.T) {
 func Test_persist_ibound_unsuback(t *testing.T) {
 	ts := &TestStore{}
 
-	m := newUnsubackMsg()
-	m.setMsgId(58)
+	m := NewControlPacket(UNSUBACK).(*UnsubackPacket)
+	m.MessageID = 58
 
 	persist_ibound(ts, m)
 
@@ -524,7 +560,7 @@ func Test_persist_ibound_unsuback(t *testing.T) {
 
 func Test_persist_ibound_pingresp(t *testing.T) {
 	ts := &TestStore{}
-	m := newMsg(PINGRESP, false, QOS_ZERO, false)
+	m := NewControlPacket(PINGRESP)
 
 	persist_ibound(ts, m)
 

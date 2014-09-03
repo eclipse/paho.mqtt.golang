@@ -15,6 +15,7 @@
 package mqtt
 
 import (
+	. "github.com/alsm/hrotti/packets"
 	"testing"
 )
 
@@ -259,9 +260,12 @@ func Test_MatchAndDispatch(t *testing.T) {
 		calledback <- true
 	}
 
-	pub := newPublishMsg(QOS_TWO, "a", []byte("foo"))
+	pub := NewControlPacket(PUBLISH).(*PublishPacket)
+	pub.Qos = 2
+	pub.TopicName = "a"
+	pub.Payload = []byte("foo")
 
-	msgs := make(chan *Message)
+	msgs := make(chan *PublishPacket)
 
 	router, stopper := newRouter()
 	router.addRoute("a", cb)

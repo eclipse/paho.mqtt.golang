@@ -15,6 +15,7 @@
 package mqtt
 
 import (
+	. "github.com/alsm/hrotti/packets"
 	"io"
 	"io/ioutil"
 	"os"
@@ -78,7 +79,7 @@ func (store *FileStore) Close() {
 
 // Put will put a message into the store, associated with the provided
 // key value.
-func (store *FileStore) Put(key string, m *Message) {
+func (store *FileStore) Put(key string, m ControlPacket) {
 	store.Lock()
 	defer store.Unlock()
 	chkcond(store.opened)
@@ -93,7 +94,7 @@ func (store *FileStore) Put(key string, m *Message) {
 
 // Get will retrieve a message from the store, the one associated with
 // the provided key value.
-func (store *FileStore) Get(key string) (m *Message) {
+func (store *FileStore) Get(key string) ControlPacket {
 	store.RLock()
 	defer store.RUnlock()
 	chkcond(store.opened)
@@ -103,9 +104,10 @@ func (store *FileStore) Get(key string) (m *Message) {
 	}
 	mfile, oerr := os.Open(filepath)
 	chkerr(oerr)
-	all, rerr := ioutil.ReadAll(mfile)
+	//all, rerr := ioutil.ReadAll(mfile)
+	//chkerr(rerr)
+	msg, rerr := ReadPacket(mfile)
 	chkerr(rerr)
-	msg := decode(all)
 	cerr := mfile.Close()
 	chkerr(cerr)
 	return msg
@@ -183,11 +185,11 @@ func bkppath(store string, key string) string {
 // if a message with m's message id already exists, it will
 // be overwritten
 // X will be 'i' for inbound messages, and O for outbound messages
-func write(store, key string, m *Message) {
+func write(store, key string, m ControlPacket) {
 	filepath := fullpath(store, key)
 	f, err := os.Create(filepath)
 	chkerr(err)
-	_, werr := f.Write(m.Bytes())
+	werr := m.Write(f)
 	chkerr(werr)
 	cerr := f.Close()
 	chkerr(cerr)

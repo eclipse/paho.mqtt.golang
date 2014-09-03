@@ -17,6 +17,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	//"log"
 	"os"
 	"os/signal"
 	"strconv"
@@ -32,6 +33,8 @@ func onMessageReceived(client *MQTT.MqttClient, message MQTT.Message) {
 }
 
 func main() {
+	//MQTT.DEBUG = log.New(os.Stdout, "", 0)
+	//MQTT.ERROR = log.New(os.Stdout, "", 0)
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func() {
@@ -45,7 +48,6 @@ func main() {
 	server := flag.String("server", "tcp://127.0.0.1:1883", "The full url of the MQTT server to connect to ex: tcp://127.0.0.1:1883")
 	topic := flag.String("topic", "#", "Topic to subscribe to")
 	qos := flag.Int("qos", 0, "The QoS to subscribe to messages at")
-	//retained := flag.Bool("retained", false, "Are the messages sent with the retained flag")
 	clientid := flag.String("clientid", hostname+strconv.Itoa(time.Now().Second()), "A clientid for the connection")
 	username := flag.String("username", "", "A username to authenticate to the MQTT server")
 	password := flag.String("password", "", "Password to match username")
@@ -67,12 +69,10 @@ func main() {
 		fmt.Printf("Connected to %s\n", *server)
 	}
 
-	filter, e := MQTT.NewTopicFilter(*topic, byte(*qos))
-	if e != nil {
-		fmt.Println(e)
-		os.Exit(1)
+	err = client.Subscribe(*topic, byte(*qos), onMessageReceived)
+	if err != nil {
+		panic(err)
 	}
-	client.StartSubscription(onMessageReceived, filter)
 
 	for {
 		time.Sleep(1 * time.Second)
