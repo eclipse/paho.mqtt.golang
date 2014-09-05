@@ -87,9 +87,11 @@ func newConnectMsgFromOptions(options ClientOptions) *ConnectPacket {
 	}
 
 	if options.username != "" {
+		m.UsernameFlag = true
 		m.Username = options.username
 		//mustn't have password without user as well
 		if options.password != "" {
+			m.PasswordFlag = true
 			m.Password = []byte(options.password)
 		}
 	}
