@@ -34,28 +34,29 @@ type OnConnectionLost func(client *MqttClient, reason error)
 
 // ClientOptions contains configurable options for an MqttClient.
 type ClientOptions struct {
-	servers         []*url.URL
-	clientId        string
-	username        string
-	password        string
-	cleanSession    bool
-	order           bool
-	willEnabled     bool
-	willTopic       string
-	willPayload     []byte
-	willQos         byte
-	willRetained    bool
-	maxInflight     uint
-	protocolVersion uint
-	tlsConfig       *tls.Config
-	keepAlive       uint
-	store           Store
-	msgRouter       *router
-	stopRouter      chan bool
-	incomingPubChan chan *PublishPacket
-	onconnlost      OnConnectionLost
-	mids            messageIds
-	writeTimeout    time.Duration
+	servers                 []*url.URL
+	clientId                string
+	username                string
+	password                string
+	cleanSession            bool
+	order                   bool
+	willEnabled             bool
+	willTopic               string
+	willPayload             []byte
+	willQos                 byte
+	willRetained            bool
+	maxInflight             uint
+	protocolVersion         uint
+	protocolVersionExplicit bool
+	tlsConfig               *tls.Config
+	keepAlive               uint
+	store                   Store
+	msgRouter               *router
+	stopRouter              chan bool
+	incomingPubChan         chan *PublishPacket
+	onconnlost              OnConnectionLost
+	mids                    messageIds
+	writeTimeout            time.Duration
 }
 
 // NewClientClientOptions will create a new ClientClientOptions type with some
@@ -174,6 +175,14 @@ func (opts *ClientOptions) SetStore(store Store) *ClientOptions {
 // server.
 func (opts *ClientOptions) SetKeepAlive(keepAlive uint) *ClientOptions {
 	opts.keepAlive = keepAlive
+	return opts
+}
+
+// SetProtocolVersion sets the MQTT version to be used to connect to the
+// broker. Legitimate values are currently 3 - MQTT 3.1 or 4 - MQTT 3.1.1
+func (opts *ClientOptions) SetProtocolVersion(protocolVersion uint) *ClientOptions {
+	opts.protocolVersion = protocolVersion
+	opts.protocolVersionExplicit = true
 	return opts
 }
 

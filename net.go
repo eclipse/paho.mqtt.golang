@@ -18,7 +18,6 @@ import (
 	"code.google.com/p/go.net/websocket"
 	"crypto/tls"
 	. "github.com/alsm/hrotti/packets"
-	//"io"
 	"net"
 	"net/url"
 	"reflect"
@@ -45,30 +44,6 @@ func openConnection(uri *url.URL, tlsc *tls.Config) (conn net.Conn, err error) {
 	return
 }
 
-// This function is only used for receiving a connack
-// when the connection is first started.
-// This prevents receiving incoming data while resume
-// is in progress if clean session is false.
-func connect(c *MqttClient) byte {
-	DEBUG.Println(NET, "connect started")
-
-	ca, err := ReadPacket(c.conn)
-	if err != nil {
-		ERROR.Println(NET, "connect got error", err)
-		c.errors <- err
-		return CONN_NETWORK_ERROR
-	}
-	msg := ca.(*ConnackPacket)
-
-	if msg == nil || msg.FixedHeader.MessageType != CONNACK {
-		close(c.begin)
-		ERROR.Println(NET, "received msg that was nil or not CONNACK")
-	} else {
-		DEBUG.Println(NET, "received connack")
-	}
-	return msg.ReturnCode
-}
-
 // actually read incoming messages off the wire
 // send Message object into ibound channel
 func incoming(c *MqttClient) {
@@ -84,38 +59,6 @@ func incoming(c *MqttClient) {
 		}
 		DEBUG.Println(NET, "Received Message")
 		c.ibound <- cp
-
-		// var rerr error
-		// var msg *Message
-		// msgType := make([]byte, 1)
-		// DEBUG.Println(NET, "incoming waiting for network data")
-		// msgType[0], rerr = c.bufferedConn.ReadByte()
-		// if rerr != nil {
-		// 	err = rerr
-		// 	break
-		// }
-		// bytes, remLen := decodeRemlenFromNetwork(c.bufferedConn)
-		// fixedHeader := make([]byte, len(bytes)+1)
-		// copy(fixedHeader, append(msgType, bytes...))
-		// if remLen > 0 {
-		// 	data := make([]byte, remLen)
-		// 	DEBUG.Println(NET, remLen, "more incoming bytes to read")
-		// 	_, rerr = io.ReadFull(c.bufferedConn, data)
-		// 	if rerr != nil {
-		// 		err = rerr
-		// 		break
-		// 	}
-		// 	DEBUG.Println(NET, "data:", data)
-		// 	msg = decode(append(fixedHeader, data...))
-		// } else {
-		// 	msg = decode(fixedHeader)
-		// }
-		// if msg != nil {
-		// 	DEBUG.Println(NET, "incoming received inbound message, type", msg.msgType())
-		// 	c.ibound <- msg
-		// } else {
-		// 	CRITICAL.Println(NET, "incoming msg was nil")
-		// }
 	}
 	// We received an error on read.
 	// If disconnect is in progress, swallow error and return

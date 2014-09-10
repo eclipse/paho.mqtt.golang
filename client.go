@@ -17,7 +17,6 @@ package mqtt
 
 import (
 	"bufio"
-	"errors"
 	. "github.com/alsm/hrotti/packets"
 	"net"
 	"sync"
@@ -56,15 +55,13 @@ type Client interface {
 // and then supplying a ClientOptions type.
 type MqttClient struct {
 	sync.RWMutex
-	conn         net.Conn
-	bufferedConn *bufio.ReadWriter
-	ibound       chan ControlPacket
-	obound       chan *PublishPacket
-	oboundP      chan ControlPacket
-	begin        chan byte
-	errors       chan error
-	stop         chan struct{}
-	//receipts        *receiptMap
+	conn            net.Conn
+	bufferedConn    *bufio.ReadWriter
+	ibound          chan ControlPacket
+	obound          chan *PublishPacket
+	oboundP         chan ControlPacket
+	errors          chan error
+	stop            chan struct{}
 	persist         Store
 	options         ClientOptions
 	lastContact     lastcontact
@@ -101,13 +98,45 @@ func (c *MqttClient) IsConnected() bool {
 // If clean session is true, then any existing client
 // state will be removed.
 func (c *MqttClient) Start() ([]Receipt, error) {
+	var err error
+	var rc byte
 	DEBUG.Println(CLI, "Start()")
 
+	cm := newConnectMsgFromOptions(c.options)
+
 	for _, broker := range c.options.servers {
-		conn, err := openConnection(broker, c.options.tlsConfig)
+	CONN:
+		c.conn, err = openConnection(broker, c.options.tlsConfig)
 		if err == nil {
-			c.conn = conn
-			DEBUG.Println(CLI, "connected to broker")
+			DEBUG.Println(CLI, "socket connected to broker")
+			switch c.options.protocolVersion {
+			case 3:
+				DEBUG.Println(CLI, "Using MQTT 3.1 protocol")
+				cm.ProtocolName = "MQIsdp"
+				cm.ProtocolVersion = 3
+			default:
+				DEBUG.Println(CLI, "Using MQTT 3.1.1 protocol")
+				c.options.protocolVersion = 4
+				cm.ProtocolName = "MQTT"
+				cm.ProtocolVersion = 4
+			}
+			cm.Write(c.conn)
+
+			rc = c.connect()
+			if rc != CONN_ACCEPTED {
+				c.conn.Close()
+				c.conn = nil
+				//if the protocol version was explicitly set don't do any fallback
+				if c.options.protocolVersionExplicit {
+					ERROR.Println(CLI, "Connecting to", broker, "CONNACK was not CONN_ACCEPTED, but rather", ConnackReturnCodes[rc])
+					continue
+				}
+				if c.options.protocolVersion == 4 {
+					DEBUG.Println(CLI, "Trying reconnect using MQTT 3.1 protocol")
+					c.options.protocolVersion = 3
+					goto CONN
+				}
+			}
 			break
 		} else {
 			WARN.Println(CLI, "failed to connect to broker, trying next")
@@ -116,9 +145,11 @@ func (c *MqttClient) Start() ([]Receipt, error) {
 
 	if c.conn == nil {
 		ERROR.Println(CLI, "Failed to connect to a broker")
-		return nil, errors.New("Failed to connect to a broker")
+		return nil, connErrors[rc]
 	}
 	c.bufferedConn = bufio.NewReadWriter(bufio.NewReader(c.conn), bufio.NewWriter(c.conn))
+
+	DEBUG.Println(CLI, "about to write new connect msg")
 
 	c.persist.Open()
 	//c.receipts = newReceiptMap()
@@ -134,21 +165,6 @@ func (c *MqttClient) Start() ([]Receipt, error) {
 
 	go outgoing(c)
 	go alllogic(c)
-
-	cm := newConnectMsgFromOptions(c.options)
-	cm.ProtocolName = "MQIsdp"
-	cm.ProtocolVersion = 3
-	DEBUG.Println(CLI, "about to write new connect msg")
-	c.oboundP <- cm
-
-	rc := connect(c)
-	if rc != CONN_ACCEPTED {
-		CRITICAL.Println(CLI, "CONNACK was not CONN_ACCEPTED, but rather", ConnackReturnCodes[rc])
-		// Stop all go routines except outgoing
-		close(c.stop)
-		c.conn.Close()
-		return nil, connErrors[rc]
-	}
 
 	c.options.incomingPubChan = make(chan *PublishPacket, 100)
 	c.options.msgRouter.matchAndDispatch(c.options.incomingPubChan, c.options.order, c)
@@ -178,6 +194,29 @@ func (c *MqttClient) Start() ([]Receipt, error) {
 		c.conn.Close()
 	}
 	return leftovers, connErrors[rc]
+}
+
+// This function is only used for receiving a connack
+// when the connection is first started.
+// This prevents receiving incoming data while resume
+// is in progress if clean session is false.
+func (c *MqttClient) connect() byte {
+	DEBUG.Println(NET, "connect started")
+
+	ca, err := ReadPacket(c.conn)
+	if err != nil {
+		ERROR.Println(NET, "connect got error", err)
+		//c.errors <- err
+		return CONN_NETWORK_ERROR
+	}
+	msg := ca.(*ConnackPacket)
+
+	if msg == nil || msg.FixedHeader.MessageType != CONNACK {
+		ERROR.Println(NET, "received msg that was nil or not CONNACK")
+	} else {
+		DEBUG.Println(NET, "received connack")
+	}
+	return msg.ReturnCode
 }
 
 // Disconnect will end the connection with the server, but not before waiting
