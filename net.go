@@ -56,19 +56,22 @@ func connect(c *MqttClient) (rc ConnRC) {
 	_, err := io.ReadFull(c.bufferedConn, ca)
 	if err != nil {
 		ERROR.Println(NET, "connect got error")
-		c.errors <- err
+		select {
+		case c.errors <- err:
+		default:
+			// c.errors is a buffer of one, so there must already be an error closing this connection.
+		}
 		return
 	}
 	msg := decode(ca)
 
 	if msg == nil || msg.msgType() != CONNACK {
-		close(c.begin)
 		ERROR.Println(NET, "received msg that was nil or not CONNACK")
-	} else {
-		DEBUG.Println(NET, "received connack")
-		rc = msg.connRC()
+		return
 	}
-	return
+
+	DEBUG.Println(NET, "received connack")
+	return msg.connRC()
 }
 
 // actually read incoming messages off the wire
@@ -121,7 +124,11 @@ func incoming(c *MqttClient) {
 		// Not trying to disconnect, send the error to the errors channel
 	default:
 		ERROR.Println(NET, "incoming stopped with error")
-		c.errors <- err
+		select {
+		case c.errors <- err:
+		default:
+			// c.errors is a buffer of one, so there must already be an error closing this connection.
+		}
 		return
 	}
 }
@@ -154,7 +161,11 @@ func outgoing(c *MqttClient) {
 
 			if _, err := c.conn.Write(msg.Bytes()); err != nil {
 				ERROR.Println(NET, "outgoing stopped with error")
-				c.errors <- err
+				select {
+				case c.errors <- err:
+				default:
+					// c.errors is a buffer of one, so there must already be an error closing this connection.
+				}
 				return
 			}
 
@@ -177,7 +188,11 @@ func outgoing(c *MqttClient) {
 			_, err := c.conn.Write(msg.Bytes())
 			if err != nil {
 				ERROR.Println(NET, "outgoing stopped with error")
-				c.errors <- err
+				select {
+				case c.errors <- err:
+				default:
+					// c.errors is a buffer of one, so there must already be an error closing this connection.
+				}
 				return
 			}
 			c.lastContact.update()
@@ -249,7 +264,11 @@ func alllogic(c *MqttClient) {
 						// select can handle it appropriately.
 						if ok {
 							go func(errVal error, errChan chan error) {
-								errChan <- errVal
+								select {
+								case errChan <- errVal:
+								default:
+									// c.errors is a buffer of one, so there must already be an error closing this connection.
+								}
 							}(err, c.errors)
 						}
 					}

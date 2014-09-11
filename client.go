@@ -48,7 +48,6 @@ type MqttClient struct {
 	ibound          chan *Message
 	obound          chan sendable
 	oboundP         chan *Message
-	begin           chan ConnRC
 	errors          chan error
 	stop            chan struct{}
 	receipts        *receiptMap
@@ -116,7 +115,7 @@ func (c *MqttClient) Start() ([]Receipt, error) {
 	c.obound = make(chan sendable)
 	c.ibound = make(chan *Message)
 	c.oboundP = make(chan *Message)
-	c.errors = make(chan error)
+	c.errors = make(chan error, 1) // all we need is one error to trigger alllogic to clean up
 	c.stop = make(chan struct{})
 
 	go outgoing(c)
@@ -127,11 +126,14 @@ func (c *MqttClient) Start() ([]Receipt, error) {
 	c.oboundP <- cm
 
 	rc := connect(c)
-	if rc != CONN_ACCEPTED {
+	if chkrc(rc) != nil {
 		CRITICAL.Println(CLI, "CONNACK was not CONN_ACCEPTED, but rather", rc2str(rc))
-		// Stop all go routines except outgoing
-		close(c.stop)
-		c.conn.Close()
+		err := errors.New("CONNACK was not CONN_ACCEPTED, but rather " + rc2str(rc))
+		select {
+		case c.errors <- err:
+		default:
+			// c.errors is a buffer of one, so there must already be an error closing this connection.
+		}
 		return nil, chkrc(rc)
 	}
 
@@ -157,12 +159,7 @@ func (c *MqttClient) Start() ([]Receipt, error) {
 	go incoming(c)
 
 	DEBUG.Println(CLI, "exit startMqttClient")
-	if chkrc(rc) != nil {
-		// Cleanup before returning.
-		close(c.stop)
-		c.conn.Close()
-	}
-	return leftovers, chkrc(rc)
+	return leftovers, nil
 }
 
 // Disconnect will end the connection with the server, but not before waiting
