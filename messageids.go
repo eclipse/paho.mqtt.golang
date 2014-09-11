@@ -25,8 +25,6 @@ type MId uint16
 
 type messageIds struct {
 	sync.RWMutex
-	//idChan chan uint16
-	//idCounter uint16
 	index map[uint16]Token
 }
 
@@ -34,23 +32,6 @@ const (
 	MId_MAX uint16 = 65535
 	MId_MIN uint16 = 1
 )
-
-// func (mids *messageIds) generateMsgIds() {
-// 	mids.idChan = make(chan uint16, 10)
-// 	go func() {
-// 		for {
-// 			mids.Lock()
-// 			for i := MId_MIN; i < MId_MAX; i++ {
-// 				if !mids.index[i] {
-// 					mids.index[i] = true
-// 					mids.Unlock()
-// 					mids.idChan <- i
-// 					break
-// 				}
-// 			}
-// 		}
-// 	}()
-// }
 
 func (mids *messageIds) freeId(id uint16) {
 	mids.Lock()
