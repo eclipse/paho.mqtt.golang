@@ -54,7 +54,7 @@ func keepalive(c *MqttClient) {
 				if !c.pingOutstanding {
 					DEBUG.Println(PNG, "keepalive sending ping")
 					ping := NewControlPacket(PINGREQ).(*PingreqPacket)
-					c.oboundP <- ping
+					c.oboundP <- &PacketAndToken{p: ping, t: nil}
 					c.pingOutstanding = true
 				} else {
 					CRITICAL.Println(PNG, "pingresp not received, disconnecting")

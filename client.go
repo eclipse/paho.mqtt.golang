@@ -29,10 +29,10 @@ type Client interface {
 	Disconnect(uint)
 	ForceDisconnect()
 	disconnect()
-	Publish(string, byte, bool, interface{})
-	Subscribe(string, byte, MessageHandler) error
-	SubscribeMultiple(map[string]byte, MessageHandler) error
-	Unsubscribe(...string) error
+	Publish(string, byte, bool, interface{}) Token
+	Subscribe(string, byte, MessageHandler) (Token, error)
+	SubscribeMultiple(map[string]byte, MessageHandler) (Token, error)
+	Unsubscribe(...string) (Token, error)
 }
 
 // MqttClient is a lightweight MQTT v3.1 Client for communicating
@@ -55,11 +55,12 @@ type Client interface {
 // and then supplying a ClientOptions type.
 type MqttClient struct {
 	sync.RWMutex
+	messageIds
 	conn            net.Conn
 	bufferedConn    *bufio.ReadWriter
 	ibound          chan ControlPacket
-	obound          chan *PublishPacket
-	oboundP         chan ControlPacket
+	obound          chan *PacketAndToken
+	oboundP         chan *PacketAndToken
 	errors          chan error
 	stop            chan struct{}
 	persist         Store
@@ -82,6 +83,7 @@ func NewClient(ops *ClientOptions) *MqttClient {
 	}
 	c.persist = c.options.store
 	c.connected = false
+	c.messageIds = messageIds{index: make(map[uint16]Token)}
 	return c
 }
 
@@ -152,14 +154,10 @@ func (c *MqttClient) Start() ([]Receipt, error) {
 	DEBUG.Println(CLI, "about to write new connect msg")
 
 	c.persist.Open()
-	//c.receipts = newReceiptMap()
 
-	DEBUG.Println(CLI, "about to start generateMsgIds")
-	c.options.mids.generateMsgIds()
-
-	c.obound = make(chan *PublishPacket)
+	c.obound = make(chan *PacketAndToken)
+	c.oboundP = make(chan *PacketAndToken)
 	c.ibound = make(chan ControlPacket)
-	c.oboundP = make(chan ControlPacket)
 	c.errors = make(chan error)
 	c.stop = make(chan struct{})
 
@@ -258,7 +256,7 @@ func (c *MqttClient) disconnect() {
 	dm := NewControlPacket(DISCONNECT).(*DisconnectPacket)
 
 	// Send disconnect message and stop outgoing
-	c.oboundP <- dm
+	c.oboundP <- &PacketAndToken{p: dm, t: nil}
 	// Stop all go routines
 	close(c.stop)
 
@@ -270,7 +268,7 @@ func (c *MqttClient) disconnect() {
 // and content to the specified topic.
 // Returns a read only channel used to track
 // the delivery of the message.
-func (c *MqttClient) Publish(topic string, qos byte, retained bool, payload interface{}) {
+func (c *MqttClient) Publish(topic string, qos byte, retained bool, payload interface{}) Token {
 	pub := NewControlPacket(PUBLISH).(*PublishPacket)
 	pub.Qos = qos
 	pub.TopicName = topic
@@ -284,45 +282,49 @@ func (c *MqttClient) Publish(topic string, qos byte, retained bool, payload inte
 	}
 
 	DEBUG.Println(CLI, "sending publish message, topic:", topic)
-	c.obound <- pub
+	token := newToken(PUBLISH)
+	c.obound <- &PacketAndToken{p: pub, t: token}
+	return token
 }
 
 // Start a new subscription. Provide a MessageHandler to be executed when
 // a message is published on the topic provided.
-func (c *MqttClient) Subscribe(topic string, qos byte, callback MessageHandler) error {
+func (c *MqttClient) Subscribe(topic string, qos byte, callback MessageHandler) (Token, error) {
 	var err error
 	DEBUG.Println(CLI, "enter Subscribe")
 	if !c.IsConnected() {
-		return ErrNotConnected
+		return nil, ErrNotConnected
 	}
-	s := NewControlPacket(SUBSCRIBE).(*SubscribePacket)
-	DEBUG.Println(s.String())
+	sub := NewControlPacket(SUBSCRIBE).(*SubscribePacket)
+	DEBUG.Println(sub.String())
 	if err = validateTopicAndQos(topic, qos); err != nil {
-		return err
+		return nil, err
 	}
-	s.Topics = append(s.Topics, topic)
-	s.Qoss = append(s.Qoss, qos)
+	sub.Topics = append(sub.Topics, topic)
+	sub.Qoss = append(sub.Qoss, qos)
 
 	if callback != nil {
 		c.options.msgRouter.addRoute(topic, callback)
 	}
 
-	c.oboundP <- s
+	token := newToken(SUBSCRIBE).(*SubscribeToken)
+	token.subs = append(token.subs, topic)
+	c.oboundP <- &PacketAndToken{p: sub, t: token}
 	DEBUG.Println(CLI, "exit Subscribe")
-	return nil
+	return token, nil
 }
 
 // Start a new subscription for multiple topics. Provide a MessageHandler to
 // be executed when a message is published on one of the topics provided.
-func (c *MqttClient) SubscribeMultiple(filters map[string]byte, callback MessageHandler) error {
+func (c *MqttClient) SubscribeMultiple(filters map[string]byte, callback MessageHandler) (Token, error) {
 	var err error
 	DEBUG.Println(CLI, "enter SubscribeMultiple")
 	if !c.IsConnected() {
-		return ErrNotConnected
+		return nil, ErrNotConnected
 	}
-	s := NewControlPacket(SUBSCRIBE).(*SubscribePacket)
-	if s.Topics, s.Qoss, err = validateSubscribeMap(filters); err != nil {
-		return err
+	sub := NewControlPacket(SUBSCRIBE).(*SubscribePacket)
+	if sub.Topics, sub.Qoss, err = validateSubscribeMap(filters); err != nil {
+		return nil, err
 	}
 
 	if callback != nil {
@@ -330,32 +332,32 @@ func (c *MqttClient) SubscribeMultiple(filters map[string]byte, callback Message
 			c.options.msgRouter.addRoute(topic, callback)
 		}
 	}
-
-	//r := make(chan Receipt, 1)
-
-	c.oboundP <- s
-
+	token := newToken(SUBSCRIBE).(*SubscribeToken)
+	token.subs = make([]string, len(sub.Topics))
+	copy(token.subs, sub.Topics)
+	c.oboundP <- &PacketAndToken{p: sub, t: token}
 	DEBUG.Println(CLI, "exit SubscribeMultiple")
-	return nil
+	return token, nil
 }
 
 // Unsubscribe will end the subscription from each of the topics provided.
 // Messages published to those topics from other clients will no longer be
 // received.
-func (c *MqttClient) Unsubscribe(topics ...string) error {
+func (c *MqttClient) Unsubscribe(topics ...string) (Token, error) {
 	DEBUG.Println(CLI, "enter Unsubscribe")
 	if !c.IsConnected() {
-		return ErrNotConnected
+		return nil, ErrNotConnected
 	}
-	u := NewControlPacket(UNSUBSCRIBE).(*UnsubscribePacket)
-	u.Topics = make([]string, len(topics))
-	copy(u.Topics, topics)
+	unsub := NewControlPacket(UNSUBSCRIBE).(*UnsubscribePacket)
+	unsub.Topics = make([]string, len(topics))
+	copy(unsub.Topics, topics)
 
-	c.oboundP <- u
+	token := newToken(UNSUBSCRIBE)
+	c.oboundP <- &PacketAndToken{p: unsub, t: token}
 	for _, topic := range topics {
 		c.options.msgRouter.deleteRoute(topic)
 	}
 
 	DEBUG.Println(CLI, "exit Unsubscribe")
-	return nil
+	return token, nil
 }

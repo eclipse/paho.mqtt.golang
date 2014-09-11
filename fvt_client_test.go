@@ -321,7 +321,7 @@ func Test_p0s0(t *testing.T) {
 		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
 
-	err = s.Subscribe(topic, 0, nil)
+	_, err = s.Subscribe(topic, 0, nil)
 	if err != nil {
 		t.Fatalf("Error on MqttClient.Subscribe(): %v", err)
 	}
@@ -376,7 +376,7 @@ func Test_p0s1(t *testing.T) {
 		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
 
-	err = s.Subscribe(topic, 0, nil)
+	_, err = s.Subscribe(topic, 0, nil)
 	if err != nil {
 		t.Fatalf("Error on MqttClient.Subscribe(): %v", err)
 	}
@@ -431,7 +431,7 @@ func Test_p0s2(t *testing.T) {
 		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
 
-	err = s.Subscribe(topic, 2, nil)
+	_, err = s.Subscribe(topic, 2, nil)
 	if err != nil {
 		t.Fatalf("Error on MqttClient.Subscribe(): %v", err)
 	}
@@ -487,7 +487,7 @@ func Test_p1s0(t *testing.T) {
 		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
 
-	err = s.Subscribe(topic, 0, nil)
+	_, err = s.Subscribe(topic, 0, nil)
 	if err != nil {
 		t.Fatalf("Error on MqttClient.Subscribe(): %v", err)
 	}
@@ -543,7 +543,7 @@ func Test_p1s1(t *testing.T) {
 		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
 
-	err = s.Subscribe(topic, 1, nil)
+	_, err = s.Subscribe(topic, 1, nil)
 	if err != nil {
 		t.Fatalf("Error on MqttClient.Subscribe(): %v", err)
 	}
@@ -597,7 +597,7 @@ func Test_p1s2(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
-	err = s.Subscribe(topic, 1, nil)
+	_, err = s.Subscribe(topic, 1, nil)
 	if err != nil {
 		t.Fatalf("Error on MqttClient.Subscribe(): %v", err)
 	}
@@ -653,7 +653,7 @@ func Test_p2s0(t *testing.T) {
 		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
 
-	err = s.Subscribe(topic, 0, nil)
+	_, err = s.Subscribe(topic, 0, nil)
 	if err != nil {
 		t.Fatalf("Error on MqttClient.Subscribe(): %v", err)
 	}
@@ -707,7 +707,7 @@ func Test_p2s1(t *testing.T) {
 		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
 
-	err = s.Subscribe(topic, 1, nil)
+	_, err = s.Subscribe(topic, 1, nil)
 	if err != nil {
 		t.Fatalf("Error on MqttClient.Subscribe(): %v", err)
 	}
@@ -763,7 +763,7 @@ func Test_p2s2(t *testing.T) {
 		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
 
-	err = s.Subscribe(topic, 2, nil)
+	_, err = s.Subscribe(topic, 2, nil)
 	if err != nil {
 		t.Fatalf("Error on MqttClient.Subscribe(): %v", err)
 	}
@@ -821,7 +821,7 @@ func Test_PublishMessage(t *testing.T) {
 		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
 
-	err = s.Subscribe(topic, 2, nil)
+	_, err = s.Subscribe(topic, 2, nil)
 	if err != nil {
 		t.Fatalf("Error on MqttClient.Subscribe(): %v", err)
 	}
@@ -878,7 +878,7 @@ func Test_PublishEmptyMessage(t *testing.T) {
 		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
 
-	err = s.Subscribe(topic, 2, nil)
+	_, err = s.Subscribe(topic, 2, nil)
 	if err != nil {
 		t.Fatalf("Error on MqttClient.Subscribe(): %v", err)
 	}
@@ -936,7 +936,7 @@ func Test_Cleanstore(t *testing.T) {
 		t.Fatalf("Error on MqttClient.Start(): %v", err)
 	}
 
-	err = s.Subscribe(topic, 2, nil)
+	_, err = s.Subscribe(topic, 2, nil)
 	if err != nil {
 		t.Fatalf("Error on MqttClient.Subscribe(): %v", err)
 	}

@@ -55,7 +55,6 @@ type ClientOptions struct {
 	stopRouter              chan bool
 	incomingPubChan         chan *PublishPacket
 	onconnlost              OnConnectionLost
-	mids                    messageIds
 	writeTimeout            time.Duration
 }
 
@@ -84,7 +83,6 @@ func NewClientOptions() *ClientOptions {
 		keepAlive:       30,
 		incomingPubChan: nil,
 		onconnlost:      DefaultErrorHandler,
-		mids:            messageIds{index: make(map[uint16]bool)},
 		writeTimeout:    0, // 0 represents timeout disabled
 	}
 	o.msgRouter, o.stopRouter = newRouter()

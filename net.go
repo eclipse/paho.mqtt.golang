@@ -83,9 +83,12 @@ func outgoing(c *MqttClient) {
 	for {
 		DEBUG.Println(NET, "outgoing waiting for an outbound message")
 		select {
-		case msg := <-c.obound:
+		case pub := <-c.obound:
+			msg := pub.p.(*PublishPacket)
 			if msg.Qos != 0 && msg.MessageID == 0 {
-				msg.MessageID = c.options.mids.getId()
+				msg.MessageID = c.getId(pub.t)
+			} else {
+				pub.t.flowComplete()
 			}
 			//persist_obound(c.persist, msg)
 
@@ -114,21 +117,21 @@ func outgoing(c *MqttClient) {
 			c.lastContact.update()
 			DEBUG.Println(NET, "obound wrote msg, id:", msg.MessageID)
 		case msg := <-c.oboundP:
-			msgtype := reflect.TypeOf(msg)
-			switch msg.(type) {
+			msgtype := reflect.TypeOf(msg.p)
+			switch msg.p.(type) {
 			case *SubscribePacket:
-				msg.(*SubscribePacket).MessageID = c.options.mids.getId()
+				msg.p.(*SubscribePacket).MessageID = c.getId(msg.t)
 			case *UnsubscribePacket:
-				msg.(*UnsubscribePacket).MessageID = c.options.mids.getId()
+				msg.p.(*UnsubscribePacket).MessageID = c.getId(msg.t)
 			}
 			DEBUG.Println(NET, "obound priority msg to write, type", msgtype)
-			if err := msg.Write(c.conn); err != nil {
+			if err := msg.p.Write(c.conn); err != nil {
 				ERROR.Println(NET, "outgoing stopped with error")
 				c.errors <- err
 				return
 			}
 			c.lastContact.update()
-			switch msg.(type) {
+			switch msg.p.(type) {
 			case *DisconnectPacket:
 				DEBUG.Println(NET, "outbound wrote disconnect, now closing connection")
 				c.conn.Close()
@@ -160,15 +163,19 @@ func alllogic(c *MqttClient) {
 			case *SubackPacket:
 				sa := msg.(*SubackPacket)
 				DEBUG.Println(NET, "received suback, id:", sa.MessageID)
-				// c.receipts.get(msg.MsgId()) <- Receipt{}
-				// c.receipts.end(msg.MsgId())
-				go c.options.mids.freeId(sa.MessageID)
+				token := c.getToken(sa.MessageID).(*SubscribeToken)
+				DEBUG.Println(NET, "granted qoss", sa.GrantedQoss)
+				for i, qos := range sa.GrantedQoss {
+					token.subResult[token.subs[i]] = qos
+				}
+				token.flowComplete()
+				go c.freeId(sa.MessageID)
 			case *UnsubackPacket:
 				ua := msg.(*UnsubackPacket)
 				DEBUG.Println(NET, "received unsuback, id:", ua.MessageID)
 				// c.receipts.get(msg.MsgId()) <- Receipt{}
 				// c.receipts.end(msg.MsgId())
-				go c.options.mids.freeId(ua.MessageID)
+				go c.freeId(ua.MessageID)
 			case *PublishPacket:
 				pp := msg.(*PublishPacket)
 				DEBUG.Println(NET, "received publish, msgId:", pp.MessageID)
@@ -180,7 +187,7 @@ func alllogic(c *MqttClient) {
 					pr := NewControlPacket(PUBREC).(*PubrecPacket)
 					pr.MessageID = pp.MessageID
 					DEBUG.Println(NET, "putting pubrec msg on obound")
-					c.oboundP <- pr
+					c.oboundP <- &PacketAndToken{p: pr, t: nil}
 					DEBUG.Println(NET, "done putting pubrec msg on obound")
 				case 1:
 					c.options.incomingPubChan <- pp
@@ -188,7 +195,7 @@ func alllogic(c *MqttClient) {
 					pa := NewControlPacket(PUBACK).(*PubackPacket)
 					pa.MessageID = pp.MessageID
 					DEBUG.Println(NET, "putting puback msg on obound")
-					c.oboundP <- pa
+					c.oboundP <- &PacketAndToken{p: pa, t: nil}
 					DEBUG.Println(NET, "done putting puback msg on obound")
 				case 0:
 					select {
@@ -210,14 +217,15 @@ func alllogic(c *MqttClient) {
 				DEBUG.Println(NET, "received puback, id:", pa.MessageID)
 				// c.receipts.get(msg.MsgId()) <- Receipt{}
 				// c.receipts.end(msg.MsgId())
-				go c.options.mids.freeId(pa.MessageID)
+				c.getToken(pa.MessageID).flowComplete()
+				c.freeId(pa.MessageID)
 			case *PubrecPacket:
 				prec := msg.(*PubrecPacket)
 				DEBUG.Println(NET, "received pubrec, id:", prec.MessageID)
 				prel := NewControlPacket(PUBREL).(*PubrelPacket)
 				prel.MessageID = prec.MessageID
 				select {
-				case c.oboundP <- prel:
+				case c.oboundP <- &PacketAndToken{p: prel, t: nil}:
 				case <-time.After(time.Second):
 				}
 			case *PubrelPacket:
@@ -226,7 +234,7 @@ func alllogic(c *MqttClient) {
 				pc := NewControlPacket(PUBCOMP).(*PubcompPacket)
 				pc.MessageID = pr.MessageID
 				select {
-				case c.oboundP <- pc:
+				case c.oboundP <- &PacketAndToken{p: pc, t: nil}:
 				case <-time.After(time.Second):
 				}
 			case *PubcompPacket:
@@ -234,7 +242,8 @@ func alllogic(c *MqttClient) {
 				DEBUG.Println(NET, "received pubcomp, id:", pc.MessageID)
 				// c.receipts.get(msg.MsgId()) <- Receipt{}
 				// c.receipts.end(msg.MsgId())
-				go c.options.mids.freeId(pc.MessageID)
+				c.getToken(pc.MessageID).flowComplete()
+				c.freeId(pc.MessageID)
 			}
 		case <-c.stop:
 			WARN.Println(NET, "logic stopped")
