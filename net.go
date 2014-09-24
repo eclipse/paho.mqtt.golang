@@ -87,6 +87,7 @@ func outgoing(c *MqttClient) {
 			msg := pub.p.(*PublishPacket)
 			if msg.Qos != 0 && msg.MessageID == 0 {
 				msg.MessageID = c.getId(pub.t)
+				pub.t.(*PublishToken).messageId = msg.MessageID
 			} else {
 				pub.t.flowComplete()
 			}
@@ -108,12 +109,6 @@ func outgoing(c *MqttClient) {
 				c.conn.SetWriteDeadline(time.Time{})
 			}
 
-			// msgtype := msg.FixedHeader.MessageType
-			// if (msg.Qos == 0) &&
-			// 	(msgtype == PUBLISH || msgtype == SUBSCRIBE || msgtype == UNSUBSCRIBE) {
-			// 	c.receipts.get(msg.MessageID) <- Receipt{}
-			// 	c.receipts.end(msg.MessageID)
-			// }
 			c.lastContact.update()
 			DEBUG.Println(NET, "obound wrote msg, id:", msg.MessageID)
 		case msg := <-c.oboundP:

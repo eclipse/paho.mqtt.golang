@@ -19,7 +19,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	//"log"
+	"log"
 	"os"
 	"strconv"
 	"strings"
@@ -29,8 +29,9 @@ import (
 import MQTT "git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
 
 func main() {
-	//MQTT.DEBUG = log.New(os.Stdout, "", 0)
-	//MQTT.ERROR = log.New(os.Stdout, "", 0)
+	MQTT.DEBUG = log.New(os.Stdout, "", 0)
+	MQTT.ERROR = log.New(os.Stdout, "", 0)
+	MQTT.CRITICAL = log.New(os.Stdout, "", 0)
 	stdin := bufio.NewReader(os.Stdin)
 	hostname, _ := os.Hostname()
 
@@ -64,7 +65,6 @@ func main() {
 		if err == io.EOF {
 			os.Exit(0)
 		}
-		client.Publish(*topic, byte(*qos), *retained, strings.TrimSpace(message))
-		time.Sleep(1 * time.Second)
+		client.Publish(*topic, byte(*qos), *retained, strings.TrimSpace(message)).Wait()
 	}
 }

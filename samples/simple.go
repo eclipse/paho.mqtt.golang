@@ -37,20 +37,21 @@ func main() {
 		panic(err)
 	}
 
-	if err = c.Subscribe("/go-mqtt/sample", 0, nil); err != nil {
-		fmt.Println(err)
+	if token := c.Subscribe("/go-mqtt/sample", 0, nil); token.Wait() && token.Error() != nil {
+		fmt.Println(token.Error())
 		os.Exit(1)
 	}
 
 	for i := 0; i < 5; i++ {
 		text := fmt.Sprintf("this is msg #%d!", i)
-		c.Publish("/go-mqtt/sample", 0, false, text)
+		token := c.Publish("/go-mqtt/sample", 0, false, text)
+		token.Wait()
 	}
 
 	time.Sleep(3 * time.Second)
 
-	if err = c.Unsubscribe("/go-mqtt/sample"); err != nil {
-		fmt.Println(err)
+	if token := c.Unsubscribe("/go-mqtt/sample"); token.Wait() && token.Error() != nil {
+		fmt.Println(token.Error())
 		os.Exit(1)
 	}
 

@@ -37,21 +37,21 @@ var broker_load = make(chan bool)
 var broker_connection = make(chan bool)
 var broker_clients = make(chan bool)
 
-var brokerLoadHandler MQTT.MessageHandler = func(client *MQTT.MqttClient, msg MQTT.Message) {
+func brokerLoadHandler(client *MQTT.MqttClient, msg MQTT.Message) {
 	broker_load <- true
 	fmt.Printf("BrokerLoadHandler         ")
 	fmt.Printf("[%s]  ", msg.Topic())
 	fmt.Printf("%s\n", msg.Payload())
 }
 
-var brokerConnectionHandler MQTT.MessageHandler = func(client *MQTT.MqttClient, msg MQTT.Message) {
+func brokerConnectionHandler(client *MQTT.MqttClient, msg MQTT.Message) {
 	broker_connection <- true
 	fmt.Printf("BrokerConnectionHandler   ")
 	fmt.Printf("[%s]  ", msg.Topic())
 	fmt.Printf("%s\n", msg.Payload())
 }
 
-var brokerClientsHandler MQTT.MessageHandler = func(client *MQTT.MqttClient, msg MQTT.Message) {
+func brokerClientsHandler(client *MQTT.MqttClient, msg MQTT.Message) {
 	broker_clients <- true
 	fmt.Printf("BrokerClientsHandler      ")
 	fmt.Printf("[%s]  ", msg.Topic())
@@ -68,18 +68,18 @@ func main() {
 		panic(err)
 	}
 
-	if err := c.Subscribe("$SYS/broker/load/#", 0, brokerLoadHandler); err != nil {
-		fmt.Println(err)
+	if token := c.Subscribe("$SYS/broker/load/#", 0, brokerLoadHandler); token.Wait() && token.Error() != nil {
+		fmt.Println(token.Error())
 		os.Exit(1)
 	}
 
-	if err := c.Subscribe("$SYS/broker/connection/#", 0, brokerConnectionHandler); err != nil {
-		fmt.Println(err)
+	if token := c.Subscribe("$SYS/broker/connection/#", 0, brokerConnectionHandler); token.Wait() && token.Error() != nil {
+		fmt.Println(token.Error())
 		os.Exit(1)
 	}
 
-	if err := c.Subscribe("$SYS/broker/clients/#", 0, brokerClientsHandler); err != nil {
-		fmt.Println(err)
+	if token := c.Subscribe("$SYS/broker/clients/#", 0, brokerClientsHandler); token.Wait() && token.Error() != nil {
+		fmt.Println(token.Error())
 		os.Exit(1)
 	}
 

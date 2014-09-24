@@ -69,9 +69,8 @@ func main() {
 		fmt.Printf("Connected to %s\n", *server)
 	}
 
-	err = client.Subscribe(*topic, byte(*qos), onMessageReceived)
-	if err != nil {
-		panic(err)
+	if token := client.Subscribe(*topic, byte(*qos), onMessageReceived); token.Wait() && token.Error() != nil {
+		panic(token.Error())
 	}
 
 	for {

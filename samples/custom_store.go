@@ -85,7 +85,8 @@ func main() {
 
 	for i := 0; i < 5; i++ {
 		text := fmt.Sprintf("this is msg #%d!", i)
-		c.Publish("/go-mqtt/sample", 0, false, text)
+		token := c.Publish("/go-mqtt/sample", 0, false, text)
+		token.Wait()
 	}
 
 	for i := 1; i < 5; i++ {

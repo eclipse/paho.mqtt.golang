@@ -100,7 +100,8 @@ func main() {
 		fmt.Println("Sample Publisher Started")
 		for i := 0; i < *num; i++ {
 			fmt.Println("---- doing publish ----")
-			client.Publish(*topic, byte(*qos), false, *payload)
+			token := client.Publish(*topic, byte(*qos), false, *payload)
+			token.Wait()
 		}
 
 		client.Disconnect(250)
@@ -119,9 +120,8 @@ func main() {
 			panic(err)
 		}
 
-		err = client.Subscribe(*topic, byte(*qos), nil)
-		if err != nil {
-			fmt.Println(err.Error())
+		if token := client.Subscribe(*topic, byte(*qos), nil); token.Wait() && token.Error != nil {
+			fmt.Println(token.Error())
 			os.Exit(1)
 		}
 
