@@ -16,10 +16,11 @@ package main
 
 import (
 	"bufio"
+	"crypto/tls"
 	"flag"
 	"fmt"
 	"io"
-	"log"
+	//"log"
 	"os"
 	"strconv"
 	"strings"
@@ -29,9 +30,8 @@ import (
 import MQTT "git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
 
 func main() {
-	MQTT.DEBUG = log.New(os.Stdout, "", 0)
-	MQTT.ERROR = log.New(os.Stdout, "", 0)
-	MQTT.CRITICAL = log.New(os.Stdout, "", 0)
+	//MQTT.DEBUG = log.New(os.Stdout, "", 0)
+	//MQTT.ERROR = log.New(os.Stdout, "", 0)
 	stdin := bufio.NewReader(os.Stdin)
 	hostname, _ := os.Hostname()
 
@@ -51,11 +51,13 @@ func main() {
 			connOpts.SetPassword(*password)
 		}
 	}
+	tlsConfig := &tls.Config{InsecureSkipVerify: true, ClientAuth: tls.NoClientCert}
+	connOpts.SetTlsConfig(tlsConfig)
 
 	client := MQTT.NewClient(connOpts)
-	_, err := client.Start()
-	if err != nil {
-		panic(err)
+	if token := client.Connect(); token.Wait() && token.Error() != nil {
+		fmt.Println(token.Error())
+		return
 	} else {
 		fmt.Printf("Connected to %s\n", *server)
 	}

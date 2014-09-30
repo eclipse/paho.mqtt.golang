@@ -76,9 +76,8 @@ func main() {
 	}
 
 	c := MQTT.NewClient(opts)
-	_, err := c.Start()
-	if err != nil {
-		panic(err)
+	if token := c.Connect(); token.Wait() && token.Error() != nil {
+		panic(token.Error())
 	}
 
 	c.Subscribe("/go-mqtt/sample", 0, callback)

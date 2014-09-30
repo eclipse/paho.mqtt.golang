@@ -25,13 +25,13 @@ import (
 
 type Client interface {
 	IsConnected() bool
-	Start() ([]Receipt, error)
+	Connect() Token
 	Disconnect(uint)
 	ForceDisconnect()
 	disconnect()
 	Publish(string, byte, bool, interface{}) Token
-	Subscribe(string, byte, MessageHandler) (Token, error)
-	SubscribeMultiple(map[string]byte, MessageHandler) (Token, error)
+	Subscribe(string, byte, MessageHandler) Token
+	SubscribeMultiple(map[string]byte, MessageHandler) Token
 	Unsubscribe(...string) (Token, error)
 }
 
@@ -94,105 +94,108 @@ func (c *MqttClient) IsConnected() bool {
 	return c.connected
 }
 
-// Start will create a connection to the message broker
+// Connect will create a connection to the message broker
 // If clean session is false, then a slice will
 // be returned containing Receipts for all messages
 // that were in-flight at the last disconnect.
 // If clean session is true, then any existing client
 // state will be removed.
-func (c *MqttClient) Start() ([]Receipt, error) {
+func (c *MqttClient) Connect() Token {
 	var err error
-	var rc byte
-	DEBUG.Println(CLI, "Start()")
+	t := newToken(CONNECT).(*ConnectToken)
+	DEBUG.Println(CLI, "Connect()")
 
-	cm := newConnectMsgFromOptions(c.options)
+	go func() {
+		var rc byte
+		cm := newConnectMsgFromOptions(c.options)
 
-	for _, broker := range c.options.servers {
-	CONN:
-		c.conn, err = openConnection(broker, c.options.tlsConfig)
-		if err == nil {
-			DEBUG.Println(CLI, "socket connected to broker")
-			switch c.options.protocolVersion {
-			case 3:
-				DEBUG.Println(CLI, "Using MQTT 3.1 protocol")
-				cm.ProtocolName = "MQIsdp"
-				cm.ProtocolVersion = 3
-			default:
-				DEBUG.Println(CLI, "Using MQTT 3.1.1 protocol")
-				c.options.protocolVersion = 4
-				cm.ProtocolName = "MQTT"
-				cm.ProtocolVersion = 4
-			}
-			cm.Write(c.conn)
-
-			rc = c.connect()
-			if rc != CONN_ACCEPTED {
-				c.conn.Close()
-				c.conn = nil
-				//if the protocol version was explicitly set don't do any fallback
-				if c.options.protocolVersionExplicit {
-					ERROR.Println(CLI, "Connecting to", broker, "CONNACK was not CONN_ACCEPTED, but rather", ConnackReturnCodes[rc])
-					continue
+		for _, broker := range c.options.servers {
+		CONN:
+			DEBUG.Println(CLI, "about to write new connect msg")
+			c.conn, err = openConnection(broker, c.options.tlsConfig)
+			if err == nil {
+				DEBUG.Println(CLI, "socket connected to broker")
+				switch c.options.protocolVersion {
+				case 3:
+					DEBUG.Println(CLI, "Using MQTT 3.1 protocol")
+					cm.ProtocolName = "MQIsdp"
+					cm.ProtocolVersion = 3
+				default:
+					DEBUG.Println(CLI, "Using MQTT 3.1.1 protocol")
+					c.options.protocolVersion = 4
+					cm.ProtocolName = "MQTT"
+					cm.ProtocolVersion = 4
 				}
-				if c.options.protocolVersion == 4 {
-					DEBUG.Println(CLI, "Trying reconnect using MQTT 3.1 protocol")
-					c.options.protocolVersion = 3
-					goto CONN
+				cm.Write(c.conn)
+
+				rc = c.connect()
+				if rc != CONN_ACCEPTED {
+					c.conn.Close()
+					c.conn = nil
+					//if the protocol version was explicitly set don't do any fallback
+					if c.options.protocolVersionExplicit {
+						ERROR.Println(CLI, "Connecting to", broker, "CONNACK was not CONN_ACCEPTED, but rather", ConnackReturnCodes[rc])
+						continue
+					}
+					if c.options.protocolVersion == 4 {
+						DEBUG.Println(CLI, "Trying reconnect using MQTT 3.1 protocol")
+						c.options.protocolVersion = 3
+						goto CONN
+					}
 				}
+				break
+			} else {
+				ERROR.Println(CLI, err.Error())
+				WARN.Println(CLI, "failed to connect to broker, trying next")
+				rc = CONN_NETWORK_ERROR
 			}
-			break
-		} else {
-			WARN.Println(CLI, "failed to connect to broker, trying next")
 		}
-	}
 
-	if c.conn == nil {
-		ERROR.Println(CLI, "Failed to connect to a broker")
-		return nil, connErrors[rc]
-	}
-	c.bufferedConn = bufio.NewReadWriter(bufio.NewReader(c.conn), bufio.NewWriter(c.conn))
+		if c.conn == nil {
+			ERROR.Println(CLI, "Failed to connect to a broker")
+			t.returnCode = rc
+			t.err = connErrors[rc]
+			t.flowComplete()
+			return
+		}
+		c.bufferedConn = bufio.NewReadWriter(bufio.NewReader(c.conn), bufio.NewWriter(c.conn))
 
-	DEBUG.Println(CLI, "about to write new connect msg")
+		c.persist.Open()
 
-	c.persist.Open()
+		c.obound = make(chan *PacketAndToken)
+		c.oboundP = make(chan *PacketAndToken)
+		c.ibound = make(chan ControlPacket)
+		c.errors = make(chan error)
+		c.stop = make(chan struct{})
 
-	c.obound = make(chan *PacketAndToken)
-	c.oboundP = make(chan *PacketAndToken)
-	c.ibound = make(chan ControlPacket)
-	c.errors = make(chan error)
-	c.stop = make(chan struct{})
+		go outgoing(c)
+		go alllogic(c)
 
-	go outgoing(c)
-	go alllogic(c)
+		c.options.incomingPubChan = make(chan *PublishPacket, 100)
+		c.options.msgRouter.matchAndDispatch(c.options.incomingPubChan, c.options.order, c)
 
-	c.options.incomingPubChan = make(chan *PublishPacket, 100)
-	c.options.msgRouter.matchAndDispatch(c.options.incomingPubChan, c.options.order, c)
+		c.connected = true
+		DEBUG.Println(CLI, "client is connected")
 
-	c.connected = true
-	DEBUG.Println(CLI, "client is connected")
+		if c.options.keepAlive != 0 {
+			go keepalive(c)
+		}
 
-	if c.options.keepAlive != 0 {
-		go keepalive(c)
-	}
+		// Take care of any messages in the store
+		//var leftovers []Receipt
+		if c.options.cleanSession == false {
+			//leftovers = c.resume()
+		} else {
+			c.persist.Reset()
+		}
 
-	// Take care of any messages in the store
-	var leftovers []Receipt
-	if c.options.cleanSession == false {
-		//leftovers = c.resume()
-	} else {
-		c.persist.Reset()
-	}
+		// Do not start incoming until resume has completed
+		go incoming(c)
 
-	// Do not start incoming until resume has completed
-	go incoming(c)
-
-	DEBUG.Println(CLI, "exit startMqttClient")
-	if err := connErrors[rc]; err != nil {
-		// Cleanup before returning.
-		close(c.stop)
-		c.conn.Close()
-	}
-	return leftovers, connErrors[rc]
+		DEBUG.Println(CLI, "exit startMqttClient")
+		t.flowComplete()
+	}()
+	return t
 }
 
 // This function is only used for receiving a connack
@@ -298,13 +301,13 @@ func (c *MqttClient) Subscribe(topic string, qos byte, callback MessageHandler) 
 		return token
 	}
 	sub := NewControlPacket(SUBSCRIBE).(*SubscribePacket)
-	DEBUG.Println(sub.String())
 	if err := validateTopicAndQos(topic, qos); err != nil {
 		token.err = err
 		return token
 	}
 	sub.Topics = append(sub.Topics, topic)
 	sub.Qoss = append(sub.Qoss, qos)
+	DEBUG.Println(sub.String())
 
 	if callback != nil {
 		c.options.msgRouter.addRoute(topic, callback)

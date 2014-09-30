@@ -75,6 +75,8 @@ func (b *baseToken) Error() error {
 
 func newToken(tType byte) Token {
 	switch tType {
+	case CONNECT:
+		return &ConnectToken{baseToken: baseToken{complete: make(chan struct{})}}
 	case SUBSCRIBE:
 		return &SubscribeToken{baseToken: baseToken{complete: make(chan struct{})}, subResult: make(map[string]byte)}
 	case PUBLISH:
@@ -83,6 +85,17 @@ func newToken(tType byte) Token {
 		return &UnsubscribeToken{baseToken: baseToken{complete: make(chan struct{})}}
 	}
 	return nil
+}
+
+type ConnectToken struct {
+	baseToken
+	returnCode byte
+}
+
+func (c *ConnectToken) ReturnCode() byte {
+	c.m.RLock()
+	defer c.m.RUnlock()
+	return c.returnCode
 }
 
 type PublishToken struct {

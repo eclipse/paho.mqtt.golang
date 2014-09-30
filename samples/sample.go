@@ -93,9 +93,8 @@ func main() {
 
 	if *action == "pub" {
 		client := MQTT.NewClient(opts)
-		_, err := client.Start()
-		if err != nil {
-			panic(err)
+		if token := client.Connect(); token.Wait() && token.Error() != nil {
+			panic(token.Error())
 		}
 		fmt.Println("Sample Publisher Started")
 		for i := 0; i < *num; i++ {
@@ -115,9 +114,8 @@ func main() {
 		})
 
 		client := MQTT.NewClient(opts)
-		_, err := client.Start()
-		if err != nil {
-			panic(err)
+		if token := client.Connect(); token.Wait() && token.Error() != nil {
+			panic(token.Error())
 		}
 
 		if token := client.Subscribe(*topic, byte(*qos), nil); token.Wait() && token.Error != nil {

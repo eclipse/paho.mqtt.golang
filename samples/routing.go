@@ -63,9 +63,8 @@ func main() {
 	opts.SetCleanSession(true)
 
 	c := MQTT.NewClient(opts)
-	_, err := c.Start()
-	if err != nil {
-		panic(err)
+	if token := c.Connect(); token.Wait() && token.Error() != nil {
+		panic(token.Error())
 	}
 
 	if token := c.Subscribe("$SYS/broker/load/#", 0, brokerLoadHandler); token.Wait() && token.Error() != nil {

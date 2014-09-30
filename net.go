@@ -17,6 +17,7 @@ package mqtt
 import (
 	"code.google.com/p/go.net/websocket"
 	"crypto/tls"
+	"errors"
 	. "github.com/alsm/hrotti/packets"
 	"net"
 	"net/url"
@@ -24,24 +25,35 @@ import (
 	"time"
 )
 
-func openConnection(uri *url.URL, tlsc *tls.Config) (conn net.Conn, err error) {
+func openConnection(uri *url.URL, tlsc *tls.Config) (net.Conn, error) {
 	switch uri.Scheme {
 	case "ws":
-		conn, err = websocket.Dial(uri.String(), "mqtt", "ws://localhost")
+		conn, err := websocket.Dial(uri.String(), "mqtt", "ws://localhost")
 		if err != nil {
-			return
+			return nil, err
 		}
-		conn.(*websocket.Conn).PayloadType = websocket.BinaryFrame
+		conn.PayloadType = websocket.BinaryFrame
+		return conn, err
+	case "wss":
+		config, _ := websocket.NewConfig(uri.String(), "ws://localhost")
+		config.Protocol = []string{"mqtt"}
+		config.TlsConfig = tlsc
+		conn, err := websocket.DialConfig(config)
+		if err != nil {
+			return nil, err
+		}
+		conn.PayloadType = websocket.BinaryFrame
+		return conn, err
 	case "tcp":
-		conn, err = net.Dial("tcp", uri.Host)
+		return net.Dial("tcp", uri.Host)
 	case "ssl":
 		fallthrough
 	case "tls":
 		fallthrough
 	case "tcps":
-		conn, err = tls.Dial("tcp", uri.Host, tlsc)
+		return tls.Dial("tcp", uri.Host, tlsc)
 	}
-	return
+	return nil, errors.New("Unknown protocol")
 }
 
 // actually read incoming messages off the wire

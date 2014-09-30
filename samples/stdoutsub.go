@@ -15,6 +15,7 @@
 package main
 
 import (
+	"crypto/tls"
 	"flag"
 	"fmt"
 	//"log"
@@ -60,11 +61,12 @@ func main() {
 			connOpts.SetPassword(*password)
 		}
 	}
+	tlsConfig := &tls.Config{InsecureSkipVerify: true, ClientAuth: tls.NoClientCert}
+	connOpts.SetTlsConfig(tlsConfig)
 
 	client := MQTT.NewClient(connOpts)
-	_, err := client.Start()
-	if err != nil {
-		panic(err)
+	if token := client.Connect(); token.Wait() && token.Error() != nil {
+		panic(token.Error())
 	} else {
 		fmt.Printf("Connected to %s\n", *server)
 	}

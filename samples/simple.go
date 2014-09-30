@@ -32,9 +32,8 @@ func main() {
 	opts.SetDefaultPublishHandler(f)
 
 	c := MQTT.NewClient(opts)
-	_, err := c.Start()
-	if err != nil {
-		panic(err)
+	if token := c.Connect(); token.Wait() && token.Error() != nil {
+		panic(token.Error())
 	}
 
 	if token := c.Subscribe("/go-mqtt/sample", 0, nil); token.Wait() && token.Error() != nil {
