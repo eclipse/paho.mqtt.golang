@@ -32,7 +32,7 @@ type Client interface {
 	Publish(string, byte, bool, interface{}) Token
 	Subscribe(string, byte, MessageHandler) Token
 	SubscribeMultiple(map[string]byte, MessageHandler) Token
-	Unsubscribe(...string) (Token, error)
+	Unsubscribe(...string) Token
 }
 
 // MqttClient is a lightweight MQTT v3.1 Client for communicating
