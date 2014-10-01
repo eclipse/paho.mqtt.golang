@@ -45,13 +45,21 @@ func openConnection(uri *url.URL, tlsc *tls.Config) (net.Conn, error) {
 		conn.PayloadType = websocket.BinaryFrame
 		return conn, err
 	case "tcp":
-		return net.Dial("tcp", uri.Host)
+		conn, err := net.Dial("tcp", uri.Host)
+		if err != nil {
+			return nil, err
+		}
+		return conn, nil
 	case "ssl":
 		fallthrough
 	case "tls":
 		fallthrough
 	case "tcps":
-		return tls.Dial("tcp", uri.Host, tlsc)
+		conn, err := tls.Dial("tcp", uri.Host, tlsc)
+		if err != nil {
+			return nil, err
+		}
+		return conn, nil
 	}
 	return nil, errors.New("Unknown protocol")
 }

@@ -17,6 +17,7 @@ package mqtt
 
 import (
 	"bufio"
+	"errors"
 	. "github.com/alsm/hrotti/packets"
 	"net"
 	"sync"
@@ -154,7 +155,11 @@ func (c *MqttClient) Connect() Token {
 		if c.conn == nil {
 			ERROR.Println(CLI, "Failed to connect to a broker")
 			t.returnCode = rc
-			t.err = connErrors[rc]
+			if rc != CONN_NETWORK_ERROR {
+				t.err = connErrors[rc]
+			} else {
+				t.err = errors.New(connErrors[rc].Error() + " : " + err.Error())
+			}
 			t.flowComplete()
 			return
 		}
