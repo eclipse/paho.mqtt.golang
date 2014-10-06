@@ -29,9 +29,9 @@ func Test_Start(t *testing.T) {
 		SetStore(NewFileStore("/tmp/fvt/Start"))
 	c := NewClient(ops)
 
-	_, err := c.Start()
-	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): %v", err)
+	token := c.Connect()
+	if token.Wait() && token.Error() != nil {
+		t.Fatalf("Error on MqttClient.Connect(): %v", token.Error())
 	}
 
 	c.Disconnect(250)
@@ -44,7 +44,7 @@ func Test_InvalidConnRc(t *testing.T) {
 		SetStore(NewFileStore("/tmp/fvt/InvalidConnRc"))
 
 	c := NewClient(ops)
-	_, err := c.Start()
+	_, err := c.Connect()
 	if err != ErrNotAuthorized {
 		t.Fatalf("Did not receive error as expected, got %v", err)
 	}
@@ -84,9 +84,9 @@ func Test_Start_Ssl(t *testing.T) {
 
 	c := NewClient(ops)
 
-	_, err := c.Start()
+	_, err := c.Connect()
 	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): %v", err)
+		t.Fatalf("Error on MqttClient.Connect(): %v", err)
 	}
 
 	c.Disconnect(250)
@@ -100,9 +100,9 @@ func Test_Publish_1(t *testing.T) {
 	ops.SetStore(NewFileStore("/tmp/fvt/Publish_1"))
 
 	c := NewClient(ops)
-	_, err := c.Start()
-	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): %v", err)
+	token := c.Connect()
+	if token.Wait() && token.Error() != nil {
+		t.Fatalf("Error on MqttClient.Connect(): %v", token.Error())
 	}
 
 	c.Publish("test/Publish", 0, false, "Publish qo0")
@@ -117,9 +117,9 @@ func Test_Publish_2(t *testing.T) {
 	ops.SetStore(NewFileStore("/tmp/fvt/Publish_2"))
 
 	c := NewClient(ops)
-	_, err := c.Start()
-	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): %v", err)
+	token := c.Connect()
+	if token.Wait() && token.Error() != nil {
+		t.Fatalf("Error on MqttClient.Connect(): %v", token.Error())
 	}
 
 	c.Publish("/test/Publish", 0, false, "Publish1 qos0")
@@ -135,9 +135,9 @@ func Test_Publish_3(t *testing.T) {
 	ops.SetStore(NewFileStore("/tmp/fvt/Publish_3"))
 
 	c := NewClient(ops)
-	_, err := c.Start()
-	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): %v", err)
+	token := c.Connect()
+	if token.Wait() && token.Error() != nil {
+		t.Fatalf("Error on MqttClient.Connect(): %v", token.Error())
 	}
 
 	c.Publish("/test/Publish", 0, false, "Publish1 qos0")
@@ -165,16 +165,16 @@ func Test_Subscribe(t *testing.T) {
 	sops.SetDefaultPublishHandler(f)
 	s := NewClient(sops)
 
-	_, err := s.Start()
-	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): %v", err)
+	sToken := s.Connect()
+	if sToken.Wait() && sToken.Error() != nil {
+		t.Fatalf("Error on MqttClient.Connect(): %v", sToken.Error())
 	}
 
 	s.Subscribe("/test/sub", 0, nil)
 
-	_, err = p.Start()
-	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): %v", err)
+	pToken := p.Connect()
+	if pToken.Wait() && pToken.Error() != nil {
+		t.Fatalf("Error on MqttClient.Connect(): %v", pToken.Error())
 	}
 
 	p.Publish("/test/sub", 0, false, "Publish qos0")
@@ -205,16 +205,16 @@ func Test_Will(t *testing.T) {
 	})
 	wsub := NewClient(wops)
 
-	_, err := wsub.Start()
-	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): %v", err)
+	wToken := wsub.Connect()
+	if wToken.Wait() && wToken.Error() != nil {
+		t.Fatalf("Error on MqttClient.Connect(): %v", wToken.Error())
 	}
 
 	wsub.Subscribe("/wills", 0, nil)
 
-	_, err = c.Start()
-	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): %v", err)
+	token := c.Connect()
+	if token.Wait() && token.Error() != nil {
+		t.Fatalf("Error on MqttClient.Connect(): %v", token.Error())
 	}
 	time.Sleep(time.Duration(1) * time.Second)
 
@@ -253,16 +253,16 @@ func Test_Binary_Will(t *testing.T) {
 	})
 	wsub := NewClient(wops)
 
-	_, err := wsub.Start()
-	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): %v", err)
+	wToken := wsub.Connect()
+	if wToken.Wait() && wToken.Error() != nil {
+		t.Fatalf("Error on MqttClient.Connect(): %v", wToken.Error())
 	}
 
 	wsub.Subscribe("/wills", 0, nil)
 
-	_, err = c.Start()
-	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): %v", err)
+	token := c.Connect()
+	if token.Wait() && token.Error() != nil {
+		t.Fatalf("Error on MqttClient.Connect(): %v", token.Error())
 	}
 	time.Sleep(time.Duration(1) * time.Second)
 
@@ -316,19 +316,19 @@ func Test_p0s0(t *testing.T) {
 	sops.SetDefaultPublishHandler(f)
 
 	s := NewClient(sops)
-	_, err := s.Start()
-	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): %v", err)
+	sToken := s.Connect()
+	if sToken.Wait() && sToken.Error() != nil {
+		t.Fatalf("Error on MqttClient.Connect(): %v", sToken.Error())
 	}
 
-	_, err = s.Subscribe(topic, 0, nil)
-	if err != nil {
-		t.Fatalf("Error on MqttClient.Subscribe(): %v", err)
+	sToken = s.Subscribe(topic, 0, nil)
+	if sToken.Wait() && sToken.Error() != nil {
+		t.Fatalf("Error on MqttClient.Subscribe(): %v", sToken.Error())
 	}
 
-	_, err = p.Start()
-	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): %v", err)
+	pToken := p.Connect()
+	if pToken.Wait() && pToken.Error() != nil {
+		t.Fatalf("Error on MqttClient.Connect(): %v", pToken.Error())
 	}
 	p.Publish(topic, 0, false, "p0s0 payload 1")
 	p.Publish(topic, 0, false, "p0s0 payload 2")
@@ -371,19 +371,19 @@ func Test_p0s1(t *testing.T) {
 	sops.SetDefaultPublishHandler(f)
 
 	s := NewClient(sops)
-	_, err := s.Start()
-	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): %v", err)
+	sToken := s.Connect()
+	if sToken.Wait() && sToken.Error() != nil {
+		t.Fatalf("Error on MqttClient.Connect(): %v", sToken.Error())
 	}
 
-	_, err = s.Subscribe(topic, 0, nil)
-	if err != nil {
-		t.Fatalf("Error on MqttClient.Subscribe(): %v", err)
+	sToken = s.Subscribe(topic, 1, nil)
+	if sToken.Wait() && sToken.Error() != nil {
+		t.Fatalf("Error on MqttClient.Subscribe(): %v", sToken.Error())
 	}
 
-	_, err = p.Start()
-	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): %v", err)
+	pToken := p.Connect()
+	if pToken.Wait() && pToken.Error() != nil {
+		t.Fatalf("Error on MqttClient.Connect(): %v", pToken.Error())
 	}
 	p.Publish(topic, 0, false, "p0s1 payload 1")
 	p.Publish(topic, 0, false, "p0s1 payload 2")
@@ -426,19 +426,19 @@ func Test_p0s2(t *testing.T) {
 	sops.SetDefaultPublishHandler(f)
 
 	s := NewClient(sops)
-	_, err := s.Start()
-	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): %v", err)
+	sToken := s.Connect()
+	if sToken.Wait() && sToken.Error() != nil {
+		t.Fatalf("Error on MqttClient.Connect(): %v", sToken.Error())
 	}
 
-	_, err = s.Subscribe(topic, 2, nil)
-	if err != nil {
-		t.Fatalf("Error on MqttClient.Subscribe(): %v", err)
+	sToken = s.Subscribe(topic, 2, nil)
+	if sToken.Wait() && sToken.Error() != nil {
+		t.Fatalf("Error on MqttClient.Subscribe(): %v", sToken.Error())
 	}
 
-	_, err = p.Start()
-	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): %v", err)
+	pToken := p.Connect()
+	if pToken.Wait() && pToken.Error() != nil {
+		t.Fatalf("Error on MqttClient.Connect(): %v", pToken.Error())
 	}
 	p.Publish(topic, 0, false, "p0s2 payload 1")
 	p.Publish(topic, 0, false, "p0s2 payload 2")
@@ -482,19 +482,19 @@ func Test_p1s0(t *testing.T) {
 	sops.SetDefaultPublishHandler(f)
 
 	s := NewClient(sops)
-	_, err := s.Start()
-	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): %v", err)
+	sToken := s.Connect()
+	if sToken.Wait() && sToken.Error() != nil {
+		t.Fatalf("Error on MqttClient.Connect(): %v", sToken.Error())
 	}
 
-	_, err = s.Subscribe(topic, 0, nil)
-	if err != nil {
-		t.Fatalf("Error on MqttClient.Subscribe(): %v", err)
+	sToken = s.Subscribe(topic, 0, nil)
+	if sToken.Wait() && sToken.Error() != nil {
+		t.Fatalf("Error on MqttClient.Subscribe(): %v", sToken.Error())
 	}
 
-	_, err = p.Start()
-	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): %v", err)
+	pToken := p.Connect()
+	if pToken.Wait() && pToken.Error() != nil {
+		t.Fatalf("Error on MqttClient.Connect(): %v", pToken.Error())
 	}
 	p.Publish(topic, 1, false, "p1s0 payload 1")
 	p.Publish(topic, 1, false, "p1s0 payload 2")
@@ -538,19 +538,19 @@ func Test_p1s1(t *testing.T) {
 	sops.SetDefaultPublishHandler(f)
 
 	s := NewClient(sops)
-	_, err := s.Start()
-	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): %v", err)
+	sToken := s.Connect()
+	if sToken.Wait() && sToken.Error() != nil {
+		t.Fatalf("Error on MqttClient.Connect(): %v", sToken.Error())
 	}
 
-	_, err = s.Subscribe(topic, 1, nil)
-	if err != nil {
-		t.Fatalf("Error on MqttClient.Subscribe(): %v", err)
+	sToken = s.Subscribe(topic, 1, nil)
+	if sToken.Wait() && sToken.Error() != nil {
+		t.Fatalf("Error on MqttClient.Subscribe(): %v", sToken.Error())
 	}
 
-	_, err = p.Start()
-	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): %v", err)
+	pToken := p.Connect()
+	if pToken.Wait() && pToken.Error() != nil {
+		t.Fatalf("Error on MqttClient.Connect(): %v", pToken.Error())
 	}
 	p.Publish(topic, 1, false, "p1s1 payload 1")
 	p.Publish(topic, 1, false, "p1s1 payload 2")
@@ -593,18 +593,19 @@ func Test_p1s2(t *testing.T) {
 	sops.SetDefaultPublishHandler(f)
 
 	s := NewClient(sops)
-	_, err := s.Start()
-	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): %v", err)
-	}
-	_, err = s.Subscribe(topic, 1, nil)
-	if err != nil {
-		t.Fatalf("Error on MqttClient.Subscribe(): %v", err)
+	sToken := s.Connect()
+	if sToken.Wait() && sToken.Error() != nil {
+		t.Fatalf("Error on MqttClient.Connect(): %v", sToken.Error())
 	}
 
-	_, err = p.Start()
-	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): %v", err)
+	sToken = s.Subscribe(topic, 2, nil)
+	if sToken.Wait() && sToken.Error() != nil {
+		t.Fatalf("Error on MqttClient.Subscribe(): %v", sToken.Error())
+	}
+
+	pToken := p.Connect()
+	if pToken.Wait() && pToken.Error() != nil {
+		t.Fatalf("Error on MqttClient.Connect(): %v", pToken.Error())
 	}
 	p.Publish(topic, 1, false, "p1s2 payload 1")
 	p.Publish(topic, 1, false, "p1s2 payload 2")
@@ -648,19 +649,19 @@ func Test_p2s0(t *testing.T) {
 	sops.SetDefaultPublishHandler(f)
 
 	s := NewClient(sops)
-	_, err := s.Start()
-	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): %v", err)
+	sToken := s.Connect()
+	if sToken.Wait() && sToken.Error() != nil {
+		t.Fatalf("Error on MqttClient.Connect(): %v", sToken.Error())
 	}
 
-	_, err = s.Subscribe(topic, 0, nil)
-	if err != nil {
-		t.Fatalf("Error on MqttClient.Subscribe(): %v", err)
+	sToken = s.Subscribe(topic, 0, nil)
+	if sToken.Wait() && sToken.Error() != nil {
+		t.Fatalf("Error on MqttClient.Subscribe(): %v", sToken.Error())
 	}
 
-	_, err = p.Start()
-	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): %v", err)
+	pToken := p.Connect()
+	if pToken.Wait() && pToken.Error() != nil {
+		t.Fatalf("Error on MqttClient.Connect(): %v", pToken.Error())
 	}
 	p.Publish(topic, 2, false, "p2s0 payload 1")
 	p.Publish(topic, 2, false, "p2s0 payload 2")
@@ -702,19 +703,19 @@ func Test_p2s1(t *testing.T) {
 	sops.SetDefaultPublishHandler(f)
 
 	s := NewClient(sops)
-	_, err := s.Start()
-	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): %v", err)
+	sToken := s.Connect()
+	if sToken.Wait() && sToken.Error() != nil {
+		t.Fatalf("Error on MqttClient.Connect(): %v", sToken.Error())
 	}
 
-	_, err = s.Subscribe(topic, 1, nil)
-	if err != nil {
-		t.Fatalf("Error on MqttClient.Subscribe(): %v", err)
+	sToken = s.Subscribe(topic, 1, nil)
+	if sToken.Wait() && sToken.Error() != nil {
+		t.Fatalf("Error on MqttClient.Subscribe(): %v", sToken.Error())
 	}
 
-	_, err = p.Start()
-	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): %v", err)
+	pToken := p.Connect()
+	if pToken.Wait() && pToken.Error() != nil {
+		t.Fatalf("Error on MqttClient.Connect(): %v", pToken.Error())
 	}
 	p.Publish(topic, 2, false, "p2s1 payload 1")
 	p.Publish(topic, 2, false, "p2s1 payload 2")
@@ -758,19 +759,19 @@ func Test_p2s2(t *testing.T) {
 	sops.SetDefaultPublishHandler(f)
 
 	s := NewClient(sops)
-	_, err := s.Start()
-	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): %v", err)
+	sToken := s.Connect()
+	if sToken.Wait() && sToken.Error() != nil {
+		t.Fatalf("Error on MqttClient.Connect(): %v", sToken.Error())
 	}
 
-	_, err = s.Subscribe(topic, 2, nil)
-	if err != nil {
-		t.Fatalf("Error on MqttClient.Subscribe(): %v", err)
+	sToken = s.Subscribe(topic, 2, nil)
+	if sToken.Wait() && sToken.Error() != nil {
+		t.Fatalf("Error on MqttClient.Subscribe(): %v", sToken.Error())
 	}
 
-	_, err = p.Start()
-	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): %v", err)
+	pToken := p.Connect()
+	if pToken.Wait() && pToken.Error() != nil {
+		t.Fatalf("Error on MqttClient.Connect(): %v", pToken.Error())
 	}
 	p.Publish(topic, 2, false, "p2s2 payload 1")
 	p.Publish(topic, 2, false, "p2s2 payload 2")
@@ -816,19 +817,19 @@ func Test_PublishMessage(t *testing.T) {
 	sops.SetDefaultPublishHandler(f)
 
 	s := NewClient(sops)
-	_, err := s.Start()
-	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): %v", err)
+	sToken := s.Connect()
+	if sToken.Wait() && sToken.Error() != nil {
+		t.Fatalf("Error on MqttClient.Connect(): %v", sToken.Error())
 	}
 
-	_, err = s.Subscribe(topic, 2, nil)
-	if err != nil {
-		t.Fatalf("Error on MqttClient.Subscribe(): %v", err)
+	sToken = s.Subscribe(topic, 2, nil)
+	if sToken.Wait() && sToken.Error() != nil {
+		t.Fatalf("Error on MqttClient.Subscribe(): %v", sToken.Error())
 	}
 
-	_, err = p.Start()
-	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): %v", err)
+	pToken := p.Connect()
+	if pToken.Wait() && pToken.Error() != nil {
+		t.Fatalf("Error on MqttClient.Connect(): %v", pToken.Error())
 	}
 
 	text := "pubmsg payload"
@@ -873,19 +874,19 @@ func Test_PublishEmptyMessage(t *testing.T) {
 	sops.SetDefaultPublishHandler(f)
 
 	s := NewClient(sops)
-	_, err := s.Start()
-	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): %v", err)
+	sToken := s.Connect()
+	if sToken.Wait() && sToken.Error() != nil {
+		t.Fatalf("Error on MqttClient.Connect(): %v", sToken.Error())
 	}
 
-	_, err = s.Subscribe(topic, 2, nil)
-	if err != nil {
-		t.Fatalf("Error on MqttClient.Subscribe(): %v", err)
+	sToken = s.Subscribe(topic, 2, nil)
+	if sToken.Wait() && sToken.Error() != nil {
+		t.Fatalf("Error on MqttClient.Subscribe(): %v", sToken.Error())
 	}
 
-	_, err = p.Start()
-	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): %v", err)
+	pToken := p.Connect()
+	if pToken.Wait() && pToken.Error() != nil {
+		t.Fatalf("Error on MqttClient.Connect(): %v", pToken.Error())
 	}
 
 	p.Publish(topic, 0, false, "")
@@ -931,19 +932,19 @@ func Test_Cleanstore(t *testing.T) {
 	sops.SetOnConnectionLost(ocl)
 
 	s = NewClient(sops)
-	_, err := s.Start()
-	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): %v", err)
+	sToken := s.Connect()
+	if sToken.Wait() && sToken.Error() != nil {
+		t.Fatalf("Error on MqttClient.Connect(): %v", sToken.Error())
 	}
 
-	_, err = s.Subscribe(topic, 2, nil)
-	if err != nil {
-		t.Fatalf("Error on MqttClient.Subscribe(): %v", err)
+	sToken = s.Subscribe(topic, 2, nil)
+	if sToken.Wait() && sToken.Error() != nil {
+		t.Fatalf("Error on MqttClient.Subscribe(): %v", sToken.Error())
 	}
 
-	_, err = p.Start()
-	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): %v", err)
+	pToken := p.Connect()
+	if pToken.Wait() && pToken.Error() != nil {
+		t.Fatalf("Error on MqttClient.Connect(): %v", pToken.Error())
 	}
 
 	text := "test message"
@@ -961,9 +962,9 @@ func Test_Cleanstore(t *testing.T) {
 	sops.SetDefaultPublishHandler(f)
 
 	s2 := NewClient(sops)
-	_, err = s2.Start()
-	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): %v", err)
+	sToken = s2.Connect()
+	if sToken.Wait() && sToken.Error() != nil {
+		t.Fatalf("Error on MqttClient.Connect(): %v", sToken.Error())
 	}
 
 	// at this point existing state should be cleared...
@@ -978,9 +979,9 @@ func Test_MultipleURLs(t *testing.T) {
 	ops.SetStore(NewFileStore("/tmp/fvt/MultiURL"))
 
 	c := NewClient(ops)
-	_, err := c.Start()
-	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): %v", err)
+	token := c.Connect()
+	if token.Wait() && token.Error() != nil {
+		t.Fatalf("Error on MqttClient.Connect(): %v", token.Error())
 	}
 
 	c.Publish("/test/MultiURL", 0, false, "Publish qo0")
@@ -999,9 +1000,9 @@ func Test_ping3_idle10(t *testing.T) {
 	ops.SetKeepAlive(4)
 
 	c := NewClient(ops)
-	_, err := c.Start()
-	if err != nil {
-		t.Fatalf("Error on MqttClient.Start(): %v", err)
+	token := c.Connect()
+	if token.Wait() && token.Error() != nil {
+		t.Fatalf("Error on MqttClient.Connect(): %v", token.Error())
 	}
 	time.Sleep(time.Duration(10) * time.Second)
 	c.Disconnect(250)

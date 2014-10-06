@@ -17,26 +17,42 @@ package mqtt
 import (
 	"fmt"
 	"testing"
+	"time"
 )
 
-func Test_getId(t *testing.T) {
-	mids := &messageIds{index: make(map[uint16]bool)}
-	mids.generateMsgIds()
+type DummyToken struct{}
 
-	i1 := mids.getId()
+func (d *DummyToken) Wait() bool {
+	return true
+}
+
+func (d *DummyToken) WaitTimeout(t time.Duration) bool {
+	return true
+}
+
+func (d *DummyToken) flowComplete() {}
+
+func (d *DummyToken) Error() error {
+	return nil
+}
+
+func Test_getId(t *testing.T) {
+	mids := &messageIds{index: make(map[uint16]Token)}
+
+	i1 := mids.getId(&DummyToken{})
 
 	if i1 != 1 {
 		t.Fatalf("i1 was wrong: %v", i1)
 	}
 
-	i2 := mids.getId()
+	i2 := mids.getId(&DummyToken{})
 
 	if i2 != 2 {
 		t.Fatalf("i2 was wrong: %v", i2)
 	}
 
 	for i := uint16(3); i < 100; i++ {
-		id := mids.getId()
+		id := mids.getId(&DummyToken{})
 		if id != i {
 			t.Fatalf("id was wrong expected %v got %v", i, id)
 		}
@@ -44,23 +60,21 @@ func Test_getId(t *testing.T) {
 }
 
 func Test_freeId(t *testing.T) {
-	mids := &messageIds{index: make(map[uint16]bool)}
-	mids.generateMsgIds()
+	mids := &messageIds{index: make(map[uint16]Token)}
 
-	i1 := mids.getId()
+	i1 := mids.getId(&DummyToken{})
 	mids.freeId(i1)
 
 	if i1 != 1 {
 		t.Fatalf("i1 was wrong: %v", i1)
 	}
 
-	i2 := mids.getId()
+	i2 := mids.getId(&DummyToken{})
 	fmt.Printf("i2: %v\n", i2)
 }
 
 func Test_messageids_mix(t *testing.T) {
-	mids := &messageIds{index: make(map[uint16]bool)}
-	mids.generateMsgIds()
+	mids := &messageIds{index: make(map[uint16]Token)}
 
 	done := make(chan bool)
 	a := make(chan uint16, 3)
@@ -69,7 +83,7 @@ func Test_messageids_mix(t *testing.T) {
 
 	go func() {
 		for i := 0; i < 10000; i++ {
-			a <- mids.getId()
+			a <- mids.getId(&DummyToken{})
 			mids.freeId(<-b)
 		}
 		done <- true
@@ -77,7 +91,7 @@ func Test_messageids_mix(t *testing.T) {
 
 	go func() {
 		for i := 0; i < 10000; i++ {
-			b <- mids.getId()
+			b <- mids.getId(&DummyToken{})
 			mids.freeId(<-c)
 		}
 		done <- true
@@ -85,7 +99,7 @@ func Test_messageids_mix(t *testing.T) {
 
 	go func() {
 		for i := 0; i < 10000; i++ {
-			c <- mids.getId()
+			c <- mids.getId(&DummyToken{})
 			mids.freeId(<-a)
 		}
 		done <- true
