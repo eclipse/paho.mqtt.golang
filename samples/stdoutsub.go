@@ -29,8 +29,7 @@ import (
 )
 
 func onMessageReceived(client *MQTT.MqttClient, message MQTT.Message) {
-	fmt.Printf("Received message on topic: %s\n", message.Topic())
-	fmt.Printf("Message: %s\n", message.Payload())
+	fmt.Printf("Received message on topic: %s\nMessage: %s\n", message.Topic(), message.Payload())
 }
 
 func main() {
@@ -54,25 +53,27 @@ func main() {
 	password := flag.String("password", "", "Password to match username")
 	flag.Parse()
 
-	connOpts := MQTT.NewClientOptions().AddBroker(*server).SetClientId(*clientid).SetCleanSession(true)
-	if *username != "" {
-		connOpts.SetUsername(*username)
-		if *password != "" {
-			connOpts.SetPassword(*password)
+	connOpts := &MQTT.ClientOptions{
+		ClientId:             *clientid,
+		CleanSession:         true,
+		Username:             *username,
+		Password:             *password,
+		MaxReconnectInterval: 1 * time.Second,
+		KeepAlive:            30 * time.Second,
+		TlsConfig:            tls.Config{InsecureSkipVerify: true, ClientAuth: tls.NoClientCert},
+	}
+	connOpts.AddBroker(*server)
+	connOpts.OnConnect = func(c *MQTT.MqttClient) {
+		if token := c.Subscribe(*topic, byte(*qos), onMessageReceived); token.Wait() && token.Error() != nil {
+			panic(token.Error())
 		}
 	}
-	tlsConfig := &tls.Config{InsecureSkipVerify: true, ClientAuth: tls.NoClientCert}
-	connOpts.SetTlsConfig(tlsConfig)
 
 	client := MQTT.NewClient(connOpts)
 	if token := client.Connect(); token.Wait() && token.Error() != nil {
 		panic(token.Error())
 	} else {
 		fmt.Printf("Connected to %s\n", *server)
-	}
-
-	if token := client.Subscribe(*topic, byte(*qos), onMessageReceived); token.Wait() && token.Error() != nil {
-		panic(token.Error())
 	}
 
 	for {

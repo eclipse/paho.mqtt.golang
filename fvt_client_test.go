@@ -189,7 +189,7 @@ func Test_Will(t *testing.T) {
 	sops := NewClientOptions().AddBroker(FVT_TCP)
 	sops.SetClientId("will-giver")
 	sops.SetWill("/wills", "good-byte!", 0, false)
-	sops.SetOnConnectionLost(func(client *MqttClient, err error) {
+	sops.SetConnectionLostHandler(func(client *MqttClient, err error) {
 		fmt.Println("OnConnectionLost!")
 	})
 	c := NewClient(sops)
@@ -219,6 +219,7 @@ func Test_Will(t *testing.T) {
 	time.Sleep(time.Duration(1) * time.Second)
 
 	c.conn.Close() // Force kill the client with a will
+	c.ForceDisconnect()
 
 	wsub.Disconnect(250)
 
@@ -239,7 +240,7 @@ func Test_Binary_Will(t *testing.T) {
 	sops := NewClientOptions().AddBroker(FVT_TCP)
 	sops.SetClientId("will-giver")
 	sops.SetBinaryWill("/wills", will, 0, false)
-	sops.SetOnConnectionLost(func(client *MqttClient, err error) {
+	sops.SetConnectionLostHandler(func(client *MqttClient, err error) {
 	})
 	c := NewClient(sops)
 
@@ -926,10 +927,10 @@ func Test_Cleanstore(t *testing.T) {
 		s.conn.Close()
 	}
 	sops.SetDefaultPublishHandler(f)
-	var ocl OnConnectionLost = func(client *MqttClient, reason error) {
+	var ocl ConnectionLostHandler = func(client *MqttClient, reason error) {
 		fmt.Printf("OnConnectionLost\n")
 	}
-	sops.SetOnConnectionLost(ocl)
+	sops.SetConnectionLostHandler(ocl)
 
 	s = NewClient(sops)
 	sToken := s.Connect()

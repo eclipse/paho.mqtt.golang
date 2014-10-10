@@ -16,7 +16,6 @@
 package mqtt
 
 import (
-	"bufio"
 	"errors"
 	. "github.com/alsm/hrotti/packets"
 	"net"
@@ -57,12 +56,13 @@ type Client interface {
 type MqttClient struct {
 	sync.RWMutex
 	messageIds
-	callbacks       Callbacks
 	conn            net.Conn
-	bufferedConn    *bufio.ReadWriter
 	ibound          chan ControlPacket
 	obound          chan *PacketAndToken
 	oboundP         chan *PacketAndToken
+	msgRouter       *router
+	stopRouter      chan bool
+	incomingPubChan chan *PublishPacket
 	errors          chan error
 	stop            chan struct{}
 	persist         Store
@@ -76,16 +76,25 @@ type MqttClient struct {
 // in the provided ClientOptions. The client must have the Start method called
 // on it before it may be used. This is to make sure resources (such as a net
 // connection) are created before the application is actually ready.
-func NewClient(ops *ClientOptions) *MqttClient {
+func NewClient(o *ClientOptions) *MqttClient {
 	c := &MqttClient{}
-	c.options = *ops
+	c.options = *o
 
-	if c.options.store == nil {
-		c.options.store = NewMemoryStore()
+	if c.options.Store == nil {
+		c.options.Store = NewMemoryStore()
 	}
-	c.persist = c.options.store
+	switch c.options.ProtocolVersion {
+	case 3, 4:
+		c.options.protocolVersionExplicit = true
+	default:
+		c.options.ProtocolVersion = 4
+		c.options.protocolVersionExplicit = false
+	}
+	c.persist = c.options.Store
 	c.connected = false
 	c.messageIds = messageIds{index: make(map[uint16]Token)}
+	c.msgRouter, c.stopRouter = newRouter()
+	c.msgRouter.setDefaultHandler(c.options.DefaultPublishHander)
 	return c
 }
 
@@ -110,20 +119,20 @@ func (c *MqttClient) Connect() Token {
 		var rc byte
 		cm := newConnectMsgFromOptions(c.options)
 
-		for _, broker := range c.options.servers {
+		for _, broker := range c.options.Servers {
 		CONN:
 			DEBUG.Println(CLI, "about to write new connect msg")
-			c.conn, err = openConnection(broker, c.options.tlsConfig)
+			c.conn, err = openConnection(broker, &c.options.TlsConfig)
 			if err == nil {
 				DEBUG.Println(CLI, "socket connected to broker")
-				switch c.options.protocolVersion {
+				switch c.options.ProtocolVersion {
 				case 3:
 					DEBUG.Println(CLI, "Using MQTT 3.1 protocol")
 					cm.ProtocolName = "MQIsdp"
 					cm.ProtocolVersion = 3
 				default:
 					DEBUG.Println(CLI, "Using MQTT 3.1.1 protocol")
-					c.options.protocolVersion = 4
+					c.options.ProtocolVersion = 4
 					cm.ProtocolName = "MQTT"
 					cm.ProtocolVersion = 4
 				}
@@ -138,9 +147,9 @@ func (c *MqttClient) Connect() Token {
 						ERROR.Println(CLI, "Connecting to", broker, "CONNACK was not CONN_ACCEPTED, but rather", ConnackReturnCodes[rc])
 						continue
 					}
-					if c.options.protocolVersion == 4 {
+					if c.options.ProtocolVersion == 4 {
 						DEBUG.Println(CLI, "Trying reconnect using MQTT 3.1 protocol")
-						c.options.protocolVersion = 3
+						c.options.ProtocolVersion = 3
 						goto CONN
 					}
 				}
@@ -163,32 +172,35 @@ func (c *MqttClient) Connect() Token {
 			t.flowComplete()
 			return
 		}
-		c.bufferedConn = bufio.NewReadWriter(bufio.NewReader(c.conn), bufio.NewWriter(c.conn))
 
+		c.lastContact.update()
 		c.persist.Open()
 
-		c.obound = make(chan *PacketAndToken)
-		c.oboundP = make(chan *PacketAndToken)
+		c.obound = make(chan *PacketAndToken, 100)
+		c.oboundP = make(chan *PacketAndToken, 100)
 		c.ibound = make(chan ControlPacket)
 		c.errors = make(chan error)
 		c.stop = make(chan struct{})
 
+		c.incomingPubChan = make(chan *PublishPacket, 100)
+		c.msgRouter.matchAndDispatch(c.incomingPubChan, c.options.Order, c)
+
 		go outgoing(c)
 		go alllogic(c)
 
-		c.options.incomingPubChan = make(chan *PublishPacket, 100)
-		c.options.msgRouter.matchAndDispatch(c.options.incomingPubChan, c.options.order, c)
-
 		c.connected = true
 		DEBUG.Println(CLI, "client is connected")
+		if c.options.OnConnect != nil {
+			go c.options.OnConnect(c)
+		}
 
-		if c.options.keepAlive != 0 {
+		if c.options.KeepAlive != 0 {
 			go keepalive(c)
 		}
 
 		// Take care of any messages in the store
 		//var leftovers []Receipt
-		if c.options.cleanSession == false {
+		if c.options.CleanSession == false {
 			//leftovers = c.resume()
 		} else {
 			c.persist.Reset()
@@ -201,6 +213,84 @@ func (c *MqttClient) Connect() Token {
 		t.flowComplete()
 	}()
 	return t
+}
+
+// internal function used to reconnect the client when it loses its connection
+func (c *MqttClient) reconnect() {
+	DEBUG.Println(CLI, "enter reconnect")
+	var rc byte = 1
+	var sleep uint = 1
+	var err error
+
+	for rc != 0 {
+		cm := newConnectMsgFromOptions(c.options)
+
+		for _, broker := range c.options.Servers {
+		CONN:
+			DEBUG.Println(CLI, "about to write new connect msg")
+			c.conn, err = openConnection(broker, &c.options.TlsConfig)
+			if err == nil {
+				DEBUG.Println(CLI, "socket connected to broker")
+				switch c.options.ProtocolVersion {
+				case 3:
+					DEBUG.Println(CLI, "Using MQTT 3.1 protocol")
+					cm.ProtocolName = "MQIsdp"
+					cm.ProtocolVersion = 3
+				default:
+					DEBUG.Println(CLI, "Using MQTT 3.1.1 protocol")
+					c.options.ProtocolVersion = 4
+					cm.ProtocolName = "MQTT"
+					cm.ProtocolVersion = 4
+				}
+				cm.Write(c.conn)
+
+				rc = c.connect()
+				if rc != CONN_ACCEPTED {
+					c.conn.Close()
+					c.conn = nil
+					//if the protocol version was explicitly set don't do any fallback
+					if c.options.protocolVersionExplicit {
+						ERROR.Println(CLI, "Connecting to", broker, "CONNACK was not CONN_ACCEPTED, but rather", ConnackReturnCodes[rc])
+						continue
+					}
+					if c.options.ProtocolVersion == 4 {
+						DEBUG.Println(CLI, "Trying reconnect using MQTT 3.1 protocol")
+						c.options.ProtocolVersion = 3
+						goto CONN
+					}
+				}
+				break
+			} else {
+				ERROR.Println(CLI, err.Error())
+				WARN.Println(CLI, "failed to connect to broker, trying next")
+				rc = CONN_NETWORK_ERROR
+			}
+		}
+		if rc != 0 {
+			DEBUG.Println(CLI, "Reconnect failed, sleeping for", sleep, "seconds")
+			time.Sleep(time.Duration(sleep) * time.Second)
+			if sleep <= uint(c.options.MaxReconnectInterval.Seconds()) {
+				sleep *= 2
+			}
+		}
+	}
+
+	c.lastContact.update()
+	c.stop = make(chan struct{})
+
+	go outgoing(c)
+	go alllogic(c)
+
+	c.connected = true
+	DEBUG.Println(CLI, "client is reconnected")
+	if c.options.OnConnect != nil {
+		go c.options.OnConnect(c)
+	}
+
+	if c.options.KeepAlive != 0 {
+		go keepalive(c)
+	}
+	go incoming(c)
 }
 
 // This function is only used for receiving a connack
@@ -278,6 +368,7 @@ func (c *MqttClient) disconnect() {
 // Returns a read only channel used to track
 // the delivery of the message.
 func (c *MqttClient) Publish(topic string, qos byte, retained bool, payload interface{}) Token {
+	token := newToken(PUBLISH).(*PublishToken)
 	pub := NewControlPacket(PUBLISH).(*PublishPacket)
 	pub.Qos = qos
 	pub.TopicName = topic
@@ -288,10 +379,12 @@ func (c *MqttClient) Publish(topic string, qos byte, retained bool, payload inte
 	case []byte:
 		pub.Payload = payload.([]byte)
 	default:
+		token.err = errors.New("Unknown payload type")
+		token.flowComplete()
+		return token
 	}
 
 	DEBUG.Println(CLI, "sending publish message, topic:", topic)
-	token := newToken(PUBLISH)
 	c.obound <- &PacketAndToken{p: pub, t: token}
 	return token
 }
@@ -315,7 +408,7 @@ func (c *MqttClient) Subscribe(topic string, qos byte, callback MessageHandler) 
 	DEBUG.Println(sub.String())
 
 	if callback != nil {
-		c.options.msgRouter.addRoute(topic, callback)
+		c.msgRouter.addRoute(topic, callback)
 	}
 
 	token.subs = append(token.subs, topic)
@@ -342,7 +435,7 @@ func (c *MqttClient) SubscribeMultiple(filters map[string]byte, callback Message
 
 	if callback != nil {
 		for topic, _ := range filters {
-			c.options.msgRouter.addRoute(topic, callback)
+			c.msgRouter.addRoute(topic, callback)
 		}
 	}
 	token.subs = make([]string, len(sub.Topics))
@@ -368,9 +461,15 @@ func (c *MqttClient) Unsubscribe(topics ...string) Token {
 
 	c.oboundP <- &PacketAndToken{p: unsub, t: token}
 	for _, topic := range topics {
-		c.options.msgRouter.deleteRoute(topic)
+		c.msgRouter.deleteRoute(topic)
 	}
 
 	DEBUG.Println(CLI, "exit Unsubscribe")
 	return token
+}
+
+func (c *MqttClient) State() byte {
+	c.RLock()
+	defer c.RUnlock()
+	return c.state
 }

@@ -103,18 +103,19 @@ func outgoing(c *MqttClient) {
 	for {
 		DEBUG.Println(NET, "outgoing waiting for an outbound message")
 		select {
+		case <-c.stop:
+			WARN.Println(NET, "outgoing stopped")
+			return
 		case pub := <-c.obound:
 			msg := pub.p.(*PublishPacket)
 			if msg.Qos != 0 && msg.MessageID == 0 {
 				msg.MessageID = c.getId(pub.t)
 				pub.t.(*PublishToken).messageId = msg.MessageID
-			} else {
-				pub.t.flowComplete()
 			}
 			//persist_obound(c.persist, msg)
 
-			if c.options.writeTimeout > 0 {
-				c.conn.SetWriteDeadline(time.Now().Add(c.options.writeTimeout))
+			if c.options.WriteTimeout > 0 {
+				c.conn.SetWriteDeadline(time.Now().Add(c.options.WriteTimeout))
 			}
 
 			if err := msg.Write(c.conn); err != nil {
@@ -123,23 +124,26 @@ func outgoing(c *MqttClient) {
 				return
 			}
 
-			if c.options.writeTimeout > 0 {
+			if c.options.WriteTimeout > 0 {
 				// If we successfully wrote, we don't want the timeout to happen during an idle period
 				// so we reset it to infinite.
 				c.conn.SetWriteDeadline(time.Time{})
 			}
 
+			if msg.Qos == 0 {
+				pub.t.flowComplete()
+			}
+
 			c.lastContact.update()
 			DEBUG.Println(NET, "obound wrote msg, id:", msg.MessageID)
 		case msg := <-c.oboundP:
-			msgtype := reflect.TypeOf(msg.p)
 			switch msg.p.(type) {
 			case *SubscribePacket:
 				msg.p.(*SubscribePacket).MessageID = c.getId(msg.t)
 			case *UnsubscribePacket:
 				msg.p.(*UnsubscribePacket).MessageID = c.getId(msg.t)
 			}
-			DEBUG.Println(NET, "obound priority msg to write, type", msgtype)
+			DEBUG.Println(NET, "obound priority msg to write, type", reflect.TypeOf(msg.p))
 			if err := msg.p.Write(c.conn); err != nil {
 				ERROR.Println(NET, "outgoing stopped with error")
 				c.errors <- err
@@ -197,7 +201,7 @@ func alllogic(c *MqttClient) {
 				DEBUG.Println(NET, "putting msg on onPubChan")
 				switch pp.Qos {
 				case 2:
-					c.options.incomingPubChan <- pp
+					c.incomingPubChan <- pp
 					DEBUG.Println(NET, "done putting msg on incomingPubChan")
 					pr := NewControlPacket(PUBREC).(*PubrecPacket)
 					pr.MessageID = pp.MessageID
@@ -205,7 +209,7 @@ func alllogic(c *MqttClient) {
 					c.oboundP <- &PacketAndToken{p: pr, t: nil}
 					DEBUG.Println(NET, "done putting pubrec msg on obound")
 				case 1:
-					c.options.incomingPubChan <- pp
+					c.incomingPubChan <- pp
 					DEBUG.Println(NET, "done putting msg on incomingPubChan")
 					pa := NewControlPacket(PUBACK).(*PubackPacket)
 					pa.MessageID = pp.MessageID
@@ -214,7 +218,7 @@ func alllogic(c *MqttClient) {
 					DEBUG.Println(NET, "done putting puback msg on obound")
 				case 0:
 					select {
-					case c.options.incomingPubChan <- pp:
+					case c.incomingPubChan <- pp:
 						DEBUG.Println(NET, "done putting msg on incomingPubChan")
 					case err, ok := <-c.errors:
 						DEBUG.Println(NET, "error while putting msg on pubChanZero")
@@ -264,17 +268,20 @@ func alllogic(c *MqttClient) {
 			WARN.Println(NET, "logic stopped")
 			return
 		case err := <-c.errors:
+			close(c.stop)
 			c.connected = false
 			ERROR.Println(NET, "logic got error")
 			// clean up go routines
 			// incoming most likely stopped if outgoing stopped,
 			// but let it know to stop anyways.
-			close(c.options.stopRouter)
-			close(c.stop)
+			//close(c.options.stopRouter)
 			c.conn.Close()
 
 			// Call onConnectionLost or default error handler
-			go c.options.onconnlost(c, err)
+			if c.IsConnected() {
+				go c.options.OnConnectionLost(c, err)
+				go c.reconnect()
+			}
 			return
 		}
 	}

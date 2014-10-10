@@ -72,31 +72,30 @@ func messageFromPublish(p *PublishPacket) Message {
 }
 
 func newConnectMsgFromOptions(options ClientOptions) *ConnectPacket {
-	//m := newMsg(CONNECT, false, 0, false)
 	m := NewControlPacket(CONNECT).(*ConnectPacket)
 
-	m.CleanSession = options.cleanSession
-	m.WillFlag = options.willEnabled
-	m.WillRetain = options.willRetained
-	m.ClientIdentifier = options.clientId
+	m.CleanSession = options.CleanSession
+	m.WillFlag = options.WillEnabled
+	m.WillRetain = options.WillRetained
+	m.ClientIdentifier = options.ClientId
 
-	if options.willEnabled {
-		m.WillQos = options.willQos
-		m.WillTopic = options.willTopic
-		m.WillMessage = options.willPayload
+	if options.WillEnabled {
+		m.WillQos = options.WillQos
+		m.WillTopic = options.WillTopic
+		m.WillMessage = options.WillPayload
 	}
 
-	if options.username != "" {
+	if options.Username != "" {
 		m.UsernameFlag = true
-		m.Username = options.username
+		m.Username = options.Username
 		//mustn't have password without user as well
-		if options.password != "" {
+		if options.Password != "" {
 			m.PasswordFlag = true
-			m.Password = []byte(options.password)
+			m.Password = []byte(options.Password)
 		}
 	}
 
-	m.KeepaliveTimer = uint16(options.keepAlive)
+	m.KeepaliveTimer = uint16(options.KeepAlive)
 
 	return m
 }
