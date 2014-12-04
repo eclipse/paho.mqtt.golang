@@ -67,7 +67,7 @@ func openConnection(uri *url.URL, tlsc *tls.Config) (net.Conn, error) {
 // actually read incoming messages off the wire
 // send Message object into ibound channel
 func incoming(c *MqttClient) {
-
+	defer c.workers.Done()
 	var err error
 	var cp ControlPacket
 
@@ -97,14 +97,14 @@ func incoming(c *MqttClient) {
 // receive a Message object on obound, and then
 // actually send outgoing message to the wire
 func outgoing(c *MqttClient) {
-
+	defer c.workers.Done()
 	DEBUG.Println(NET, "outgoing started")
 
 	for {
 		DEBUG.Println(NET, "outgoing waiting for an outbound message")
 		select {
 		case <-c.stop:
-			WARN.Println(NET, "outgoing stopped")
+			DEBUG.Println(NET, "outgoing stopped")
 			return
 		case pub := <-c.obound:
 			msg := pub.p.(*PublishPacket)
@@ -259,8 +259,6 @@ func alllogic(c *MqttClient) {
 			case *PubcompPacket:
 				pc := msg.(*PubcompPacket)
 				DEBUG.Println(NET, "received pubcomp, id:", pc.MessageID)
-				// c.receipts.get(msg.MsgId()) <- Receipt{}
-				// c.receipts.end(msg.MsgId())
 				c.getToken(pc.MessageID).flowComplete()
 				c.freeId(pc.MessageID)
 			}
@@ -268,13 +266,10 @@ func alllogic(c *MqttClient) {
 			WARN.Println(NET, "logic stopped")
 			return
 		case err := <-c.errors:
-			close(c.stop)
-			c.connected = false
 			ERROR.Println(NET, "logic got error")
-			// clean up go routines
-			// incoming most likely stopped if outgoing stopped,
-			// but let it know to stop anyways.
-			//close(c.options.stopRouter)
+			close(c.stop)
+			//Wait for all workers to finish before closing connection
+			c.workers.Wait()
 			c.conn.Close()
 
 			// Call onConnectionLost or default error handler
@@ -284,5 +279,6 @@ func alllogic(c *MqttClient) {
 			}
 			return
 		}
+		c.lastContact.update()
 	}
 }

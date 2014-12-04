@@ -70,6 +70,7 @@ type MqttClient struct {
 	lastContact     lastcontact
 	pingOutstanding bool
 	connected       bool
+	workers         sync.WaitGroup
 }
 
 // NewClient will create an MQTT v3.1 client with all of the options specified
@@ -185,6 +186,7 @@ func (c *MqttClient) Connect() Token {
 		c.incomingPubChan = make(chan *PublishPacket, 100)
 		c.msgRouter.matchAndDispatch(c.incomingPubChan, c.options.Order, c)
 
+		c.workers.Add(1)
 		go outgoing(c)
 		go alllogic(c)
 
@@ -195,6 +197,7 @@ func (c *MqttClient) Connect() Token {
 		}
 
 		if c.options.KeepAlive != 0 {
+			c.workers.Add(1)
 			go keepalive(c)
 		}
 
@@ -207,6 +210,7 @@ func (c *MqttClient) Connect() Token {
 		}
 
 		// Do not start incoming until resume has completed
+		c.workers.Add(1)
 		go incoming(c)
 
 		DEBUG.Println(CLI, "exit startMqttClient")
@@ -278,6 +282,7 @@ func (c *MqttClient) reconnect() {
 	c.lastContact.update()
 	c.stop = make(chan struct{})
 
+	c.workers.Add(1)
 	go outgoing(c)
 	go alllogic(c)
 
@@ -288,8 +293,10 @@ func (c *MqttClient) reconnect() {
 	}
 
 	if c.options.KeepAlive != 0 {
+		c.workers.Add(1)
 		go keepalive(c)
 	}
+	c.workers.Add(1)
 	go incoming(c)
 }
 
@@ -466,10 +473,4 @@ func (c *MqttClient) Unsubscribe(topics ...string) Token {
 
 	DEBUG.Println(CLI, "exit Unsubscribe")
 	return token
-}
-
-func (c *MqttClient) State() byte {
-	c.RLock()
-	defer c.RUnlock()
-	return c.state
 }

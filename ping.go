@@ -40,21 +40,24 @@ func (l *lastcontact) get() time.Time {
 }
 
 func keepalive(c *MqttClient) {
+	defer c.workers.Done()
 	DEBUG.Println(PNG, "keepalive starting")
 
 	for {
 		select {
 		case <-c.stop:
-			WARN.Println(PNG, "keepalive stopped")
+			DEBUG.Println(PNG, "keepalive stopped")
 			return
 		default:
 			last := uint(time.Since(c.lastContact.get()).Seconds())
-			//DEBUG.Println(PNG, "last contact: %d (timeout: %d)", last, c.options.timeout)
+			//DEBUG.Printf("%s last contact: %d (timeout: %d)", PNG, last, uint(c.options.KeepAlive.Seconds()))
 			if last > uint(c.options.KeepAlive.Seconds()) {
 				if !c.pingOutstanding {
 					DEBUG.Println(PNG, "keepalive sending ping")
 					ping := NewControlPacket(PINGREQ).(*PingreqPacket)
-					c.oboundP <- &PacketAndToken{p: ping, t: nil}
+					//We don't want to wait behind large messages being sent, the Write call
+					//will block until it it able to send the packet.
+					ping.Write(c.conn)
 					c.pingOutstanding = true
 				} else {
 					CRITICAL.Println(PNG, "pingresp not received, disconnecting")
