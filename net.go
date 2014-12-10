@@ -17,6 +17,7 @@ package mqtt
 import (
 	"code.google.com/p/go.net/websocket"
 	"crypto/tls"
+	"errors"
 	"io"
 	"net"
 	"net/url"
@@ -133,6 +134,32 @@ func incoming(c *MqttClient) {
 	}
 }
 
+func sendSendableWithTimeout(sChan chan sendable, s sendable) error {
+
+	t := time.NewTimer(time.Second)
+	select {
+	case sChan <- s:
+		// stop timer so we don't leak it.
+		t.Stop()
+	case <-t.C:
+		return errors.New("Timed out sending message")
+	}
+	return nil
+}
+
+func sendMessageWithTimeout(mChan chan *Message, m *Message) error {
+
+	t := time.NewTimer(time.Second)
+	select {
+	case mChan <- m:
+		// stop timer so we don't leak it.
+		t.Stop()
+	case <-t.C:
+		return errors.New("Timed out sending message")
+	}
+	return nil
+}
+
 // receive a Message object on obound, and then
 // actually send outgoing message to the wire
 func outgoing(c *MqttClient) {
@@ -142,12 +169,24 @@ func outgoing(c *MqttClient) {
 	for {
 		DEBUG.Println(NET, "outgoing waiting for an outbound message")
 		select {
+		case <-c.stop:
+			// The connection has been closed, we won't be receiving any more requests.
+			return
 		case out := <-c.obound:
 			msg := out.m
 			msgtype := msg.msgType()
 			DEBUG.Println(NET, "obound got msg to write, type:", msgtype)
 			if msg.QoS() != QOS_ZERO && msg.MsgId() == 0 {
-				msg.setMsgId(c.options.mids.getId())
+				i, err := c.options.mids.getId()
+				if err != nil {
+					select {
+					case c.errors <- err:
+					default:
+						// c.errors is a buffer of one, so there must already be an error closing this connection.
+					}
+					return
+				}
+				msg.setMsgId(i)
 			}
 			if out.r != nil {
 				c.receipts.put(msg.MsgId(), out.r)
@@ -283,18 +322,12 @@ func alllogic(c *MqttClient) {
 				id := msg.MsgId()
 				pubrelMsg := newPubRelMsg()
 				pubrelMsg.setMsgId(id)
-				select {
-				case c.obound <- sendable{pubrelMsg, nil}:
-				case <-time.After(time.Second):
-				}
+				sendSendableWithTimeout(c.obound, sendable{pubrelMsg, nil})
 			case PUBREL:
 				DEBUG.Println(NET, "received pubrel, id:", msg.MsgId())
 				pubcompMsg := newPubCompMsg()
 				pubcompMsg.setMsgId(msg.MsgId())
-				select {
-				case c.obound <- sendable{pubcompMsg, nil}:
-				case <-time.After(time.Second):
-				}
+				sendSendableWithTimeout(c.obound, sendable{pubcompMsg, nil})
 			case PUBCOMP:
 				DEBUG.Println(NET, "received pubcomp, id:", msg.MsgId())
 				c.receipts.get(msg.MsgId()) <- Receipt{}
@@ -312,6 +345,7 @@ func alllogic(c *MqttClient) {
 			// but let it know to stop anyways.
 			close(c.options.stopRouter)
 			close(c.stop)
+			c.options.mids.stop()
 			c.conn.Close()
 
 			// Call onConnectionLost or default error handler

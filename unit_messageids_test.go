@@ -23,20 +23,29 @@ func Test_getId(t *testing.T) {
 	mids := &messageIds{index: make(map[MId]bool)}
 	mids.generateMsgIds()
 
-	i1 := mids.getId()
+	i1, err := mids.getId()
+	if err != nil {
+		t.Fatalf("Failed to get id. %s", err.Error())
+	}
 
 	if i1 != MId(1) {
 		t.Fatalf("i1 was wrong: %v", i1)
 	}
 
-	i2 := mids.getId()
+	i2, err := mids.getId()
+	if err != nil {
+		t.Fatalf("Failed to get id. %s", err.Error())
+	}
 
 	if i2 != MId(2) {
 		t.Fatalf("i2 was wrong: %v", i2)
 	}
 
 	for i := 3; i < 100; i++ {
-		id := mids.getId()
+		id, err := mids.getId()
+		if err != nil {
+			t.Fatalf("Failed to get id. %s", err.Error())
+		}
 		if id != MId(i) {
 			t.Fatalf("id was wrong expected %v got %v", i, id)
 		}
@@ -47,14 +56,20 @@ func Test_freeId(t *testing.T) {
 	mids := &messageIds{index: make(map[MId]bool)}
 	mids.generateMsgIds()
 
-	i1 := mids.getId()
+	i1, err := mids.getId()
+	if err != nil {
+		t.Fatalf("Failed to get id. %s", err.Error())
+	}
 	mids.freeId(i1)
 
 	if i1 != MId(1) {
 		t.Fatalf("i1 was wrong: %v", i1)
 	}
 
-	i2 := mids.getId()
+	i2, err := mids.getId()
+	if err != nil {
+		t.Fatalf("Failed to get id. %s", err.Error())
+	}
 	fmt.Printf("i2: %v\n", i2)
 }
 
@@ -69,7 +84,12 @@ func Test_messageids_mix(t *testing.T) {
 
 	go func() {
 		for i := 0; i < 10000; i++ {
-			a <- mids.getId()
+			id, err := mids.getId()
+			if err != nil {
+				t.Fatalf("Failed to get id. %s", err.Error())
+			}
+			a <- id
+
 			mids.freeId(<-b)
 		}
 		done <- true
@@ -77,7 +97,12 @@ func Test_messageids_mix(t *testing.T) {
 
 	go func() {
 		for i := 0; i < 10000; i++ {
-			b <- mids.getId()
+			id, err := mids.getId()
+			if err != nil {
+				t.Fatalf("Failed to get id. %s", err.Error())
+			}
+			b <- id
+
 			mids.freeId(<-c)
 		}
 		done <- true
@@ -85,7 +110,12 @@ func Test_messageids_mix(t *testing.T) {
 
 	go func() {
 		for i := 0; i < 10000; i++ {
-			c <- mids.getId()
+			id, err := mids.getId()
+			if err != nil {
+				t.Fatalf("Failed to get id. %s", err.Error())
+			}
+			c <- id
+
 			mids.freeId(<-a)
 		}
 		done <- true

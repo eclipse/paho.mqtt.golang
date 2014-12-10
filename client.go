@@ -123,7 +123,15 @@ func (c *MqttClient) Start() ([]Receipt, error) {
 
 	cm := newConnectMsgFromOptions(c.options)
 	DEBUG.Println(CLI, "about to write new connect msg")
-	c.oboundP <- cm
+
+	if err := sendMessageWithTimeout(c.oboundP, cm); err != nil {
+		select {
+		case c.errors <- err:
+		default:
+			// c.errors is a buffer of one, so there must already be an error closing this connection.
+		}
+		return nil, err
+	}
 
 	rc := connect(c)
 	if chkrc(rc) != nil {
@@ -200,11 +208,10 @@ func (c *MqttClient) disconnect() {
 	c.connected = false
 	dm := newDisconnectMsg()
 
-	// Stop all go routines except outgoing
+	// send disconnect message
+	sendMessageWithTimeout(c.oboundP, dm)
+	// Stop all go routines
 	close(c.stop)
-
-	// Send disconnect message and stop outgoing
-	c.oboundP <- dm
 
 	DEBUG.Println(CLI, "disconnected")
 	c.persist.Close()
@@ -228,9 +235,7 @@ func (c *MqttClient) Publish(qos QoS, topic string, payload interface{}) <-chan 
 	r := make(chan Receipt, 1)
 	DEBUG.Println(CLI, "sending publish message, topic:", topic)
 
-	select {
-	case c.obound <- sendable{pub, r}:
-	case <-time.After(time.Second):
+	if err := sendSendableWithTimeout(c.obound, sendable{pub, r}); err != nil {
 		close(r)
 	}
 	return r
@@ -249,13 +254,10 @@ func (c *MqttClient) PublishMessage(topic string, message *Message) <-chan Recei
 
 	DEBUG.Println(CLI, "sending publish message, topic:", topic)
 
-	select {
-	case c.obound <- sendable{pub, r}:
-		return r
-	case <-time.After(time.Second):
+	if err := sendSendableWithTimeout(c.obound, sendable{pub, r}); err != nil {
 		close(r)
-		return nil
 	}
+	return r
 }
 
 // Start a new subscription. Provide a MessageHandler to be executed when
@@ -275,8 +277,9 @@ func (c *MqttClient) StartSubscription(callback MessageHandler, filters ...*Topi
 	}
 
 	r := make(chan Receipt, 1)
-
-	c.obound <- sendable{submsg, r}
+	if err := sendSendableWithTimeout(c.obound, sendable{submsg, r}); err != nil {
+		close(r)
+	}
 
 	DEBUG.Println(CLI, "exit StartSubscription")
 	return r, nil
@@ -293,8 +296,10 @@ func (c *MqttClient) EndSubscription(topics ...string) (<-chan Receipt, error) {
 	usmsg := newUnsubscribeMsg(topics...)
 
 	r := make(chan Receipt, 1)
+	if err := sendSendableWithTimeout(c.obound, sendable{usmsg, r}); err != nil {
+		close(r)
+	}
 
-	c.obound <- sendable{usmsg, r}
 	for _, topic := range topics {
 		c.options.msgRouter.deleteRoute(topic)
 	}

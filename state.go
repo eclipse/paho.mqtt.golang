@@ -69,7 +69,7 @@ func (c *MqttClient) resume() []Receipt {
 			if c.receipts.get(m.MsgId()) == nil { // will be nil if client crashed
 				c.receipts.put(m.MsgId(), make(chan Receipt, 1))
 			}
-			c.obound <- sendable{m, c.receipts.get(m.MsgId())}
+			sendSendableWithTimeout(c.obound, sendable{m, c.receipts.get(m.MsgId())})
 		}
 	}
 
@@ -81,7 +81,7 @@ func (c *MqttClient) resume() []Receipt {
 			if c.receipts.get(m.MsgId()) == nil { // will be nil if client crashed
 				c.receipts.put(m.MsgId(), make(chan Receipt, 1))
 			}
-			c.obound <- sendable{m, c.receipts.get(m.MsgId())}
+			sendSendableWithTimeout(c.obound, sendable{m, c.receipts.get(m.MsgId())})
 		}
 	}
 

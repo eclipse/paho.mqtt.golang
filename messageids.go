@@ -15,6 +15,7 @@
 package mqtt
 
 import (
+	"errors"
 	"sync"
 )
 
@@ -25,8 +26,9 @@ type MId uint16
 
 type messageIds struct {
 	sync.Mutex
-	idChan chan MId
-	index  map[MId]bool
+	idChan   chan MId
+	index    map[MId]bool
+	stopChan chan struct{}
 }
 
 const (
@@ -34,21 +36,31 @@ const (
 	MId_MIN MId = 1
 )
 
+func (mids *messageIds) stop() {
+	close(mids.stopChan)
+}
+
 func (mids *messageIds) generateMsgIds() {
+
 	mids.idChan = make(chan MId, 10)
-	go func() {
+	mids.stopChan = make(chan struct{})
+	go func(mid *messageIds) {
 		for {
-			mids.Lock()
+			mid.Lock()
 			for i := MId_MIN; i < MId_MAX; i++ {
-				if !mids.index[i] {
-					mids.index[i] = true
-					mids.Unlock()
-					mids.idChan <- i
+				if !mid.index[i] {
+					mid.index[i] = true
+					mid.Unlock()
+					select {
+					case mid.idChan <- i:
+					case <-mid.stopChan:
+						return
+					}
 					break
 				}
 			}
 		}
-	}()
+	}(mids)
 }
 
 func (mids *messageIds) freeId(id MId) {
@@ -58,6 +70,11 @@ func (mids *messageIds) freeId(id MId) {
 	mids.index[id] = false
 }
 
-func (mids *messageIds) getId() MId {
-	return <-mids.idChan
+func (mids *messageIds) getId() (MId, error) {
+	select {
+	case i := <-mids.idChan:
+		return i, nil
+	case <-mids.stopChan:
+	}
+	return 0, errors.New("Failed to get next message id.")
 }
