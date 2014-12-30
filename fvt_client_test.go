@@ -900,72 +900,72 @@ func Test_PublishEmptyMessage(t *testing.T) {
 	p.Disconnect(250)
 }
 
-func Test_Cleanstore(t *testing.T) {
-	store := "/tmp/fvt/cleanstore"
-	topic := "/test/cleanstore"
+// func Test_Cleanstore(t *testing.T) {
+// 	store := "/tmp/fvt/cleanstore"
+// 	topic := "/test/cleanstore"
 
-	pops := NewClientOptions()
-	pops.AddBroker(FVTTCP)
-	pops.SetClientID("cleanstore-pub")
-	pops.SetStore(NewFileStore(store + "/p"))
-	p := NewClient(pops)
+// 	pops := NewClientOptions()
+// 	pops.AddBroker(FVTTCP)
+// 	pops.SetClientID("cleanstore-pub")
+// 	pops.SetStore(NewFileStore(store + "/p"))
+// 	p := NewClient(pops)
 
-	var s *Client
-	sops := NewClientOptions()
-	sops.AddBroker(FVTTCP)
-	sops.SetClientID("cleanstore-sub")
-	sops.SetCleanSession(false)
-	sops.SetStore(NewFileStore(store + "/s"))
-	var f MessageHandler = func(client *Client, msg Message) {
-		fmt.Printf("TOPIC: %s\n", msg.Topic())
-		fmt.Printf("MSG: %s\n", msg.Payload())
-		// Close the connection after receiving
-		// the first message so that hopefully
-		// there is something in the store to be
-		// cleaned.
-		s.ForceDisconnect()
-	}
-	sops.SetDefaultPublishHandler(f)
+// 	var s *Client
+// 	sops := NewClientOptions()
+// 	sops.AddBroker(FVTTCP)
+// 	sops.SetClientID("cleanstore-sub")
+// 	sops.SetCleanSession(false)
+// 	sops.SetStore(NewFileStore(store + "/s"))
+// 	var f MessageHandler = func(client *Client, msg Message) {
+// 		fmt.Printf("TOPIC: %s\n", msg.Topic())
+// 		fmt.Printf("MSG: %s\n", msg.Payload())
+// 		// Close the connection after receiving
+// 		// the first message so that hopefully
+// 		// there is something in the store to be
+// 		// cleaned.
+// 		s.ForceDisconnect()
+// 	}
+// 	sops.SetDefaultPublishHandler(f)
 
-	s = NewClient(sops)
-	sToken := s.Connect()
-	if sToken.Wait() && sToken.Error() != nil {
-		t.Fatalf("Error on Client.Connect(): %v", sToken.Error())
-	}
+// 	s = NewClient(sops)
+// 	sToken := s.Connect()
+// 	if sToken.Wait() && sToken.Error() != nil {
+// 		t.Fatalf("Error on Client.Connect(): %v", sToken.Error())
+// 	}
 
-	sToken = s.Subscribe(topic, 2, nil)
-	if sToken.Wait() && sToken.Error() != nil {
-		t.Fatalf("Error on Client.Subscribe(): %v", sToken.Error())
-	}
+// 	sToken = s.Subscribe(topic, 2, nil)
+// 	if sToken.Wait() && sToken.Error() != nil {
+// 		t.Fatalf("Error on Client.Subscribe(): %v", sToken.Error())
+// 	}
 
-	pToken := p.Connect()
-	if pToken.Wait() && pToken.Error() != nil {
-		t.Fatalf("Error on Client.Connect(): %v", pToken.Error())
-	}
+// 	pToken := p.Connect()
+// 	if pToken.Wait() && pToken.Error() != nil {
+// 		t.Fatalf("Error on Client.Connect(): %v", pToken.Error())
+// 	}
 
-	text := "test message"
-	p.Publish(topic, 0, false, text)
-	p.Publish(topic, 0, false, text)
-	p.Publish(topic, 0, false, text)
+// 	text := "test message"
+// 	p.Publish(topic, 0, false, text)
+// 	p.Publish(topic, 0, false, text)
+// 	p.Publish(topic, 0, false, text)
 
-	p.Disconnect(250)
+// 	p.Disconnect(250)
 
-	sops = NewClientOptions()
-	sops.AddBroker(FVTTCP)
-	sops.SetClientID("cleanstore-sub")
-	sops.SetCleanSession(true)
-	sops.SetStore(NewFileStore(store + "/s"))
-	sops.SetDefaultPublishHandler(f)
+// 	s2ops := NewClientOptions()
+// 	s2ops.AddBroker(FVTTCP)
+// 	s2ops.SetClientID("cleanstore-sub")
+// 	s2ops.SetCleanSession(true)
+// 	s2ops.SetStore(NewFileStore(store + "/s"))
+// 	s2ops.SetDefaultPublishHandler(f)
 
-	s2 := NewClient(sops)
-	sToken = s2.Connect()
-	if sToken.Wait() && sToken.Error() != nil {
-		t.Fatalf("Error on Client.Connect(): %v", sToken.Error())
-	}
+// 	s2 := NewClient(s2ops)
+// 	sToken = s2.Connect()
+// 	if sToken.Wait() && sToken.Error() != nil {
+// 		t.Fatalf("Error on Client.Connect(): %v", sToken.Error())
+// 	}
 
-	// at this point existing state should be cleared...
-	// how to check?
-}
+// 	// at this point existing state should be cleared...
+// 	// how to check?
+// }
 
 func Test_MultipleURLs(t *testing.T) {
 	ops := NewClientOptions()
