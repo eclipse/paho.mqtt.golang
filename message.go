@@ -15,9 +15,12 @@
 package mqtt
 
 import (
-	. "github.com/alsm/hrotti/packets"
+	"git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git/packets"
 )
 
+// Message defines the externals that a message implementation must support
+// these are received messages that are passed to the callbacks, not internal
+// messages
 type Message interface {
 	Duplicate() bool
 	Qos() byte
@@ -60,7 +63,7 @@ func (m *message) Payload() []byte {
 	return m.payload
 }
 
-func messageFromPublish(p *PublishPacket) Message {
+func messageFromPublish(p *packets.PublishPacket) Message {
 	return &message{
 		duplicate: p.Dup,
 		qos:       p.Qos,
@@ -71,13 +74,13 @@ func messageFromPublish(p *PublishPacket) Message {
 	}
 }
 
-func newConnectMsgFromOptions(options ClientOptions) *ConnectPacket {
-	m := NewControlPacket(CONNECT).(*ConnectPacket)
+func newConnectMsgFromOptions(options *ClientOptions) *packets.ConnectPacket {
+	m := packets.NewControlPacket(packets.Connect).(*packets.ConnectPacket)
 
 	m.CleanSession = options.CleanSession
 	m.WillFlag = options.WillEnabled
 	m.WillRetain = options.WillRetained
-	m.ClientIdentifier = options.ClientId
+	m.ClientIdentifier = options.ClientID
 
 	if options.WillEnabled {
 		m.WillQos = options.WillQos

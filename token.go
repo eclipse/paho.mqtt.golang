@@ -13,13 +13,13 @@
 package mqtt
 
 import (
-	. "github.com/alsm/hrotti/packets"
+	"git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git/packets"
 	"sync"
 	"time"
 )
 
 type PacketAndToken struct {
-	p ControlPacket
+	p packets.ControlPacket
 	t Token
 }
 
@@ -75,14 +75,16 @@ func (b *baseToken) Error() error {
 
 func newToken(tType byte) Token {
 	switch tType {
-	case CONNECT:
+	case packets.Connect:
 		return &ConnectToken{baseToken: baseToken{complete: make(chan struct{})}}
-	case SUBSCRIBE:
+	case packets.Subscribe:
 		return &SubscribeToken{baseToken: baseToken{complete: make(chan struct{})}, subResult: make(map[string]byte)}
-	case PUBLISH:
+	case packets.Publish:
 		return &PublishToken{baseToken: baseToken{complete: make(chan struct{})}}
-	case UNSUBSCRIBE:
+	case packets.Unsubscribe:
 		return &UnsubscribeToken{baseToken: baseToken{complete: make(chan struct{})}}
+	case packets.Disconnect:
+		return &DisconnectToken{baseToken: baseToken{complete: make(chan struct{})}}
 	}
 	return nil
 }
@@ -120,5 +122,9 @@ func (s *SubscribeToken) Result() map[string]byte {
 }
 
 type UnsubscribeToken struct {
+	baseToken
+}
+
+type DisconnectToken struct {
 	baseToken
 }

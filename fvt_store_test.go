@@ -17,7 +17,7 @@ package mqtt
 import (
 	"bytes"
 	"fmt"
-	. "github.com/alsm/hrotti/packets"
+	"git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git/packets"
 	"testing"
 )
 
@@ -49,12 +49,12 @@ func (ts *TestStore) Open() {
 func (ts *TestStore) Close() {
 }
 
-func (ts *TestStore) Put(key string, m ControlPacket) {
+func (ts *TestStore) Put(key string, m packets.ControlPacket) {
 	ts.mput = append(ts.mput, m.Details().MessageID)
 }
 
-func (ts *TestStore) Get(key string) ControlPacket {
-	mid := key2mid(key)
+func (ts *TestStore) Get(key string) packets.ControlPacket {
+	mid := mIDFromKey(key)
 	ts.mget = append(ts.mget, mid)
 	return nil
 }
@@ -64,7 +64,7 @@ func (ts *TestStore) All() []string {
 }
 
 func (ts *TestStore) Del(key string) {
-	mid := key2mid(key)
+	mid := mIDFromKey(key)
 	ts.mdel = append(ts.mdel, mid)
 }
 
@@ -133,13 +133,13 @@ func Test_FileStore_write(t *testing.T) {
 	f := NewFileStore(storedir)
 	f.Open()
 
-	pm := NewControlPacket(PUBLISH).(*PublishPacket)
+	pm := packets.NewControlPacket(packets.Publish).(*packets.PublishPacket)
 	pm.Qos = 1
 	pm.TopicName = "a/b/c"
 	pm.Payload = []byte{0xBE, 0xEF, 0xED}
 	pm.MessageID = 91
 
-	key := ibound_mid2key(pm.MessageID)
+	key := inboundKeyFromMID(pm.MessageID)
 	f.Put(key, pm)
 
 	if !exists(storedir + "/i.91.msg") {
@@ -152,13 +152,13 @@ func Test_FileStore_Get(t *testing.T) {
 	storedir := "/tmp/TestStore/_get"
 	f := NewFileStore(storedir)
 	f.Open()
-	pm := NewControlPacket(PUBLISH).(*PublishPacket)
+	pm := packets.NewControlPacket(packets.Publish).(*packets.PublishPacket)
 	pm.Qos = 1
 	pm.TopicName = "/a/b/c"
 	pm.Payload = []byte{0xBE, 0xEF, 0xED}
 	pm.MessageID = 120
 
-	key := obound_mid2key(pm.MessageID)
+	key := outboundKeyFromMID(pm.MessageID)
 	f.Put(key, pm)
 
 	if !exists(storedir + "/o.120.msg") {
@@ -201,7 +201,7 @@ func Test_FileStore_Get(t *testing.T) {
 	var msg bytes.Buffer
 	m.Write(&msg)
 	if !bytes.Equal(exp, msg.Bytes()) {
-		t.Fatalf("message from store not same as what went in", msg.Bytes())
+		t.Fatal("message from store not same as what went in", msg.Bytes())
 	}
 }
 
@@ -209,13 +209,13 @@ func Test_FileStore_All(t *testing.T) {
 	storedir := "/tmp/TestStore/_all"
 	f := NewFileStore(storedir)
 	f.Open()
-	pm := NewControlPacket(PUBLISH).(*PublishPacket)
+	pm := packets.NewControlPacket(packets.Publish).(*packets.PublishPacket)
 	pm.Qos = 2
 	pm.TopicName = "/t/r/v"
 	pm.Payload = []byte{0x01, 0x02}
 	pm.MessageID = 121
 
-	key := obound_mid2key(pm.MessageID)
+	key := outboundKeyFromMID(pm.MessageID)
 	f.Put(key, pm)
 
 	keys := f.All()
@@ -233,13 +233,13 @@ func Test_FileStore_Del(t *testing.T) {
 	f := NewFileStore(storedir)
 	f.Open()
 
-	pm := NewControlPacket(PUBLISH).(*PublishPacket)
+	pm := packets.NewControlPacket(packets.Publish).(*packets.PublishPacket)
 	pm.Qos = 1
 	pm.TopicName = "a/b/c"
 	pm.Payload = []byte{0xBE, 0xEF, 0xED}
 	pm.MessageID = 17
 
-	key := ibound_mid2key(pm.MessageID)
+	key := inboundKeyFromMID(pm.MessageID)
 	f.Put(key, pm)
 
 	if !exists(storedir + "/i.17.msg") {
@@ -258,44 +258,44 @@ func Test_FileStore_Reset(t *testing.T) {
 	f := NewFileStore(storedir)
 	f.Open()
 
-	pm1 := NewControlPacket(PUBLISH).(*PublishPacket)
+	pm1 := packets.NewControlPacket(packets.Publish).(*packets.PublishPacket)
 	pm1.Qos = 1
 	pm1.TopicName = "/q/w/e"
 	pm1.Payload = []byte{0xBB}
 	pm1.MessageID = 71
-	key1 := ibound_mid2key(pm1.MessageID)
+	key1 := inboundKeyFromMID(pm1.MessageID)
 	f.Put(key1, pm1)
 
-	pm2 := NewControlPacket(PUBLISH).(*PublishPacket)
+	pm2 := packets.NewControlPacket(packets.Publish).(*packets.PublishPacket)
 	pm2.Qos = 1
 	pm2.TopicName = "/q/w/e"
 	pm2.Payload = []byte{0xBB}
 	pm2.MessageID = 72
-	key2 := ibound_mid2key(pm2.MessageID)
+	key2 := inboundKeyFromMID(pm2.MessageID)
 	f.Put(key2, pm2)
 
-	pm3 := NewControlPacket(PUBLISH).(*PublishPacket)
+	pm3 := packets.NewControlPacket(packets.Publish).(*packets.PublishPacket)
 	pm3.Qos = 1
 	pm3.TopicName = "/q/w/e"
 	pm3.Payload = []byte{0xBB}
 	pm3.MessageID = 73
-	key3 := ibound_mid2key(pm3.MessageID)
+	key3 := inboundKeyFromMID(pm3.MessageID)
 	f.Put(key3, pm3)
 
-	pm4 := NewControlPacket(PUBLISH).(*PublishPacket)
+	pm4 := packets.NewControlPacket(packets.Publish).(*packets.PublishPacket)
 	pm4.Qos = 1
 	pm4.TopicName = "/q/w/e"
 	pm4.Payload = []byte{0xBB}
 	pm4.MessageID = 74
-	key4 := ibound_mid2key(pm4.MessageID)
+	key4 := inboundKeyFromMID(pm4.MessageID)
 	f.Put(key4, pm4)
 
-	pm5 := NewControlPacket(PUBLISH).(*PublishPacket)
+	pm5 := packets.NewControlPacket(packets.Publish).(*packets.PublishPacket)
 	pm5.Qos = 1
 	pm5.TopicName = "/q/w/e"
 	pm5.Payload = []byte{0xBB}
 	pm5.MessageID = 75
-	key5 := ibound_mid2key(pm5.MessageID)
+	key5 := inboundKeyFromMID(pm5.MessageID)
 	f.Put(key5, pm5)
 
 	if !exists(storedir + "/i.71.msg") {
@@ -377,13 +377,13 @@ func Test_MemoryStore_Reset(t *testing.T) {
 	m := NewMemoryStore()
 	m.Open()
 
-	pm := NewControlPacket(PUBLISH).(*PublishPacket)
+	pm := packets.NewControlPacket(packets.Publish).(*packets.PublishPacket)
 	pm.Qos = 2
 	pm.TopicName = "/f/r/s"
 	pm.Payload = []byte{0xAB}
 	pm.MessageID = 81
 
-	key := obound_mid2key(pm.MessageID)
+	key := outboundKeyFromMID(pm.MessageID)
 	m.Put(key, pm)
 
 	if len(m.messages) != 1 {
@@ -401,12 +401,12 @@ func Test_MemoryStore_write(t *testing.T) {
 	m := NewMemoryStore()
 	m.Open()
 
-	pm := NewControlPacket(PUBLISH).(*PublishPacket)
+	pm := packets.NewControlPacket(packets.Publish).(*packets.PublishPacket)
 	pm.Qos = 1
 	pm.TopicName = "/a/b/c"
 	pm.Payload = []byte{0xBE, 0xEF, 0xED}
 	pm.MessageID = 91
-	key := ibound_mid2key(pm.MessageID)
+	key := inboundKeyFromMID(pm.MessageID)
 	m.Put(key, pm)
 
 	if len(m.messages) != 1 {
@@ -417,13 +417,13 @@ func Test_MemoryStore_write(t *testing.T) {
 func Test_MemoryStore_Get(t *testing.T) {
 	m := NewMemoryStore()
 	m.Open()
-	pm := NewControlPacket(PUBLISH).(*PublishPacket)
+	pm := packets.NewControlPacket(packets.Publish).(*packets.PublishPacket)
 	pm.Qos = 1
 	pm.TopicName = "/a/b/c"
 	pm.Payload = []byte{0xBE, 0xEF, 0xED}
 	pm.MessageID = 120
 
-	key := obound_mid2key(pm.MessageID)
+	key := outboundKeyFromMID(pm.MessageID)
 	m.Put(key, pm)
 
 	if len(m.messages) != 1 {
@@ -474,13 +474,13 @@ func Test_MemoryStore_Del(t *testing.T) {
 	m := NewMemoryStore()
 	m.Open()
 
-	pm := NewControlPacket(PUBLISH).(*PublishPacket)
+	pm := packets.NewControlPacket(packets.Publish).(*packets.PublishPacket)
 	pm.Qos = 1
 	pm.TopicName = "/a/b/c"
 	pm.Payload = []byte{0xBE, 0xEF, 0xED}
 	pm.MessageID = 17
 
-	key := obound_mid2key(pm.MessageID)
+	key := outboundKeyFromMID(pm.MessageID)
 
 	m.Put(key, pm)
 

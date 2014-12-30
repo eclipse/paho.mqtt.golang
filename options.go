@@ -23,20 +23,23 @@ import (
 // MessageHandler is a callback type which can be set to be
 // executed upon the arrival of messages published to topics
 // to which the client is subscribed.
-type MessageHandler func(*MqttClient, Message)
+type MessageHandler func(*Client, Message)
 
-// OnConnectionLost is a callback type which can be set to be
+// ConnectionLostHandler is a callback type which can be set to be
 // executed upon an unintended disconnection from the MQTT broker.
 // Disconnects caused by calling Disconnect or ForceDisconnect will
 // not cause an OnConnectionLost callback to execute.
-type ConnectionLostHandler func(*MqttClient, error)
+type ConnectionLostHandler func(*Client, error)
 
-type OnConnectHandler func(*MqttClient)
+// OnConnectHandler is a callback that is called when the client
+// state changes from unconnected/disconnected to connected. Both
+// at initial connection and on reconnection
+type OnConnectHandler func(*Client)
 
-// ClientOptions contains configurable options for an MqttClient.
+// ClientOptions contains configurable options for an Client.
 type ClientOptions struct {
 	Servers                 []*url.URL
-	ClientId                string
+	ClientID                string
 	Username                string
 	Password                string
 	CleanSession            bool
@@ -48,7 +51,7 @@ type ClientOptions struct {
 	WillRetained            bool
 	ProtocolVersion         uint
 	protocolVersionExplicit bool
-	TlsConfig               tls.Config
+	TLSConfig               tls.Config
 	KeepAlive               time.Duration
 	MaxReconnectInterval    time.Duration
 	Store                   Store
@@ -58,7 +61,7 @@ type ClientOptions struct {
 	WriteTimeout            time.Duration
 }
 
-// NewClientClientOptions will create a new ClientClientOptions type with some
+// NewClientOptions will create a new ClientClientOptions type with some
 // default values.
 //   Port: 1883
 //   CleanSession: True
@@ -67,7 +70,7 @@ type ClientOptions struct {
 func NewClientOptions() *ClientOptions {
 	o := &ClientOptions{
 		Servers:                 nil,
-		ClientId:                "",
+		ClientID:                "",
 		Username:                "",
 		Password:                "",
 		CleanSession:            true,
@@ -79,7 +82,7 @@ func NewClientOptions() *ClientOptions {
 		WillRetained:            false,
 		ProtocolVersion:         0,
 		protocolVersionExplicit: false,
-		TlsConfig:               tls.Config{},
+		TLSConfig:               tls.Config{},
 		KeepAlive:               30 * time.Second,
 		MaxReconnectInterval:    10 * time.Minute,
 		Store:                   nil,
@@ -100,11 +103,11 @@ func (o *ClientOptions) AddBroker(server string) *ClientOptions {
 	return o
 }
 
-// SetClientId will set the client id to be used by this client when
+// SetClientID will set the client id to be used by this client when
 // connecting to the MQTT broker. According to the MQTT v3.1 specification,
 // a client id mus be no longer than 23 characters.
-func (o *ClientOptions) SetClientId(id string) *ClientOptions {
-	o.ClientId = id
+func (o *ClientOptions) SetClientID(id string) *ClientOptions {
+	o.ClientID = id
 	return o
 }
 
@@ -144,11 +147,11 @@ func (o *ClientOptions) SetOrderMatters(order bool) *ClientOptions {
 	return o
 }
 
-// SetTlsConfig will set an SSL/TLS configuration to be used when connecting
+// SetTLSConfig will set an SSL/TLS configuration to be used when connecting
 // to an MQTT broker. Please read the official Go documentation for more
 // information.
-func (o *ClientOptions) SetTlsConfig(t *tls.Config) *ClientOptions {
-	o.TlsConfig = *t
+func (o *ClientOptions) SetTLSConfig(t *tls.Config) *ClientOptions {
+	o.TLSConfig = *t
 	return o
 }
 
@@ -208,13 +211,14 @@ func (o *ClientOptions) SetBinaryWill(topic string, payload []byte, qos byte, re
 	return o
 }
 
-// SetDefaultPublishHandler
+// SetDefaultPublishHandler sets the MessageHandler that will be called when a message
+// is received that does not match any known subscriptions.
 func (o *ClientOptions) SetDefaultPublishHandler(defaultHandler MessageHandler) *ClientOptions {
 	o.DefaultPublishHander = defaultHandler
 	return o
 }
 
-// SetConnectHandler sets the function to be called when the client is connected. Both
+// SetOnConnectHandler sets the function to be called when the client is connected. Both
 // at initial connection time and upon automatic reconnect.
 func (o *ClientOptions) SetOnConnectHandler(onConn OnConnectHandler) *ClientOptions {
 	o.OnConnect = onConn
@@ -234,7 +238,7 @@ func (o *ClientOptions) SetWriteTimeout(t time.Duration) {
 	o.WriteTimeout = t
 }
 
-// SetMaxReconnectSleep sets the maximum time that will be waited between reconnection attempts
+// SetMaxReconnectInterval sets the maximum time that will be waited between reconnection attempts
 // when connection is lost
 func (o *ClientOptions) SetMaxReconnectInterval(t time.Duration) {
 	o.MaxReconnectInterval = t

@@ -22,7 +22,7 @@ import (
 	"time"
 
 	MQTT "git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
-	packets "github.com/alsm/hrotti/packets"
+	"git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git/packets"
 )
 
 // This NoOpStore type implements the go-mqtt/Store interface, which
@@ -70,7 +70,7 @@ func main() {
 	opts.SetClientId("custom-store")
 	opts.SetStore(myNoOpStore)
 
-	var callback MQTT.MessageHandler = func(client *MQTT.MqttClient, msg MQTT.Message) {
+	var callback MQTT.MessageHandler = func(client *MQTT.Client, msg MQTT.Message) {
 		fmt.Printf("TOPIC: %s\n", msg.Topic())
 		fmt.Printf("MSG: %s\n", msg.Payload())
 	}

@@ -16,13 +16,13 @@ package mqtt
 
 import (
 	"fmt"
-	. "github.com/alsm/hrotti/packets"
+	"git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git/packets"
 	"strconv"
 )
 
 const (
-	_IBOUND_PRE = "i."
-	_OBOUND_PRE = "o."
+	inboundPrefix  = "i."
+	outboundPrefix = "o."
 )
 
 // Store is an interface which can be used to provide implementations
@@ -32,8 +32,8 @@ const (
 // possible by prepending "i." or "o." to each message id
 type Store interface {
 	Open()
-	Put(string, ControlPacket)
-	Get(string) ControlPacket
+	Put(string, packets.ControlPacket)
+	Get(string) packets.ControlPacket
 	All() []string
 	Del(string)
 	Close()
@@ -42,7 +42,7 @@ type Store interface {
 
 // A key MUST have the form "X.[messageid]"
 // where X is 'i' or 'o'
-func key2mid(key string) uint16 {
+func mIDFromKey(key string) uint16 {
 	s := key[2:]
 	i, err := strconv.Atoi(s)
 	chkerr(err)
@@ -50,40 +50,40 @@ func key2mid(key string) uint16 {
 }
 
 // Return a string of the form "i.[id]"
-func ibound_mid2key(id uint16) string {
-	return fmt.Sprintf("%s%d", _IBOUND_PRE, id)
+func inboundKeyFromMID(id uint16) string {
+	return fmt.Sprintf("%s%d", inboundPrefix, id)
 }
 
 // Return a string of the form "o.[id]"
-func obound_mid2key(id uint16) string {
-	return fmt.Sprintf("%s%d", _OBOUND_PRE, id)
+func outboundKeyFromMID(id uint16) string {
+	return fmt.Sprintf("%s%d", outboundPrefix, id)
 }
 
 // govern which outgoing messages are persisted
-func persist_obound(s Store, m ControlPacket) {
+func persistOutbound(s Store, m packets.ControlPacket) {
 	switch m.Details().Qos {
 	case 0:
 		switch m.(type) {
-		case *PubackPacket, *PubcompPacket:
+		case *packets.PubackPacket, *packets.PubcompPacket:
 			// Sending puback. delete matching publish
 			// from ibound
-			s.Del(ibound_mid2key(m.Details().MessageID))
+			s.Del(inboundKeyFromMID(m.Details().MessageID))
 		}
 	case 1:
 		switch m.(type) {
-		case *PublishPacket, *PubrelPacket, *SubscribePacket, *UnsubscribePacket:
+		case *packets.PublishPacket, *packets.PubrelPacket, *packets.SubscribePacket, *packets.UnsubscribePacket:
 			// Sending publish. store in obound
 			// until puback received
-			s.Put(obound_mid2key(m.Details().MessageID), m)
+			s.Put(outboundKeyFromMID(m.Details().MessageID), m)
 		default:
 			chkcond(false)
 		}
 	case 2:
 		switch m.(type) {
-		case *PublishPacket:
+		case *packets.PublishPacket:
 			// Sending publish. store in obound
 			// until pubrel received
-			s.Put(obound_mid2key(m.Details().MessageID), m)
+			s.Put(outboundKeyFromMID(m.Details().MessageID), m)
 		default:
 			chkcond(false)
 		}
@@ -91,33 +91,33 @@ func persist_obound(s Store, m ControlPacket) {
 }
 
 // govern which incoming messages are persisted
-func persist_ibound(s Store, m ControlPacket) {
+func persistInbound(s Store, m packets.ControlPacket) {
 	switch m.Details().Qos {
 	case 0:
 		switch m.(type) {
-		case *PubackPacket, *SubackPacket, *UnsubackPacket, *PubcompPacket:
+		case *packets.PubackPacket, *packets.SubackPacket, *packets.UnsubackPacket, *packets.PubcompPacket:
 			// Received a puback. delete matching publish
 			// from obound
-			s.Del(obound_mid2key(m.Details().MessageID))
-		case *PublishPacket, *PubrecPacket, *PingrespPacket, *ConnackPacket:
+			s.Del(outboundKeyFromMID(m.Details().MessageID))
+		case *packets.PublishPacket, *packets.PubrecPacket, *packets.PingrespPacket, *packets.ConnackPacket:
 		default:
 			chkcond(false)
 		}
 	case 1:
 		switch m.(type) {
-		case *PublishPacket, *PubrelPacket:
+		case *packets.PublishPacket, *packets.PubrelPacket:
 			// Received a publish. store it in ibound
 			// until puback sent
-			s.Put(ibound_mid2key(m.Details().MessageID), m)
+			s.Put(inboundKeyFromMID(m.Details().MessageID), m)
 		default:
 			chkcond(false)
 		}
 	case 2:
 		switch m.(type) {
-		case *PublishPacket:
+		case *packets.PublishPacket:
 			// Received a publish. store it in ibound
 			// until pubrel received
-			s.Put(ibound_mid2key(m.Details().MessageID), m)
+			s.Put(inboundKeyFromMID(m.Details().MessageID), m)
 		default:
 			chkcond(false)
 		}

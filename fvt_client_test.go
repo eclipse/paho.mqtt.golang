@@ -24,14 +24,14 @@ import "crypto/x509"
 import "testing"
 
 func Test_Start(t *testing.T) {
-	ops := NewClientOptions().SetClientId("Start").
-		AddBroker(FVT_TCP).
+	ops := NewClientOptions().SetClientID("Start").
+		AddBroker(FVTTCP).
 		SetStore(NewFileStore("/tmp/fvt/Start"))
 	c := NewClient(ops)
 
 	token := c.Connect()
 	if token.Wait() && token.Error() != nil {
-		t.Fatalf("Error on MqttClient.Connect(): %v", token.Error())
+		t.Fatalf("Error on Client.Connect(): %v", token.Error())
 	}
 
 	c.Disconnect(250)
@@ -39,7 +39,7 @@ func Test_Start(t *testing.T) {
 
 /* uncomment this if you have connection policy disallowing FailClientID
 func Test_InvalidConnRc(t *testing.T) {
-	ops := NewClientOptions().SetClientId("FailClientID").
+	ops := NewClientOptions().SetClientID("FailClientID").
 		AddBroker("tcp://" + FVT_IP + ":17003").
 		SetStore(NewFileStore("/tmp/fvt/InvalidConnRc"))
 
@@ -53,7 +53,7 @@ func Test_InvalidConnRc(t *testing.T) {
 */
 
 // Helper function for Test_Start_Ssl
-func NewTlsConfig() *tls.Config {
+func NewTLSConfig() *tls.Config {
 	certpool := x509.NewCertPool()
 	pemCerts, err := ioutil.ReadFile("samples/samplecerts/CAfile.pem")
 	if err == nil {
@@ -77,7 +77,7 @@ func NewTlsConfig() *tls.Config {
 /* uncomment this if you have ssl setup
 func Test_Start_Ssl(t *testing.T) {
 	tlsconfig := NewTlsConfig()
-	ops := NewClientOptions().SetClientId("StartSsl").
+	ops := NewClientOptions().SetClientID("StartSsl").
 		AddBroker(FVT_SSL).
 		SetStore(NewFileStore("/tmp/fvt/Start_Ssl")).
 		SetTlsConfig(tlsconfig)
@@ -86,7 +86,7 @@ func Test_Start_Ssl(t *testing.T) {
 
 	_, err := c.Connect()
 	if err != nil {
-		t.Fatalf("Error on MqttClient.Connect(): %v", err)
+		t.Fatalf("Error on Client.Connect(): %v", err)
 	}
 
 	c.Disconnect(250)
@@ -95,14 +95,14 @@ func Test_Start_Ssl(t *testing.T) {
 
 func Test_Publish_1(t *testing.T) {
 	ops := NewClientOptions()
-	ops.AddBroker(FVT_TCP)
-	ops.SetClientId("Publish_1")
+	ops.AddBroker(FVTTCP)
+	ops.SetClientID("Publish_1")
 	ops.SetStore(NewFileStore("/tmp/fvt/Publish_1"))
 
 	c := NewClient(ops)
 	token := c.Connect()
 	if token.Wait() && token.Error() != nil {
-		t.Fatalf("Error on MqttClient.Connect(): %v", token.Error())
+		t.Fatalf("Error on Client.Connect(): %v", token.Error())
 	}
 
 	c.Publish("test/Publish", 0, false, "Publish qo0")
@@ -112,14 +112,14 @@ func Test_Publish_1(t *testing.T) {
 
 func Test_Publish_2(t *testing.T) {
 	ops := NewClientOptions()
-	ops.AddBroker(FVT_TCP)
-	ops.SetClientId("Publish_2")
+	ops.AddBroker(FVTTCP)
+	ops.SetClientID("Publish_2")
 	ops.SetStore(NewFileStore("/tmp/fvt/Publish_2"))
 
 	c := NewClient(ops)
 	token := c.Connect()
 	if token.Wait() && token.Error() != nil {
-		t.Fatalf("Error on MqttClient.Connect(): %v", token.Error())
+		t.Fatalf("Error on Client.Connect(): %v", token.Error())
 	}
 
 	c.Publish("/test/Publish", 0, false, "Publish1 qos0")
@@ -130,14 +130,14 @@ func Test_Publish_2(t *testing.T) {
 
 func Test_Publish_3(t *testing.T) {
 	ops := NewClientOptions()
-	ops.AddBroker(FVT_TCP)
-	ops.SetClientId("Publish_3")
+	ops.AddBroker(FVTTCP)
+	ops.SetClientID("Publish_3")
 	ops.SetStore(NewFileStore("/tmp/fvt/Publish_3"))
 
 	c := NewClient(ops)
 	token := c.Connect()
 	if token.Wait() && token.Error() != nil {
-		t.Fatalf("Error on MqttClient.Connect(): %v", token.Error())
+		t.Fatalf("Error on Client.Connect(): %v", token.Error())
 	}
 
 	c.Publish("/test/Publish", 0, false, "Publish1 qos0")
@@ -149,16 +149,16 @@ func Test_Publish_3(t *testing.T) {
 
 func Test_Subscribe(t *testing.T) {
 	pops := NewClientOptions()
-	pops.AddBroker(FVT_TCP)
-	pops.SetClientId("Subscribe_tx")
+	pops.AddBroker(FVTTCP)
+	pops.SetClientID("Subscribe_tx")
 	pops.SetStore(NewFileStore("/tmp/fvt/Subscribe/p"))
 	p := NewClient(pops)
 
 	sops := NewClientOptions()
-	sops.AddBroker(FVT_TCP)
-	sops.SetClientId("Subscribe_rx")
+	sops.AddBroker(FVTTCP)
+	sops.SetClientID("Subscribe_rx")
 	sops.SetStore(NewFileStore("/tmp/fvt/Subscribe/s"))
-	var f MessageHandler = func(client *MqttClient, msg Message) {
+	var f MessageHandler = func(client *Client, msg Message) {
 		fmt.Printf("TOPIC: %s\n", msg.Topic())
 		fmt.Printf("MSG: %s\n", msg.Payload())
 	}
@@ -167,14 +167,14 @@ func Test_Subscribe(t *testing.T) {
 
 	sToken := s.Connect()
 	if sToken.Wait() && sToken.Error() != nil {
-		t.Fatalf("Error on MqttClient.Connect(): %v", sToken.Error())
+		t.Fatalf("Error on Client.Connect(): %v", sToken.Error())
 	}
 
 	s.Subscribe("/test/sub", 0, nil)
 
 	pToken := p.Connect()
 	if pToken.Wait() && pToken.Error() != nil {
-		t.Fatalf("Error on MqttClient.Connect(): %v", pToken.Error())
+		t.Fatalf("Error on Client.Connect(): %v", pToken.Error())
 	}
 
 	p.Publish("/test/sub", 0, false, "Publish qos0")
@@ -186,19 +186,19 @@ func Test_Subscribe(t *testing.T) {
 func Test_Will(t *testing.T) {
 	willmsgc := make(chan string)
 
-	sops := NewClientOptions().AddBroker(FVT_TCP)
-	sops.SetClientId("will-giver")
+	sops := NewClientOptions().AddBroker(FVTTCP)
+	sops.SetClientID("will-giver")
 	sops.SetWill("/wills", "good-byte!", 0, false)
-	sops.SetConnectionLostHandler(func(client *MqttClient, err error) {
+	sops.SetConnectionLostHandler(func(client *Client, err error) {
 		fmt.Println("OnConnectionLost!")
 	})
 	c := NewClient(sops)
 
 	wops := NewClientOptions()
-	wops.AddBroker(FVT_TCP)
-	wops.SetClientId("will-subscriber")
+	wops.AddBroker(FVTTCP)
+	wops.SetClientID("will-subscriber")
 	wops.SetStore(NewFileStore("/tmp/fvt/Will"))
-	wops.SetDefaultPublishHandler(func(client *MqttClient, msg Message) {
+	wops.SetDefaultPublishHandler(func(client *Client, msg Message) {
 		fmt.Printf("TOPIC: %s\n", msg.Topic())
 		fmt.Printf("MSG: %s\n", msg.Payload())
 		willmsgc <- string(msg.Payload())
@@ -207,18 +207,17 @@ func Test_Will(t *testing.T) {
 
 	wToken := wsub.Connect()
 	if wToken.Wait() && wToken.Error() != nil {
-		t.Fatalf("Error on MqttClient.Connect(): %v", wToken.Error())
+		t.Fatalf("Error on Client.Connect(): %v", wToken.Error())
 	}
 
 	wsub.Subscribe("/wills", 0, nil)
 
 	token := c.Connect()
 	if token.Wait() && token.Error() != nil {
-		t.Fatalf("Error on MqttClient.Connect(): %v", token.Error())
+		t.Fatalf("Error on Client.Connect(): %v", token.Error())
 	}
 	time.Sleep(time.Duration(1) * time.Second)
 
-	c.conn.Close() // Force kill the client with a will
 	c.ForceDisconnect()
 
 	wsub.Disconnect(250)
@@ -237,17 +236,17 @@ func Test_Binary_Will(t *testing.T) {
 		0xEF,
 	}
 
-	sops := NewClientOptions().AddBroker(FVT_TCP)
-	sops.SetClientId("will-giver")
+	sops := NewClientOptions().AddBroker(FVTTCP)
+	sops.SetClientID("will-giver")
 	sops.SetBinaryWill("/wills", will, 0, false)
-	sops.SetConnectionLostHandler(func(client *MqttClient, err error) {
+	sops.SetConnectionLostHandler(func(client *Client, err error) {
 	})
 	c := NewClient(sops)
 
-	wops := NewClientOptions().AddBroker(FVT_TCP)
-	wops.SetClientId("will-subscriber")
+	wops := NewClientOptions().AddBroker(FVTTCP)
+	wops.SetClientID("will-subscriber")
 	wops.SetStore(NewFileStore("/tmp/fvt/Binary_Will"))
-	wops.SetDefaultPublishHandler(func(client *MqttClient, msg Message) {
+	wops.SetDefaultPublishHandler(func(client *Client, msg Message) {
 		fmt.Printf("TOPIC: %s\n", msg.Topic())
 		fmt.Printf("MSG: %v\n", msg.Payload())
 		willmsgc <- msg.Payload()
@@ -256,18 +255,18 @@ func Test_Binary_Will(t *testing.T) {
 
 	wToken := wsub.Connect()
 	if wToken.Wait() && wToken.Error() != nil {
-		t.Fatalf("Error on MqttClient.Connect(): %v", wToken.Error())
+		t.Fatalf("Error on Client.Connect(): %v", wToken.Error())
 	}
 
 	wsub.Subscribe("/wills", 0, nil)
 
 	token := c.Connect()
 	if token.Wait() && token.Error() != nil {
-		t.Fatalf("Error on MqttClient.Connect(): %v", token.Error())
+		t.Fatalf("Error on Client.Connect(): %v", token.Error())
 	}
 	time.Sleep(time.Duration(1) * time.Second)
 
-	c.conn.Close() // Force kill the client with a will
+	c.ForceDisconnect()
 
 	wsub.Disconnect(250)
 
@@ -300,16 +299,16 @@ func Test_p0s0(t *testing.T) {
 	choke := make(chan bool)
 
 	pops := NewClientOptions()
-	pops.AddBroker(FVT_TCP)
-	pops.SetClientId("p0s0-pub")
+	pops.AddBroker(FVTTCP)
+	pops.SetClientID("p0s0-pub")
 	pops.SetStore(NewFileStore(store + "/p"))
 	p := NewClient(pops)
 
 	sops := NewClientOptions()
-	sops.AddBroker(FVT_TCP)
-	sops.SetClientId("p0s0-sub")
+	sops.AddBroker(FVTTCP)
+	sops.SetClientID("p0s0-sub")
 	sops.SetStore(NewFileStore(store + "/s"))
-	var f MessageHandler = func(client *MqttClient, msg Message) {
+	var f MessageHandler = func(client *Client, msg Message) {
 		fmt.Printf("TOPIC: %s\n", msg.Topic())
 		fmt.Printf("MSG: %s\n", msg.Payload())
 		choke <- true
@@ -319,17 +318,17 @@ func Test_p0s0(t *testing.T) {
 	s := NewClient(sops)
 	sToken := s.Connect()
 	if sToken.Wait() && sToken.Error() != nil {
-		t.Fatalf("Error on MqttClient.Connect(): %v", sToken.Error())
+		t.Fatalf("Error on Client.Connect(): %v", sToken.Error())
 	}
 
 	sToken = s.Subscribe(topic, 0, nil)
 	if sToken.Wait() && sToken.Error() != nil {
-		t.Fatalf("Error on MqttClient.Subscribe(): %v", sToken.Error())
+		t.Fatalf("Error on Client.Subscribe(): %v", sToken.Error())
 	}
 
 	pToken := p.Connect()
 	if pToken.Wait() && pToken.Error() != nil {
-		t.Fatalf("Error on MqttClient.Connect(): %v", pToken.Error())
+		t.Fatalf("Error on Client.Connect(): %v", pToken.Error())
 	}
 	p.Publish(topic, 0, false, "p0s0 payload 1")
 	p.Publish(topic, 0, false, "p0s0 payload 2")
@@ -355,16 +354,16 @@ func Test_p0s1(t *testing.T) {
 	choke := make(chan bool)
 
 	pops := NewClientOptions()
-	pops.AddBroker(FVT_TCP)
-	pops.SetClientId("p0s1-pub")
+	pops.AddBroker(FVTTCP)
+	pops.SetClientID("p0s1-pub")
 	pops.SetStore(NewFileStore(store + "/p"))
 	p := NewClient(pops)
 
 	sops := NewClientOptions()
-	sops.AddBroker(FVT_TCP)
-	sops.SetClientId("p0s1-sub")
+	sops.AddBroker(FVTTCP)
+	sops.SetClientID("p0s1-sub")
 	sops.SetStore(NewFileStore(store + "/s"))
-	var f MessageHandler = func(client *MqttClient, msg Message) {
+	var f MessageHandler = func(client *Client, msg Message) {
 		fmt.Printf("TOPIC: %s\n", msg.Topic())
 		fmt.Printf("MSG: %s\n", msg.Payload())
 		choke <- true
@@ -374,17 +373,17 @@ func Test_p0s1(t *testing.T) {
 	s := NewClient(sops)
 	sToken := s.Connect()
 	if sToken.Wait() && sToken.Error() != nil {
-		t.Fatalf("Error on MqttClient.Connect(): %v", sToken.Error())
+		t.Fatalf("Error on Client.Connect(): %v", sToken.Error())
 	}
 
 	sToken = s.Subscribe(topic, 1, nil)
 	if sToken.Wait() && sToken.Error() != nil {
-		t.Fatalf("Error on MqttClient.Subscribe(): %v", sToken.Error())
+		t.Fatalf("Error on Client.Subscribe(): %v", sToken.Error())
 	}
 
 	pToken := p.Connect()
 	if pToken.Wait() && pToken.Error() != nil {
-		t.Fatalf("Error on MqttClient.Connect(): %v", pToken.Error())
+		t.Fatalf("Error on Client.Connect(): %v", pToken.Error())
 	}
 	p.Publish(topic, 0, false, "p0s1 payload 1")
 	p.Publish(topic, 0, false, "p0s1 payload 2")
@@ -410,16 +409,16 @@ func Test_p0s2(t *testing.T) {
 	choke := make(chan bool)
 
 	pops := NewClientOptions()
-	pops.AddBroker(FVT_TCP)
-	pops.SetClientId("p0s2-pub")
+	pops.AddBroker(FVTTCP)
+	pops.SetClientID("p0s2-pub")
 	pops.SetStore(NewFileStore(store + "/p"))
 	p := NewClient(pops)
 
 	sops := NewClientOptions()
-	sops.AddBroker(FVT_TCP)
-	sops.SetClientId("p0s2-sub")
+	sops.AddBroker(FVTTCP)
+	sops.SetClientID("p0s2-sub")
 	sops.SetStore(NewFileStore(store + "/s"))
-	var f MessageHandler = func(client *MqttClient, msg Message) {
+	var f MessageHandler = func(client *Client, msg Message) {
 		fmt.Printf("TOPIC: %s\n", msg.Topic())
 		fmt.Printf("MSG: %s\n", msg.Payload())
 		choke <- true
@@ -429,17 +428,17 @@ func Test_p0s2(t *testing.T) {
 	s := NewClient(sops)
 	sToken := s.Connect()
 	if sToken.Wait() && sToken.Error() != nil {
-		t.Fatalf("Error on MqttClient.Connect(): %v", sToken.Error())
+		t.Fatalf("Error on Client.Connect(): %v", sToken.Error())
 	}
 
 	sToken = s.Subscribe(topic, 2, nil)
 	if sToken.Wait() && sToken.Error() != nil {
-		t.Fatalf("Error on MqttClient.Subscribe(): %v", sToken.Error())
+		t.Fatalf("Error on Client.Subscribe(): %v", sToken.Error())
 	}
 
 	pToken := p.Connect()
 	if pToken.Wait() && pToken.Error() != nil {
-		t.Fatalf("Error on MqttClient.Connect(): %v", pToken.Error())
+		t.Fatalf("Error on Client.Connect(): %v", pToken.Error())
 	}
 	p.Publish(topic, 0, false, "p0s2 payload 1")
 	p.Publish(topic, 0, false, "p0s2 payload 2")
@@ -466,16 +465,16 @@ func Test_p1s0(t *testing.T) {
 	choke := make(chan bool)
 
 	pops := NewClientOptions()
-	pops.AddBroker(FVT_TCP)
-	pops.SetClientId("p1s0-pub")
+	pops.AddBroker(FVTTCP)
+	pops.SetClientID("p1s0-pub")
 	pops.SetStore(NewFileStore(store + "/p"))
 	p := NewClient(pops)
 
 	sops := NewClientOptions()
-	sops.AddBroker(FVT_TCP)
-	sops.SetClientId("p1s0-sub")
+	sops.AddBroker(FVTTCP)
+	sops.SetClientID("p1s0-sub")
 	sops.SetStore(NewFileStore(store + "/s"))
-	var f MessageHandler = func(client *MqttClient, msg Message) {
+	var f MessageHandler = func(client *Client, msg Message) {
 		fmt.Printf("TOPIC: %s\n", msg.Topic())
 		fmt.Printf("MSG: %s\n", msg.Payload())
 		choke <- true
@@ -485,17 +484,17 @@ func Test_p1s0(t *testing.T) {
 	s := NewClient(sops)
 	sToken := s.Connect()
 	if sToken.Wait() && sToken.Error() != nil {
-		t.Fatalf("Error on MqttClient.Connect(): %v", sToken.Error())
+		t.Fatalf("Error on Client.Connect(): %v", sToken.Error())
 	}
 
 	sToken = s.Subscribe(topic, 0, nil)
 	if sToken.Wait() && sToken.Error() != nil {
-		t.Fatalf("Error on MqttClient.Subscribe(): %v", sToken.Error())
+		t.Fatalf("Error on Client.Subscribe(): %v", sToken.Error())
 	}
 
 	pToken := p.Connect()
 	if pToken.Wait() && pToken.Error() != nil {
-		t.Fatalf("Error on MqttClient.Connect(): %v", pToken.Error())
+		t.Fatalf("Error on Client.Connect(): %v", pToken.Error())
 	}
 	p.Publish(topic, 1, false, "p1s0 payload 1")
 	p.Publish(topic, 1, false, "p1s0 payload 2")
@@ -522,16 +521,16 @@ func Test_p1s1(t *testing.T) {
 	choke := make(chan bool)
 
 	pops := NewClientOptions()
-	pops.AddBroker(FVT_TCP)
-	pops.SetClientId("p1s1-pub")
+	pops.AddBroker(FVTTCP)
+	pops.SetClientID("p1s1-pub")
 	pops.SetStore(NewFileStore(store + "/p"))
 	p := NewClient(pops)
 
 	sops := NewClientOptions()
-	sops.AddBroker(FVT_TCP)
-	sops.SetClientId("p1s1-sub")
+	sops.AddBroker(FVTTCP)
+	sops.SetClientID("p1s1-sub")
 	sops.SetStore(NewFileStore(store + "/s"))
-	var f MessageHandler = func(client *MqttClient, msg Message) {
+	var f MessageHandler = func(client *Client, msg Message) {
 		fmt.Printf("TOPIC: %s\n", msg.Topic())
 		fmt.Printf("MSG: %s\n", msg.Payload())
 		choke <- true
@@ -541,17 +540,17 @@ func Test_p1s1(t *testing.T) {
 	s := NewClient(sops)
 	sToken := s.Connect()
 	if sToken.Wait() && sToken.Error() != nil {
-		t.Fatalf("Error on MqttClient.Connect(): %v", sToken.Error())
+		t.Fatalf("Error on Client.Connect(): %v", sToken.Error())
 	}
 
 	sToken = s.Subscribe(topic, 1, nil)
 	if sToken.Wait() && sToken.Error() != nil {
-		t.Fatalf("Error on MqttClient.Subscribe(): %v", sToken.Error())
+		t.Fatalf("Error on Client.Subscribe(): %v", sToken.Error())
 	}
 
 	pToken := p.Connect()
 	if pToken.Wait() && pToken.Error() != nil {
-		t.Fatalf("Error on MqttClient.Connect(): %v", pToken.Error())
+		t.Fatalf("Error on Client.Connect(): %v", pToken.Error())
 	}
 	p.Publish(topic, 1, false, "p1s1 payload 1")
 	p.Publish(topic, 1, false, "p1s1 payload 2")
@@ -577,16 +576,16 @@ func Test_p1s2(t *testing.T) {
 	choke := make(chan bool)
 
 	pops := NewClientOptions()
-	pops.AddBroker(FVT_TCP)
-	pops.SetClientId("p1s2-pub")
+	pops.AddBroker(FVTTCP)
+	pops.SetClientID("p1s2-pub")
 	pops.SetStore(NewFileStore(store + "/p"))
 	p := NewClient(pops)
 
 	sops := NewClientOptions()
-	sops.AddBroker(FVT_TCP)
-	sops.SetClientId("p1s2-sub")
+	sops.AddBroker(FVTTCP)
+	sops.SetClientID("p1s2-sub")
 	sops.SetStore(NewFileStore(store + "/s"))
-	var f MessageHandler = func(client *MqttClient, msg Message) {
+	var f MessageHandler = func(client *Client, msg Message) {
 		fmt.Printf("TOPIC: %s\n", msg.Topic())
 		fmt.Printf("MSG: %s\n", msg.Payload())
 		choke <- true
@@ -596,17 +595,17 @@ func Test_p1s2(t *testing.T) {
 	s := NewClient(sops)
 	sToken := s.Connect()
 	if sToken.Wait() && sToken.Error() != nil {
-		t.Fatalf("Error on MqttClient.Connect(): %v", sToken.Error())
+		t.Fatalf("Error on Client.Connect(): %v", sToken.Error())
 	}
 
 	sToken = s.Subscribe(topic, 2, nil)
 	if sToken.Wait() && sToken.Error() != nil {
-		t.Fatalf("Error on MqttClient.Subscribe(): %v", sToken.Error())
+		t.Fatalf("Error on Client.Subscribe(): %v", sToken.Error())
 	}
 
 	pToken := p.Connect()
 	if pToken.Wait() && pToken.Error() != nil {
-		t.Fatalf("Error on MqttClient.Connect(): %v", pToken.Error())
+		t.Fatalf("Error on Client.Connect(): %v", pToken.Error())
 	}
 	p.Publish(topic, 1, false, "p1s2 payload 1")
 	p.Publish(topic, 1, false, "p1s2 payload 2")
@@ -633,16 +632,16 @@ func Test_p2s0(t *testing.T) {
 	choke := make(chan bool)
 
 	pops := NewClientOptions()
-	pops.AddBroker(FVT_TCP)
-	pops.SetClientId("p2s0-pub")
+	pops.AddBroker(FVTTCP)
+	pops.SetClientID("p2s0-pub")
 	pops.SetStore(NewFileStore(store + "/p"))
 	p := NewClient(pops)
 
 	sops := NewClientOptions()
-	sops.AddBroker(FVT_TCP)
-	sops.SetClientId("p2s0-sub")
+	sops.AddBroker(FVTTCP)
+	sops.SetClientID("p2s0-sub")
 	sops.SetStore(NewFileStore(store + "/s"))
-	var f MessageHandler = func(client *MqttClient, msg Message) {
+	var f MessageHandler = func(client *Client, msg Message) {
 		fmt.Printf("TOPIC: %s\n", msg.Topic())
 		fmt.Printf("MSG: %s\n", msg.Payload())
 		choke <- true
@@ -652,17 +651,17 @@ func Test_p2s0(t *testing.T) {
 	s := NewClient(sops)
 	sToken := s.Connect()
 	if sToken.Wait() && sToken.Error() != nil {
-		t.Fatalf("Error on MqttClient.Connect(): %v", sToken.Error())
+		t.Fatalf("Error on Client.Connect(): %v", sToken.Error())
 	}
 
 	sToken = s.Subscribe(topic, 0, nil)
 	if sToken.Wait() && sToken.Error() != nil {
-		t.Fatalf("Error on MqttClient.Subscribe(): %v", sToken.Error())
+		t.Fatalf("Error on Client.Subscribe(): %v", sToken.Error())
 	}
 
 	pToken := p.Connect()
 	if pToken.Wait() && pToken.Error() != nil {
-		t.Fatalf("Error on MqttClient.Connect(): %v", pToken.Error())
+		t.Fatalf("Error on Client.Connect(): %v", pToken.Error())
 	}
 	p.Publish(topic, 2, false, "p2s0 payload 1")
 	p.Publish(topic, 2, false, "p2s0 payload 2")
@@ -687,16 +686,16 @@ func Test_p2s1(t *testing.T) {
 	choke := make(chan bool)
 
 	pops := NewClientOptions()
-	pops.AddBroker(FVT_TCP)
-	pops.SetClientId("p2s1-pub")
+	pops.AddBroker(FVTTCP)
+	pops.SetClientID("p2s1-pub")
 	pops.SetStore(NewFileStore(store + "/p"))
 	p := NewClient(pops)
 
 	sops := NewClientOptions()
-	sops.AddBroker(FVT_TCP)
-	sops.SetClientId("p2s1-sub")
+	sops.AddBroker(FVTTCP)
+	sops.SetClientID("p2s1-sub")
 	sops.SetStore(NewFileStore(store + "/s"))
-	var f MessageHandler = func(client *MqttClient, msg Message) {
+	var f MessageHandler = func(client *Client, msg Message) {
 		fmt.Printf("TOPIC: %s\n", msg.Topic())
 		fmt.Printf("MSG: %s\n", msg.Payload())
 		choke <- true
@@ -706,17 +705,17 @@ func Test_p2s1(t *testing.T) {
 	s := NewClient(sops)
 	sToken := s.Connect()
 	if sToken.Wait() && sToken.Error() != nil {
-		t.Fatalf("Error on MqttClient.Connect(): %v", sToken.Error())
+		t.Fatalf("Error on Client.Connect(): %v", sToken.Error())
 	}
 
 	sToken = s.Subscribe(topic, 1, nil)
 	if sToken.Wait() && sToken.Error() != nil {
-		t.Fatalf("Error on MqttClient.Subscribe(): %v", sToken.Error())
+		t.Fatalf("Error on Client.Subscribe(): %v", sToken.Error())
 	}
 
 	pToken := p.Connect()
 	if pToken.Wait() && pToken.Error() != nil {
-		t.Fatalf("Error on MqttClient.Connect(): %v", pToken.Error())
+		t.Fatalf("Error on Client.Connect(): %v", pToken.Error())
 	}
 	p.Publish(topic, 2, false, "p2s1 payload 1")
 	p.Publish(topic, 2, false, "p2s1 payload 2")
@@ -743,16 +742,16 @@ func Test_p2s2(t *testing.T) {
 	choke := make(chan bool)
 
 	pops := NewClientOptions()
-	pops.AddBroker(FVT_TCP)
-	pops.SetClientId("p2s2-pub")
+	pops.AddBroker(FVTTCP)
+	pops.SetClientID("p2s2-pub")
 	pops.SetStore(NewFileStore(store + "/p"))
 	p := NewClient(pops)
 
 	sops := NewClientOptions()
-	sops.AddBroker(FVT_TCP)
-	sops.SetClientId("p2s2-sub")
+	sops.AddBroker(FVTTCP)
+	sops.SetClientID("p2s2-sub")
 	sops.SetStore(NewFileStore(store + "/s"))
-	var f MessageHandler = func(client *MqttClient, msg Message) {
+	var f MessageHandler = func(client *Client, msg Message) {
 		fmt.Printf("TOPIC: %s\n", msg.Topic())
 		fmt.Printf("MSG: %s\n", msg.Payload())
 		choke <- true
@@ -762,17 +761,17 @@ func Test_p2s2(t *testing.T) {
 	s := NewClient(sops)
 	sToken := s.Connect()
 	if sToken.Wait() && sToken.Error() != nil {
-		t.Fatalf("Error on MqttClient.Connect(): %v", sToken.Error())
+		t.Fatalf("Error on Client.Connect(): %v", sToken.Error())
 	}
 
 	sToken = s.Subscribe(topic, 2, nil)
 	if sToken.Wait() && sToken.Error() != nil {
-		t.Fatalf("Error on MqttClient.Subscribe(): %v", sToken.Error())
+		t.Fatalf("Error on Client.Subscribe(): %v", sToken.Error())
 	}
 
 	pToken := p.Connect()
 	if pToken.Wait() && pToken.Error() != nil {
-		t.Fatalf("Error on MqttClient.Connect(): %v", pToken.Error())
+		t.Fatalf("Error on Client.Connect(): %v", pToken.Error())
 	}
 	p.Publish(topic, 2, false, "p2s2 payload 1")
 	p.Publish(topic, 2, false, "p2s2 payload 2")
@@ -797,16 +796,16 @@ func Test_PublishMessage(t *testing.T) {
 	choke := make(chan bool)
 
 	pops := NewClientOptions()
-	pops.AddBroker(FVT_TCP)
-	pops.SetClientId("pubmsg-pub")
+	pops.AddBroker(FVTTCP)
+	pops.SetClientID("pubmsg-pub")
 	pops.SetStore(NewFileStore(store + "/p"))
 	p := NewClient(pops)
 
 	sops := NewClientOptions()
-	sops.AddBroker(FVT_TCP)
-	sops.SetClientId("pubmsg-sub")
+	sops.AddBroker(FVTTCP)
+	sops.SetClientID("pubmsg-sub")
 	sops.SetStore(NewFileStore(store + "/s"))
-	var f MessageHandler = func(client *MqttClient, msg Message) {
+	var f MessageHandler = func(client *Client, msg Message) {
 		fmt.Printf("TOPIC: %s\n", msg.Topic())
 		fmt.Printf("MSG: %s\n", msg.Payload())
 		if string(msg.Payload()) != "pubmsg payload" {
@@ -820,17 +819,17 @@ func Test_PublishMessage(t *testing.T) {
 	s := NewClient(sops)
 	sToken := s.Connect()
 	if sToken.Wait() && sToken.Error() != nil {
-		t.Fatalf("Error on MqttClient.Connect(): %v", sToken.Error())
+		t.Fatalf("Error on Client.Connect(): %v", sToken.Error())
 	}
 
 	sToken = s.Subscribe(topic, 2, nil)
 	if sToken.Wait() && sToken.Error() != nil {
-		t.Fatalf("Error on MqttClient.Subscribe(): %v", sToken.Error())
+		t.Fatalf("Error on Client.Subscribe(): %v", sToken.Error())
 	}
 
 	pToken := p.Connect()
 	if pToken.Wait() && pToken.Error() != nil {
-		t.Fatalf("Error on MqttClient.Connect(): %v", pToken.Error())
+		t.Fatalf("Error on Client.Connect(): %v", pToken.Error())
 	}
 
 	text := "pubmsg payload"
@@ -855,16 +854,16 @@ func Test_PublishEmptyMessage(t *testing.T) {
 	choke := make(chan bool)
 
 	pops := NewClientOptions()
-	pops.AddBroker(FVT_TCP)
-	pops.SetClientId("pubmsgempty-pub")
+	pops.AddBroker(FVTTCP)
+	pops.SetClientID("pubmsgempty-pub")
 	pops.SetStore(NewFileStore(store + "/p"))
 	p := NewClient(pops)
 
 	sops := NewClientOptions()
-	sops.AddBroker(FVT_TCP)
-	sops.SetClientId("pubmsgempty-sub")
+	sops.AddBroker(FVTTCP)
+	sops.SetClientID("pubmsgempty-sub")
 	sops.SetStore(NewFileStore(store + "/s"))
-	var f MessageHandler = func(client *MqttClient, msg Message) {
+	var f MessageHandler = func(client *Client, msg Message) {
 		fmt.Printf("TOPIC: %s\n", msg.Topic())
 		fmt.Printf("MSG: %s\n", msg.Payload())
 		if string(msg.Payload()) != "" {
@@ -877,17 +876,17 @@ func Test_PublishEmptyMessage(t *testing.T) {
 	s := NewClient(sops)
 	sToken := s.Connect()
 	if sToken.Wait() && sToken.Error() != nil {
-		t.Fatalf("Error on MqttClient.Connect(): %v", sToken.Error())
+		t.Fatalf("Error on Client.Connect(): %v", sToken.Error())
 	}
 
 	sToken = s.Subscribe(topic, 2, nil)
 	if sToken.Wait() && sToken.Error() != nil {
-		t.Fatalf("Error on MqttClient.Subscribe(): %v", sToken.Error())
+		t.Fatalf("Error on Client.Subscribe(): %v", sToken.Error())
 	}
 
 	pToken := p.Connect()
 	if pToken.Wait() && pToken.Error() != nil {
-		t.Fatalf("Error on MqttClient.Connect(): %v", pToken.Error())
+		t.Fatalf("Error on Client.Connect(): %v", pToken.Error())
 	}
 
 	p.Publish(topic, 0, false, "")
@@ -906,46 +905,42 @@ func Test_Cleanstore(t *testing.T) {
 	topic := "/test/cleanstore"
 
 	pops := NewClientOptions()
-	pops.AddBroker(FVT_TCP)
-	pops.SetClientId("cleanstore-pub")
+	pops.AddBroker(FVTTCP)
+	pops.SetClientID("cleanstore-pub")
 	pops.SetStore(NewFileStore(store + "/p"))
 	p := NewClient(pops)
 
-	var s *MqttClient
+	var s *Client
 	sops := NewClientOptions()
-	sops.AddBroker(FVT_TCP)
-	sops.SetClientId("cleanstore-sub")
+	sops.AddBroker(FVTTCP)
+	sops.SetClientID("cleanstore-sub")
 	sops.SetCleanSession(false)
 	sops.SetStore(NewFileStore(store + "/s"))
-	var f MessageHandler = func(client *MqttClient, msg Message) {
+	var f MessageHandler = func(client *Client, msg Message) {
 		fmt.Printf("TOPIC: %s\n", msg.Topic())
 		fmt.Printf("MSG: %s\n", msg.Payload())
 		// Close the connection after receiving
 		// the first message so that hopefully
 		// there is something in the store to be
 		// cleaned.
-		s.conn.Close()
+		s.ForceDisconnect()
 	}
 	sops.SetDefaultPublishHandler(f)
-	var ocl ConnectionLostHandler = func(client *MqttClient, reason error) {
-		fmt.Printf("OnConnectionLost\n")
-	}
-	sops.SetConnectionLostHandler(ocl)
 
 	s = NewClient(sops)
 	sToken := s.Connect()
 	if sToken.Wait() && sToken.Error() != nil {
-		t.Fatalf("Error on MqttClient.Connect(): %v", sToken.Error())
+		t.Fatalf("Error on Client.Connect(): %v", sToken.Error())
 	}
 
 	sToken = s.Subscribe(topic, 2, nil)
 	if sToken.Wait() && sToken.Error() != nil {
-		t.Fatalf("Error on MqttClient.Subscribe(): %v", sToken.Error())
+		t.Fatalf("Error on Client.Subscribe(): %v", sToken.Error())
 	}
 
 	pToken := p.Connect()
 	if pToken.Wait() && pToken.Error() != nil {
-		t.Fatalf("Error on MqttClient.Connect(): %v", pToken.Error())
+		t.Fatalf("Error on Client.Connect(): %v", pToken.Error())
 	}
 
 	text := "test message"
@@ -956,8 +951,8 @@ func Test_Cleanstore(t *testing.T) {
 	p.Disconnect(250)
 
 	sops = NewClientOptions()
-	sops.AddBroker(FVT_TCP)
-	sops.SetClientId("cleanstore-sub")
+	sops.AddBroker(FVTTCP)
+	sops.SetClientID("cleanstore-sub")
 	sops.SetCleanSession(true)
 	sops.SetStore(NewFileStore(store + "/s"))
 	sops.SetDefaultPublishHandler(f)
@@ -965,7 +960,7 @@ func Test_Cleanstore(t *testing.T) {
 	s2 := NewClient(sops)
 	sToken = s2.Connect()
 	if sToken.Wait() && sToken.Error() != nil {
-		t.Fatalf("Error on MqttClient.Connect(): %v", sToken.Error())
+		t.Fatalf("Error on Client.Connect(): %v", sToken.Error())
 	}
 
 	// at this point existing state should be cleared...
@@ -975,17 +970,18 @@ func Test_Cleanstore(t *testing.T) {
 func Test_MultipleURLs(t *testing.T) {
 	ops := NewClientOptions()
 	ops.AddBroker("tcp://127.0.0.1:10000")
-	ops.AddBroker(FVT_TCP)
-	ops.SetClientId("MutliURL")
+	ops.AddBroker(FVTTCP)
+	ops.SetClientID("MutliURL")
 	ops.SetStore(NewFileStore("/tmp/fvt/MultiURL"))
 
 	c := NewClient(ops)
 	token := c.Connect()
 	if token.Wait() && token.Error() != nil {
-		t.Fatalf("Error on MqttClient.Connect(): %v", token.Error())
+		t.Fatalf("Error on Client.Connect(): %v", token.Error())
 	}
 
-	c.Publish("/test/MultiURL", 0, false, "Publish qo0")
+	token = c.Publish("/test/MultiURL", 0, false, "Publish qo0")
+	token.Wait()
 
 	c.Disconnect(250)
 }
@@ -995,15 +991,15 @@ func Test_MultipleURLs(t *testing.T) {
 // This test can be left commented out because it's annoying to wait for
 func Test_ping3_idle10(t *testing.T) {
 	ops := NewClientOptions()
-	ops.AddBroker(FVT_TCP)
+	ops.AddBroker(FVTTCP)
 	//ops.AddBroker("tcp://test.mosquitto.org:1883")
-	ops.SetClientId("p3i10")
+	ops.SetClientID("p3i10")
 	ops.SetKeepAlive(4)
 
 	c := NewClient(ops)
 	token := c.Connect()
 	if token.Wait() && token.Error() != nil {
-		t.Fatalf("Error on MqttClient.Connect(): %v", token.Error())
+		t.Fatalf("Error on Client.Connect(): %v", token.Error())
 	}
 	time.Sleep(time.Duration(10) * time.Second)
 	c.Disconnect(250)

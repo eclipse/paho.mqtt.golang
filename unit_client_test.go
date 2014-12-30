@@ -27,14 +27,14 @@ func init() {
 }
 
 func Test_NewClient_simple(t *testing.T) {
-	ops := NewClientOptions().SetClientId("foo").AddBroker("tcp://10.10.0.1:1883")
+	ops := NewClientOptions().SetClientID("foo").AddBroker("tcp://10.10.0.1:1883")
 	c := NewClient(ops)
 
 	if c == nil {
 		t.Fatalf("ops is nil")
 	}
 
-	if c.options.ClientId != "foo" {
+	if c.options.ClientID != "foo" {
 		t.Fatalf("bad client id")
 	}
 

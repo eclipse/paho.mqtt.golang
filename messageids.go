@@ -29,21 +29,21 @@ type messageIds struct {
 }
 
 const (
-	MId_MAX uint16 = 65535
-	MId_MIN uint16 = 1
+	midMin uint16 = 1
+	midMax uint16 = 65535
 )
 
-func (mids *messageIds) freeId(id uint16) {
+func (mids *messageIds) freeID(id uint16) {
 	mids.Lock()
 	defer mids.Unlock()
 	//trace_v(MID, "freeing message id: %v", id)
 	delete(mids.index, id)
 }
 
-func (mids *messageIds) getId(t Token) uint16 {
+func (mids *messageIds) getID(t Token) uint16 {
 	mids.Lock()
 	defer mids.Unlock()
-	for i := MId_MIN; i < MId_MAX; i++ {
+	for i := midMin; i < midMax; i++ {
 		if _, ok := mids.index[i]; !ok {
 			mids.index[i] = t
 			return i

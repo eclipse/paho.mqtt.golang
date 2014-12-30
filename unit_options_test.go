@@ -24,7 +24,7 @@ import (
 func Test_NewClientOptions_default(t *testing.T) {
 	o := NewClientOptions()
 
-	if o.ClientId != "" {
+	if o.ClientID != "" {
 		t.Fatalf("bad default client id")
 	}
 
@@ -44,7 +44,7 @@ func Test_NewClientOptions_default(t *testing.T) {
 func Test_NewClientOptions_mix(t *testing.T) {
 	o := NewClientOptions()
 	o.AddBroker("tcp://192.168.1.2:9999")
-	o.SetClientId("myclientid")
+	o.SetClientID("myclientid")
 	o.SetUsername("myuser")
 	o.SetPassword("mypassword")
 	o.SetKeepAlive(88)
@@ -57,7 +57,7 @@ func Test_NewClientOptions_mix(t *testing.T) {
 		t.Fatalf("bad host")
 	}
 
-	if o.ClientId != "myclientid" {
+	if o.ClientID != "myclientid" {
 		t.Fatalf("bad set clientid")
 	}
 
@@ -94,8 +94,8 @@ func Test_ModifyOptions(t *testing.T) {
 	}
 }
 
-func Test_TlsConfig(t *testing.T) {
-	o := NewClientOptions().SetTlsConfig(&tls.Config{
+func Test_TLSConfig(t *testing.T) {
+	o := NewClientOptions().SetTLSConfig(&tls.Config{
 		RootCAs:            x509.NewCertPool(),
 		ClientAuth:         tls.NoClientCert,
 		ClientCAs:          x509.NewCertPool(),
@@ -103,17 +103,17 @@ func Test_TlsConfig(t *testing.T) {
 
 	c := NewClient(o)
 
-	if c.options.TlsConfig.ClientAuth != tls.NoClientCert {
+	if c.options.TLSConfig.ClientAuth != tls.NoClientCert {
 		t.Fatalf("client options.tlsConfig ClientAuth incorrect")
 	}
 
-	if c.options.TlsConfig.InsecureSkipVerify != true {
+	if c.options.TLSConfig.InsecureSkipVerify != true {
 		t.Fatalf("client options.tlsConfig InsecureSkipVerify incorrect")
 	}
 }
 
 func Test_OnConnectionLost(t *testing.T) {
-	onconnlost := func(client *MqttClient, err error) {
+	onconnlost := func(client *Client, err error) {
 		panic(err)
 	}
 	o := NewClientOptions().SetConnectionLostHandler(onconnlost)

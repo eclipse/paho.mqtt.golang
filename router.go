@@ -16,7 +16,7 @@ package mqtt
 
 import (
 	"container/list"
-	. "github.com/alsm/hrotti/packets"
+	"git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git/packets"
 	"strings"
 	"sync"
 )
@@ -74,14 +74,14 @@ type router struct {
 	sync.RWMutex
 	routes         *list.List
 	defaultHandler MessageHandler
-	messages       chan *PublishPacket
+	messages       chan *packets.PublishPacket
 	stop           chan bool
 }
 
 // newRouter returns a new instance of a Router and channel which can be used to tell the Router
 // to stop
 func newRouter() (*router, chan bool) {
-	router := &router{routes: list.New(), messages: make(chan *PublishPacket), stop: make(chan bool)}
+	router := &router{routes: list.New(), messages: make(chan *packets.PublishPacket), stop: make(chan bool)}
 	stop := router.stop
 	return router, stop
 }
@@ -125,7 +125,7 @@ func (r *router) setDefaultHandler(handler MessageHandler) {
 // takes messages off the channel, matches them against the internal route list and calls the
 // associated callback (or the defaultHandler, if one exists and no other route matched). If
 // anything is sent down the stop channel the function will end.
-func (r *router) matchAndDispatch(messages <-chan *PublishPacket, order bool, client *MqttClient) {
+func (r *router) matchAndDispatch(messages <-chan *packets.PublishPacket, order bool, client *Client) {
 	go func() {
 		for {
 			select {

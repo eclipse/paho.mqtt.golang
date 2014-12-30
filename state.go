@@ -19,7 +19,7 @@ package mqtt
 // )
 
 // // Look into the store and finish any flows found in there.
-// func (c *MqttClient) resume() []Receipt {
+// func (c *Client) resume() []Receipt {
 // 	DEBUG.Println(STA, "resuming client from stored state")
 
 // 	keys := c.persist.All()

@@ -18,7 +18,7 @@ import (
 	"code.google.com/p/go.net/websocket"
 	"crypto/tls"
 	"errors"
-	. "github.com/alsm/hrotti/packets"
+	"git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git/packets"
 	"net"
 	"net/url"
 	"reflect"
@@ -66,15 +66,15 @@ func openConnection(uri *url.URL, tlsc *tls.Config) (net.Conn, error) {
 
 // actually read incoming messages off the wire
 // send Message object into ibound channel
-func incoming(c *MqttClient) {
+func incoming(c *Client) {
 	defer c.workers.Done()
 	var err error
-	var cp ControlPacket
+	var cp packets.ControlPacket
 
 	DEBUG.Println(NET, "incoming started")
 
 	for {
-		if cp, err = ReadPacket(c.conn); err != nil {
+		if cp, err = packets.ReadPacket(c.conn); err != nil {
 			break
 		}
 		DEBUG.Println(NET, "Received Message")
@@ -96,7 +96,7 @@ func incoming(c *MqttClient) {
 
 // receive a Message object on obound, and then
 // actually send outgoing message to the wire
-func outgoing(c *MqttClient) {
+func outgoing(c *Client) {
 	defer c.workers.Done()
 	DEBUG.Println(NET, "outgoing started")
 
@@ -107,9 +107,9 @@ func outgoing(c *MqttClient) {
 			DEBUG.Println(NET, "outgoing stopped")
 			return
 		case pub := <-c.obound:
-			msg := pub.p.(*PublishPacket)
+			msg := pub.p.(*packets.PublishPacket)
 			if msg.Qos != 0 && msg.MessageID == 0 {
-				msg.MessageID = c.getId(pub.t)
+				msg.MessageID = c.getID(pub.t)
 				pub.t.(*PublishToken).messageId = msg.MessageID
 			}
 			//persist_obound(c.persist, msg)
@@ -138,10 +138,10 @@ func outgoing(c *MqttClient) {
 			DEBUG.Println(NET, "obound wrote msg, id:", msg.MessageID)
 		case msg := <-c.oboundP:
 			switch msg.p.(type) {
-			case *SubscribePacket:
-				msg.p.(*SubscribePacket).MessageID = c.getId(msg.t)
-			case *UnsubscribePacket:
-				msg.p.(*UnsubscribePacket).MessageID = c.getId(msg.t)
+			case *packets.SubscribePacket:
+				msg.p.(*packets.SubscribePacket).MessageID = c.getID(msg.t)
+			case *packets.UnsubscribePacket:
+				msg.p.(*packets.UnsubscribePacket).MessageID = c.getID(msg.t)
 			}
 			DEBUG.Println(NET, "obound priority msg to write, type", reflect.TypeOf(msg.p))
 			if err := msg.p.Write(c.conn); err != nil {
@@ -151,9 +151,10 @@ func outgoing(c *MqttClient) {
 			}
 			c.lastContact.update()
 			switch msg.p.(type) {
-			case *DisconnectPacket:
-				DEBUG.Println(NET, "outbound wrote disconnect, now closing connection")
+			case *packets.DisconnectPacket:
+				msg.t.(*DisconnectToken).flowComplete()
 				c.conn.Close()
+				DEBUG.Println(NET, "outbound wrote disconnect, stopping")
 				return
 			}
 		}
@@ -164,7 +165,7 @@ func outgoing(c *MqttClient) {
 // store messages if necessary
 // send replies on obound
 // delete messages from store if necessary
-func alllogic(c *MqttClient) {
+func alllogic(c *Client) {
 
 	DEBUG.Println(NET, "logic started")
 
@@ -176,11 +177,11 @@ func alllogic(c *MqttClient) {
 			DEBUG.Println(NET, "logic got msg on ibound")
 			//persist_ibound(c.persist, msg)
 			switch msg.(type) {
-			case *PingrespPacket:
+			case *packets.PingrespPacket:
 				DEBUG.Println(NET, "received pingresp")
 				c.pingOutstanding = false
-			case *SubackPacket:
-				sa := msg.(*SubackPacket)
+			case *packets.SubackPacket:
+				sa := msg.(*packets.SubackPacket)
 				DEBUG.Println(NET, "received suback, id:", sa.MessageID)
 				token := c.getToken(sa.MessageID).(*SubscribeToken)
 				DEBUG.Println(NET, "granted qoss", sa.GrantedQoss)
@@ -188,22 +189,22 @@ func alllogic(c *MqttClient) {
 					token.subResult[token.subs[i]] = qos
 				}
 				token.flowComplete()
-				go c.freeId(sa.MessageID)
-			case *UnsubackPacket:
-				ua := msg.(*UnsubackPacket)
+				go c.freeID(sa.MessageID)
+			case *packets.UnsubackPacket:
+				ua := msg.(*packets.UnsubackPacket)
 				DEBUG.Println(NET, "received unsuback, id:", ua.MessageID)
 				// c.receipts.get(msg.MsgId()) <- Receipt{}
 				// c.receipts.end(msg.MsgId())
-				go c.freeId(ua.MessageID)
-			case *PublishPacket:
-				pp := msg.(*PublishPacket)
+				go c.freeID(ua.MessageID)
+			case *packets.PublishPacket:
+				pp := msg.(*packets.PublishPacket)
 				DEBUG.Println(NET, "received publish, msgId:", pp.MessageID)
 				DEBUG.Println(NET, "putting msg on onPubChan")
 				switch pp.Qos {
 				case 2:
 					c.incomingPubChan <- pp
 					DEBUG.Println(NET, "done putting msg on incomingPubChan")
-					pr := NewControlPacket(PUBREC).(*PubrecPacket)
+					pr := packets.NewControlPacket(packets.Pubrec).(*packets.PubrecPacket)
 					pr.MessageID = pp.MessageID
 					DEBUG.Println(NET, "putting pubrec msg on obound")
 					c.oboundP <- &PacketAndToken{p: pr, t: nil}
@@ -211,7 +212,7 @@ func alllogic(c *MqttClient) {
 				case 1:
 					c.incomingPubChan <- pp
 					DEBUG.Println(NET, "done putting msg on incomingPubChan")
-					pa := NewControlPacket(PUBACK).(*PubackPacket)
+					pa := packets.NewControlPacket(packets.Puback).(*packets.PubackPacket)
 					pa.MessageID = pp.MessageID
 					DEBUG.Println(NET, "putting puback msg on obound")
 					c.oboundP <- &PacketAndToken{p: pa, t: nil}
@@ -231,45 +232,42 @@ func alllogic(c *MqttClient) {
 						}
 					}
 				}
-			case *PubackPacket:
-				pa := msg.(*PubackPacket)
+			case *packets.PubackPacket:
+				pa := msg.(*packets.PubackPacket)
 				DEBUG.Println(NET, "received puback, id:", pa.MessageID)
 				// c.receipts.get(msg.MsgId()) <- Receipt{}
 				// c.receipts.end(msg.MsgId())
 				c.getToken(pa.MessageID).flowComplete()
-				c.freeId(pa.MessageID)
-			case *PubrecPacket:
-				prec := msg.(*PubrecPacket)
+				c.freeID(pa.MessageID)
+			case *packets.PubrecPacket:
+				prec := msg.(*packets.PubrecPacket)
 				DEBUG.Println(NET, "received pubrec, id:", prec.MessageID)
-				prel := NewControlPacket(PUBREL).(*PubrelPacket)
+				prel := packets.NewControlPacket(packets.Pubrel).(*packets.PubrelPacket)
 				prel.MessageID = prec.MessageID
 				select {
 				case c.oboundP <- &PacketAndToken{p: prel, t: nil}:
 				case <-time.After(time.Second):
 				}
-			case *PubrelPacket:
-				pr := msg.(*PubrelPacket)
+			case *packets.PubrelPacket:
+				pr := msg.(*packets.PubrelPacket)
 				DEBUG.Println(NET, "received pubrel, id:", pr.MessageID)
-				pc := NewControlPacket(PUBCOMP).(*PubcompPacket)
+				pc := packets.NewControlPacket(packets.Pubcomp).(*packets.PubcompPacket)
 				pc.MessageID = pr.MessageID
 				select {
 				case c.oboundP <- &PacketAndToken{p: pc, t: nil}:
 				case <-time.After(time.Second):
 				}
-			case *PubcompPacket:
-				pc := msg.(*PubcompPacket)
+			case *packets.PubcompPacket:
+				pc := msg.(*packets.PubcompPacket)
 				DEBUG.Println(NET, "received pubcomp, id:", pc.MessageID)
 				c.getToken(pc.MessageID).flowComplete()
-				c.freeId(pc.MessageID)
+				c.freeID(pc.MessageID)
 			}
 		case <-c.stop:
 			WARN.Println(NET, "logic stopped")
 			return
 		case err := <-c.errors:
 			ERROR.Println(NET, "logic got error")
-			close(c.stop)
-			//Wait for all workers to finish before closing connection
-			c.workers.Wait()
 			c.conn.Close()
 
 			// Call onConnectionLost or default error handler

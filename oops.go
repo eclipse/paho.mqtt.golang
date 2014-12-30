@@ -17,22 +17,23 @@ package mqtt
 import (
 	"errors"
 	"fmt"
-	. "github.com/alsm/hrotti/packets"
 	"os"
+
+	"git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git/packets"
 )
 
 /*
  * Connect Errors
  */
 var connErrors = map[byte]error{
-	CONN_ACCEPTED:           nil,
-	CONN_REF_BAD_PROTO_VER:  errors.New("Unnacceptable protocol version"),
-	CONN_REF_ID_REJ:         errors.New("Identifier rejected"),
-	CONN_REF_SERV_UNAVAIL:   errors.New("Server Unavailable"),
-	CONN_REF_BAD_USER_PASS:  errors.New("Bad user name or password"),
-	CONN_REF_NOT_AUTH:       errors.New("Not Authorized"),
-	CONN_NETWORK_ERROR:      errors.New("Network Error"),
-	CONN_PROTOCOL_VIOLATION: errors.New("Protocol Violation"),
+	packets.Accepted:                     nil,
+	packets.RefusedBadProtocolVersion:    errors.New("Unnacceptable protocol version"),
+	packets.RefusedIDRejected:            errors.New("Identifier rejected"),
+	packets.RefusedServerUnavailable:     errors.New("Server Unavailable"),
+	packets.RefusedBadUsernameOrPassword: errors.New("Bad user name or password"),
+	packets.RefusedNotAuthorised:         errors.New("Not Authorized"),
+	packets.NetworkError:                 errors.New("Network Error"),
+	packets.ProtocolViolation:            errors.New("Protocol Violation"),
 }
 
 var ErrNotConnected = errors.New("Not Connected")
@@ -50,7 +51,7 @@ var ErrInvalidTopicFilterMultilevel = errors.New("Invalid TopicFilter - multi-le
  */
 var ErrInvalidQoS = errors.New("Invalid QoS")
 
-func DefaultErrorHandler(client *MqttClient, reason error) {
+func DefaultErrorHandler(client *Client, reason error) {
 	fmt.Fprintf(os.Stderr, "%s go-mqtt suffered fatal error %v", ERR, reason)
 	os.Exit(1)
 }

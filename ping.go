@@ -16,7 +16,7 @@ package mqtt
 
 import (
 	"errors"
-	. "github.com/alsm/hrotti/packets"
+	"git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git/packets"
 	"sync"
 	"time"
 )
@@ -39,7 +39,7 @@ func (l *lastcontact) get() time.Time {
 	return l.lasttime
 }
 
-func keepalive(c *MqttClient) {
+func keepalive(c *Client) {
 	defer c.workers.Done()
 	DEBUG.Println(PNG, "keepalive starting")
 
@@ -54,7 +54,7 @@ func keepalive(c *MqttClient) {
 			if last > uint(c.options.KeepAlive.Seconds()) {
 				if !c.pingOutstanding {
 					DEBUG.Println(PNG, "keepalive sending ping")
-					ping := NewControlPacket(PINGREQ).(*PingreqPacket)
+					ping := packets.NewControlPacket(packets.Pingreq).(*packets.PingreqPacket)
 					//We don't want to wait behind large messages being sent, the Write call
 					//will block until it it able to send the packet.
 					ping.Write(c.conn)

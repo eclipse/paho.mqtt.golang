@@ -20,7 +20,7 @@ package mqtt
 
 // Set these values to the URI of your MQTT Broker before running go-test
 const (
-	FVT_ADDR = "iot.eclipse.org"
-	FVT_TCP  = "tcp://" + FVT_ADDR + ":1883"
-	FVT_SSL  = "ssl://" + FVT_ADDR + ":8883"
+	FVTAddr = "iot.eclipse.org"
+	FVTTCP  = "tcp://" + FVTAddr + ":1883"
+	FVTSSL  = "ssl://" + FVTAddr + ":8883"
 )
