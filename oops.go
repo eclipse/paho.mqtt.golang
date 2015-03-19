@@ -16,8 +16,6 @@ package mqtt
 
 import (
 	"errors"
-	"fmt"
-	"os"
 
 	"git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git/packets"
 )
@@ -51,9 +49,8 @@ var ErrInvalidTopicFilterMultilevel = errors.New("Invalid TopicFilter - multi-le
  */
 var ErrInvalidQoS = errors.New("Invalid QoS")
 
-func DefaultErrorHandler(client *Client, reason error) {
-	fmt.Fprintf(os.Stderr, "%s go-mqtt suffered fatal error %v", ERR, reason)
-	os.Exit(1)
+func DefaultConnectionLostHandler(client *Client, reason error) {
+	DEBUG.Println("Connection lost:", reason.Error())
 }
 
 func chkerr(e error) {

@@ -87,7 +87,7 @@ func NewClientOptions() *ClientOptions {
 		MaxReconnectInterval:    10 * time.Minute,
 		Store:                   nil,
 		OnConnect:               nil,
-		OnConnectionLost:        DefaultErrorHandler,
+		OnConnectionLost:        DefaultConnectionLostHandler,
 		WriteTimeout:            0, // 0 represents timeout disabled
 	}
 	return o
