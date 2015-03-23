@@ -12,7 +12,7 @@
  *    Mike Robertson
  */
 
-// Package mqtt provides an MQTT v3.1 client library.
+// Package mqtt provides an MQTT v3.1.1 client library.
 package mqtt
 
 import (
