@@ -65,10 +65,10 @@ Launch mosquitto from the fvt directory, specifiying mosquitto.cfg as config fil
 
 ``ex: /usr/bin/mosquitto -c ./mosquitto.cfg``
 
-Note: Mosquitto requires SSL 1.1 or better, while Go 1.1.2 (current) supports
-only SSL v1.0. However, Go 1.2.* (near release) supports SSL v1.1 and SSL v1.2.
+Note: Mosquitto requires SSL 1.1 or better, while Go 1.1.2 supports
+only SSL v1.0. However, Go 1.2+ supports SSL v1.1 and SSL v1.2.
 
 
 Other Notes
 -----------
-Go 1.1.2 does not support intermediate certificates, however Go 1.2 does.
+Go 1.1.2 does not support intermediate certificates, however Go 1.2+ does.

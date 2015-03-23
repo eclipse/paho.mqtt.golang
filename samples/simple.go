@@ -28,7 +28,7 @@ var f MQTT.MessageHandler = func(client *MQTT.Client, msg MQTT.Message) {
 }
 
 func main() {
-	opts := MQTT.NewClientOptions().AddBroker("tcp://test.mosquitto.org:1883").SetClientId("trivial")
+	opts := MQTT.NewClientOptions().AddBroker("tcp://iot.eclipse.org:1883").SetClientID("gotrivial")
 	opts.SetDefaultPublishHandler(f)
 
 	c := MQTT.NewClient(opts)

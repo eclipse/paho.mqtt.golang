@@ -7,8 +7,8 @@ import (
 	"io"
 )
 
-//CONNECT packet
-
+//ConnectPacket is an internal representation of the fields of the
+//Connect MQTT packet
 type ConnectPacket struct {
 	FixedHeader
 	ProtocolName    string
@@ -63,6 +63,8 @@ func (c *ConnectPacket) Write(w io.Writer) error {
 	return err
 }
 
+//Unpack decodes the details of a ControlPacket after the fixed
+//header has been read
 func (c *ConnectPacket) Unpack(b io.Reader) {
 	c.ProtocolName = decodeString(b)
 	c.ProtocolVersion = decodeByte(b)
@@ -88,32 +90,39 @@ func (c *ConnectPacket) Unpack(b io.Reader) {
 	}
 }
 
+//Validate performs validation of the fields of a Connect packet
 func (c *ConnectPacket) Validate() byte {
 	if c.PasswordFlag && !c.UsernameFlag {
-		return RefusedBadUsernameOrPassword
+		return ErrRefusedBadUsernameOrPassword
 	}
 	if c.ReservedBit != 0 {
-		fmt.Println("Bad reserved bit")
-		return ProtocolViolation
+		//Bad reserved bit
+		return ErrProtocolViolation
 	}
 	if (c.ProtocolName == "MQIsdp" && c.ProtocolVersion != 3) || (c.ProtocolName == "MQTT" && c.ProtocolVersion != 4) {
-		return RefusedBadProtocolVersion
+		//Mismatched or unsupported protocol version
+		return ErrRefusedBadProtocolVersion
 	}
 	if c.ProtocolName != "MQIsdp" && c.ProtocolName != "MQTT" {
-		fmt.Println("Bad protocol name")
-		return ProtocolViolation
+		//Bad protocol name
+		return ErrProtocolViolation
 	}
 	if len(c.ClientIdentifier) > 65535 || len(c.Username) > 65535 || len(c.Password) > 65535 {
-		fmt.Println("Bad size field")
-		return ProtocolViolation
+		//Bad size field
+		return ErrProtocolViolation
 	}
 	return Accepted
 }
 
+//Details returns a Details struct containing the Qos and
+//MessageID of this ControlPacket
 func (c *ConnectPacket) Details() Details {
 	return Details{Qos: 0, MessageID: 0}
 }
 
+//UUID returns the unique ID assigned to the ControlPacket when
+//it was originally received. Note: this is not related to the
+//MessageID field for MQTT packets
 func (c *ConnectPacket) UUID() uuid.UUID {
 	return c.uuid
 }

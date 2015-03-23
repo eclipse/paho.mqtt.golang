@@ -66,8 +66,8 @@ func main() {
 	myNoOpStore := &NoOpStore{}
 
 	opts := MQTT.NewClientOptions()
-	opts.AddBroker("tcp://test.mosquitto.org:1883")
-	opts.SetClientId("custom-store")
+	opts.AddBroker("tcp://iot.eclipse.org:1883")
+	opts.SetClientID("custom-store")
 	opts.SetStore(myNoOpStore)
 
 	var callback MQTT.MessageHandler = func(client *MQTT.Client, msg MQTT.Message) {

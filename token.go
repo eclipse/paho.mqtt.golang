@@ -18,11 +18,17 @@ import (
 	"time"
 )
 
+//PacketAndToken is a struct that contains both a ControlPacket and a
+//Token. This struct is passed via channels between the client interface
+//code and the underlying code responsible for sending and receiving
+//MQTT messages.
 type PacketAndToken struct {
 	p packets.ControlPacket
 	t Token
 }
 
+//Token defines the interface for the tokens used to indicate when
+//actions have completed.
 type Token interface {
 	Wait() bool
 	WaitTimeout(time.Duration) bool
@@ -49,7 +55,10 @@ func (b *baseToken) Wait() bool {
 	return b.ready
 }
 
-// WaitTimeout takes a time in ms
+// WaitTimeout takes a time in ms to wait for the flow associated with the
+// Token to complete, returns true if it returned before the timeout or
+// returns false if the timeout occurred. In the case of a timeout the Token
+// does not have an error set in case the caller wishes to wait again
 func (b *baseToken) WaitTimeout(d time.Duration) bool {
 	b.m.Lock()
 	defer b.m.Unlock()
@@ -89,42 +98,59 @@ func newToken(tType byte) Token {
 	return nil
 }
 
+//ConnectToken is an extension of Token containing the extra fields
+//required to provide information about calls to Connect()
 type ConnectToken struct {
 	baseToken
 	returnCode byte
 }
 
+//ReturnCode returns the acknowlegement code in the connack sent
+//in response to a Connect()
 func (c *ConnectToken) ReturnCode() byte {
 	c.m.RLock()
 	defer c.m.RUnlock()
 	return c.returnCode
 }
 
+//PublishToken is an extension of Token containing the extra fields
+//required to provide information about calls to Publish()
 type PublishToken struct {
 	baseToken
-	messageId uint16
+	messageID uint16
 }
 
-func (p *PublishToken) MessageId() uint16 {
-	return p.messageId
+//MessageID returns the MQTT message ID that was assigned to the
+//Publish packet when it was sent to the broker
+func (p *PublishToken) MessageID() uint16 {
+	return p.messageID
 }
 
+//SubscribeToken is an extension of Token containing the extra fields
+//required to provide information about calls to Subscribe()
 type SubscribeToken struct {
 	baseToken
 	subs      []string
 	subResult map[string]byte
 }
 
+//Result returns a map of topics that were subscribed to along with
+//the matching return code from the broker. This is either the Qos
+//value of the subscription or an error code.
 func (s *SubscribeToken) Result() map[string]byte {
 	s.m.RLock()
 	defer s.m.RUnlock()
 	return s.subResult
 }
 
+//UnsubscribeToken is an extension of Token containing the extra fields
+//required to provide information about calls to Unsubscribe()
 type UnsubscribeToken struct {
 	baseToken
 }
 
+//DisconnectToken is an extension of Token containing the extra fields
+//required to provide information about calls to Disconnect()
 type DisconnectToken struct {
 	baseToken
 }

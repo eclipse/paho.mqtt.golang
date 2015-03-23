@@ -15,15 +15,14 @@
 package main
 
 import (
-	//"bufio"
+	"bufio"
 	"crypto/tls"
 	"flag"
 	"fmt"
-	//"io"
+	"io"
 	//"log"
 	"os"
 	"strconv"
-	//"strings"
 	"time"
 )
 
@@ -32,7 +31,7 @@ import MQTT "git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
 func main() {
 	//MQTT.DEBUG = log.New(os.Stdout, "", 0)
 	//MQTT.ERROR = log.New(os.Stdout, "", 0)
-	//stdin := bufio.NewReader(os.Stdin)
+	stdin := bufio.NewReader(os.Stdin)
 	hostname, _ := os.Hostname()
 
 	server := flag.String("server", "tcp://127.0.0.1:1883", "The full URL of the MQTT server to connect to")
@@ -44,7 +43,7 @@ func main() {
 	password := flag.String("password", "", "Password to match username")
 	flag.Parse()
 
-	connOpts := MQTT.NewClientOptions().AddBroker(*server).SetClientId(*clientid).SetCleanSession(true)
+	connOpts := MQTT.NewClientOptions().AddBroker(*server).SetClientID(*clientid).SetCleanSession(true)
 	if *username != "" {
 		connOpts.SetUsername(*username)
 		if *password != "" {
@@ -52,21 +51,20 @@ func main() {
 		}
 	}
 	tlsConfig := &tls.Config{InsecureSkipVerify: true, ClientAuth: tls.NoClientCert}
-	connOpts.SetTlsConfig(tlsConfig)
+	connOpts.SetTLSConfig(tlsConfig)
 
 	client := MQTT.NewClient(connOpts)
 	if token := client.Connect(); token.Wait() && token.Error() != nil {
 		fmt.Println(token.Error())
 		return
-	} else {
-		fmt.Printf("Connected to %s\n", *server)
 	}
+	fmt.Printf("Connected to %s\n", *server)
 
-	for i := 0; i < 100000; i++ {
-		//message, err := stdin.ReadString('\n')
-		//if err == io.EOF {
-		//	os.Exit(0)
-		//}
-		client.Publish(*topic, byte(*qos), *retained, "Test Message")
+	for {
+		message, err := stdin.ReadString('\n')
+		if err == io.EOF {
+			os.Exit(0)
+		}
+		client.Publish(*topic, byte(*qos), *retained, message)
 	}
 }

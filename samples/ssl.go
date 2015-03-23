@@ -47,7 +47,7 @@ import "crypto/tls"
 import "crypto/x509"
 import MQTT "git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
 
-func NewTlsConfig() *tls.Config {
+func NewTLSConfig() *tls.Config {
 	// Import trusted certificates from CAfile.pem.
 	// Alternatively, manually add CA certificates to
 	// default openssl CA bundle.
@@ -94,11 +94,11 @@ var f MQTT.MessageHandler = func(client *MQTT.Client, msg MQTT.Message) {
 }
 
 func main() {
-	tlsconfig := NewTlsConfig()
+	tlsconfig := NewTLSConfig()
 
 	opts := MQTT.NewClientOptions()
-	opts.AddBroker("ssl://hushbox.net:17004")
-	opts.SetClientId("ssl-sample").SetTlsConfig(tlsconfig)
+	opts.AddBroker("ssl://iot.eclipse.org:8883")
+	opts.SetClientID("ssl-sample").SetTLSConfig(tlsconfig)
 	opts.SetDefaultPublishHandler(f)
 
 	// Start the connection

@@ -7,8 +7,8 @@ import (
 	"io"
 )
 
-//PUBLISH packet
-
+//PublishPacket is an internal representation of the fields of the
+//Publish MQTT packet
 type PublishPacket struct {
 	FixedHeader
 	TopicName string
@@ -41,6 +41,8 @@ func (p *PublishPacket) Write(w io.Writer) error {
 	return err
 }
 
+//Unpack decodes the details of a ControlPacket after the fixed
+//header has been read
 func (p *PublishPacket) Unpack(b io.Reader) {
 	var payloadLength = p.FixedHeader.RemainingLength
 	p.TopicName = decodeString(b)
@@ -54,6 +56,10 @@ func (p *PublishPacket) Unpack(b io.Reader) {
 	b.Read(p.Payload)
 }
 
+//Copy creates a new PublishPacket with the same topic and payload
+//but an empty fixed header, useful for when you want to deliver
+//a message with different properties such as Qos but the same
+//content
 func (p *PublishPacket) Copy() *PublishPacket {
 	newP := NewControlPacket(Publish).(*PublishPacket)
 	newP.TopicName = p.TopicName
@@ -62,10 +68,15 @@ func (p *PublishPacket) Copy() *PublishPacket {
 	return newP
 }
 
+//Details returns a Details struct containing the Qos and
+//MessageID of this ControlPacket
 func (p *PublishPacket) Details() Details {
 	return Details{Qos: p.Qos, MessageID: p.MessageID}
 }
 
+//UUID returns the unique ID assigned to the ControlPacket when
+//it was originally received. Note: this is not related to the
+//MessageID field for MQTT packets
 func (p *PublishPacket) UUID() uuid.UUID {
 	return p.uuid
 }

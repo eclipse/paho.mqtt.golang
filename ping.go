@@ -62,7 +62,9 @@ func keepalive(c *Client) {
 				} else {
 					CRITICAL.Println(PNG, "pingresp not received, disconnecting")
 					go c.options.OnConnectionLost(c, errors.New("pingresp not received, disconnecting"))
-					go c.reconnect()
+					if c.options.AutoReconnect {
+						go c.reconnect()
+					}
 				}
 			}
 			time.Sleep(1 * time.Second)

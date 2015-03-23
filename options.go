@@ -54,6 +54,7 @@ type ClientOptions struct {
 	TLSConfig               tls.Config
 	KeepAlive               time.Duration
 	MaxReconnectInterval    time.Duration
+	AutoReconnect           bool
 	Store                   Store
 	DefaultPublishHander    MessageHandler
 	OnConnect               OnConnectHandler
@@ -85,6 +86,7 @@ func NewClientOptions() *ClientOptions {
 		TLSConfig:               tls.Config{},
 		KeepAlive:               30 * time.Second,
 		MaxReconnectInterval:    10 * time.Minute,
+		AutoReconnect:           true,
 		Store:                   nil,
 		OnConnect:               nil,
 		OnConnectionLost:        DefaultConnectionLostHandler,
@@ -234,12 +236,22 @@ func (o *ClientOptions) SetConnectionLostHandler(onLost ConnectionLostHandler) *
 
 // SetWriteTimeout puts a limit on how long a mqtt publish should block until it unblocks with a
 // timeout error. A duration of 0 never times out.
-func (o *ClientOptions) SetWriteTimeout(t time.Duration) {
+func (o *ClientOptions) SetWriteTimeout(t time.Duration) *ClientOptions {
 	o.WriteTimeout = t
+	return o
 }
 
 // SetMaxReconnectInterval sets the maximum time that will be waited between reconnection attempts
 // when connection is lost
-func (o *ClientOptions) SetMaxReconnectInterval(t time.Duration) {
+func (o *ClientOptions) SetMaxReconnectInterval(t time.Duration) *ClientOptions {
 	o.MaxReconnectInterval = t
+	return o
+}
+
+// SetAutoReconnect sets whether the automatic reconnection logic should be used
+// when the connection is lost, even if disabled the ConnectionLostHandler is still
+// called
+func (o *ClientOptions) SetAutoReconnect(a bool) *ClientOptions {
+	o.AutoReconnect = a
+	return o
 }

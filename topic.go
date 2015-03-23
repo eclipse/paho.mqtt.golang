@@ -15,8 +15,22 @@
 package mqtt
 
 import (
+	"errors"
 	"strings"
 )
+
+//InvalidQos is the error returned when an packet is to be sent
+//with an invalid Qos value
+var ErrInvalidQos = errors.New("Invalid QoS")
+
+//InvalidTopicEmptyString is the error returned when a topic string
+//is passed in that is 0 length
+var ErrInvalidTopicEmptyString = errors.New("Invalid Topic; empty string")
+
+//InvalidTopicMultilevel is the error returned when a topic string
+//is passed in that has the multi level wildcard in any position but
+//the last
+var ErrInvalidTopicMultilevel = errors.New("Invalid Topic; multi-level wildcard must be last level")
 
 // Topic Names and Topic Filters
 // The MQTT v3.1.1 spec clarifies a number of ambiguities with regard
@@ -51,18 +65,18 @@ func validateSubscribeMap(subs map[string]byte) ([]string, []byte, error) {
 
 func validateTopicAndQos(topic string, qos byte) error {
 	if len(topic) == 0 {
-		return ErrInvalidTopicNameEmptyString
+		return ErrInvalidTopicEmptyString
 	}
 
 	levels := strings.Split(topic, "/")
 	for i, level := range levels {
 		if level == "#" && i != len(levels)-1 {
-			return ErrInvalidTopicFilterMultilevel
+			return ErrInvalidTopicMultilevel
 		}
 	}
 
 	if qos < 0 || qos > 2 {
-		return ErrInvalidQoS
+		return ErrInvalidQos
 	}
 	return nil
 }

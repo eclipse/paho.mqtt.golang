@@ -7,8 +7,8 @@ import (
 	"io"
 )
 
-//SUBSCRIBE packet
-
+//SubscribePacket is an internal representation of the fields of the
+//Subscribe MQTT packet
 type SubscribePacket struct {
 	FixedHeader
 	MessageID uint16
@@ -40,6 +40,8 @@ func (s *SubscribePacket) Write(w io.Writer) error {
 	return err
 }
 
+//Unpack decodes the details of a ControlPacket after the fixed
+//header has been read
 func (s *SubscribePacket) Unpack(b io.Reader) {
 	s.MessageID = decodeUint16(b)
 	payloadLength := s.FixedHeader.RemainingLength - 2
@@ -52,10 +54,15 @@ func (s *SubscribePacket) Unpack(b io.Reader) {
 	}
 }
 
+//Details returns a Details struct containing the Qos and
+//MessageID of this ControlPacket
 func (s *SubscribePacket) Details() Details {
 	return Details{Qos: 1, MessageID: s.MessageID}
 }
 
+//UUID returns the unique ID assigned to the ControlPacket when
+//it was originally received. Note: this is not related to the
+//MessageID field for MQTT packets
 func (s *SubscribePacket) UUID() uuid.UUID {
 	return s.uuid
 }

@@ -1,7 +1,6 @@
 package packets
 
 import (
-	"bufio"
 	"bytes"
 	"code.google.com/p/go-uuid/uuid"
 	"encoding/binary"
@@ -10,6 +9,9 @@ import (
 	"io"
 )
 
+//ControlPacket defines the interface for structs intended to hold
+//decoded MQTT packets, either from being read or before being
+//written
 type ControlPacket interface {
 	Write(io.Writer) error
 	Unpack(io.Reader)
@@ -18,6 +20,8 @@ type ControlPacket interface {
 	UUID() uuid.UUID
 }
 
+//PacketNames maps the constants for each of the MQTT packet types
+//to a string representation of their name.
 var PacketNames = map[uint8]string{
 	1:  "CONNECT",
 	2:  "CONNACK",
@@ -35,6 +39,7 @@ var PacketNames = map[uint8]string{
 	14: "DISCONNECT",
 }
 
+//Below are the constants assigned to each of the MQTT packet types
 const (
 	Connect     = 1
 	Connack     = 2
@@ -52,17 +57,21 @@ const (
 	Disconnect  = 14
 )
 
+//Below are the const definitions for error codes returned by
+//Connect()
 const (
-	Accepted                     = 0x00
-	RefusedBadProtocolVersion    = 0x01
-	RefusedIDRejected            = 0x02
-	RefusedServerUnavailable     = 0x03
-	RefusedBadUsernameOrPassword = 0x04
-	RefusedNotAuthorised         = 0x05
-	NetworkError                 = 0xFE
-	ProtocolViolation            = 0xFF
+	Accepted                        = 0x00
+	ErrRefusedBadProtocolVersion    = 0x01
+	ErrRefusedIDRejected            = 0x02
+	ErrRefusedServerUnavailable     = 0x03
+	ErrRefusedBadUsernameOrPassword = 0x04
+	ErrRefusedNotAuthorised         = 0x05
+	ErrNetworkError                 = 0xFE
+	ErrProtocolViolation            = 0xFF
 )
 
+//ConnackReturnCodes is a map of the error codes constants for Connect()
+//to a string representation of the error
 var ConnackReturnCodes = map[uint8]string{
 	0:   "Connection Accepted",
 	1:   "Connection Refused: Bad Protocol Version",
@@ -74,6 +83,23 @@ var ConnackReturnCodes = map[uint8]string{
 	255: "Connection Refused: Protocol Violation",
 }
 
+//ConnErrors is a map of the errors codes constants for Connect()
+//to a Go error
+var ConnErrors = map[byte]error{
+	Accepted:                        nil,
+	ErrRefusedBadProtocolVersion:    errors.New("Unnacceptable protocol version"),
+	ErrRefusedIDRejected:            errors.New("Identifier rejected"),
+	ErrRefusedServerUnavailable:     errors.New("Server Unavailable"),
+	ErrRefusedBadUsernameOrPassword: errors.New("Bad user name or password"),
+	ErrRefusedNotAuthorised:         errors.New("Not Authorized"),
+	ErrNetworkError:                 errors.New("Network Error"),
+	ErrProtocolViolation:            errors.New("Protocol Violation"),
+}
+
+//ReadPacket takes an instance of an io.Reader (such as net.Conn) and attempts
+//to read an MQTT packet from the stream. It returns a ControlPacket
+//representing the decoded MQTT packet and an error. One of these returns will
+//always be nil, a nil ControlPacket indicating an error occurred.
 func ReadPacket(r io.Reader) (cp ControlPacket, err error) {
 	var fh FixedHeader
 	b := make([]byte, 1)
@@ -96,6 +122,10 @@ func ReadPacket(r io.Reader) (cp ControlPacket, err error) {
 	return cp, nil
 }
 
+//NewControlPacket is used to create a new ControlPacket of the type specified
+//by packetType, this is usually done by reference to the packet type constants
+//defined in packets.go. The newly created ControlPacket is empty and a pointer
+//is returned.
 func NewControlPacket(packetType byte) (cp ControlPacket) {
 	switch packetType {
 	case Connect:
@@ -132,6 +162,9 @@ func NewControlPacket(packetType byte) (cp ControlPacket) {
 	return cp
 }
 
+//NewControlPacketWithHeader is used to create a new ControlPacket of the type
+//specified within the FixedHeader that is passed to the function.
+//The newly created ControlPacket is empty and a pointer is returned.
 func NewControlPacketWithHeader(fh FixedHeader) (cp ControlPacket) {
 	switch fh.MessageType {
 	case Connect:
@@ -168,11 +201,16 @@ func NewControlPacketWithHeader(fh FixedHeader) (cp ControlPacket) {
 	return cp
 }
 
+//Details struct returned by the Details() function called on
+//ControlPackets to present details of the Qos and MessageID
+//of the ControlPacket
 type Details struct {
 	Qos       byte
 	MessageID uint16
 }
 
+//FixedHeader is a struct to hold the decoded information from
+//the fixed header of an MQTT ControlPacket
 type FixedHeader struct {
 	MessageType     byte
 	Dup             bool
@@ -276,23 +314,6 @@ func decodeLength(r io.Reader) int {
 	for {
 		io.ReadFull(r, b)
 		digit := b[0]
-		rLength |= uint32(digit&127) << multiplier
-		if (digit & 128) == 0 {
-			break
-		}
-		multiplier += 7
-	}
-	return int(rLength)
-}
-
-func DecodeLength(r *bufio.Reader) int {
-	var rLength uint32
-	var multiplier uint32 = 0
-	//b := make([]byte, 1)
-	for {
-		//io.ReadFull(r, b)
-		digit, _ := r.ReadByte()
-		//digit := b[0]
 		rLength |= uint32(digit&127) << multiplier
 		if (digit & 128) == 0 {
 			break

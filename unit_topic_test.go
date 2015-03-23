@@ -20,28 +20,14 @@ import (
 
 func Test_ValidateTopicAndQos_qos3(t *testing.T) {
 	e := validateTopicAndQos("a", 3)
-	if e != ErrInvalidQoS {
+	if e != ErrInvalidQos {
 		t.Fatalf("invalid error for invalid qos")
 	}
 }
 
-// func Test_ValidateTopicAndQos_P_0(t *testing.T) {
-// 	e := validateTopicAndQos("+", 0)
-// 	if e != ErrInvalidTopicNameWildcard {
-// 		t.Fatalf("invalid error for topic name with wildcard")
-// 	}
-// }
-
-// func Test_ValidateTopicAndQos_H_0(t *testing.T) {
-// 	e := validateTopicAndQos("#", 0)
-// 	if e != ErrInvalidTopicNameWildcard {
-// 		t.Fatalf("invalid error for topic name with wildcard")
-// 	}
-// }
-
 func Test_ValidateTopicAndQos_ES(t *testing.T) {
 	e := validateTopicAndQos("", 0)
-	if e != ErrInvalidTopicNameEmptyString {
+	if e != ErrInvalidTopicEmptyString {
 		t.Fatalf("invalid error for empty topic name")
 	}
 }
@@ -55,7 +41,7 @@ func Test_ValidateTopicAndQos_a_0(t *testing.T) {
 
 func Test_ValidateTopicAndQos_H(t *testing.T) {
 	e := validateTopicAndQos("a/#/c", 0)
-	if e != ErrInvalidTopicFilterMultilevel {
+	if e != ErrInvalidTopicMultilevel {
 		t.Fatalf("invalid error for bad multilevel topic filter")
 	}
 }

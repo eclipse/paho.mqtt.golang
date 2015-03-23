@@ -51,68 +51,68 @@ func TestPacketNames(t *testing.T) {
 }
 
 func TestPacketConsts(t *testing.T) {
-	if CONNECT != 1 {
-		t.Errorf("Const for CONNECT is %d, should be %d", CONNECT, 1)
+	if Connect != 1 {
+		t.Errorf("Const for Connect is %d, should be %d", Connect, 1)
 	}
-	if CONNACK != 2 {
-		t.Errorf("Const for CONNACK is %d, should be %d", CONNACK, 2)
+	if Connack != 2 {
+		t.Errorf("Const for Connack is %d, should be %d", Connack, 2)
 	}
-	if PUBLISH != 3 {
-		t.Errorf("Const for PUBLISH is %d, should be %d", PUBLISH, 3)
+	if Publish != 3 {
+		t.Errorf("Const for Publish is %d, should be %d", Publish, 3)
 	}
-	if PUBACK != 4 {
-		t.Errorf("Const for PUBACK is %d, should be %d", PUBACK, 4)
+	if Puback != 4 {
+		t.Errorf("Const for Puback is %d, should be %d", Puback, 4)
 	}
-	if PUBREC != 5 {
-		t.Errorf("Const for PUBREC is %d, should be %d", PUBREC, 5)
+	if Pubrec != 5 {
+		t.Errorf("Const for Pubrec is %d, should be %d", Pubrec, 5)
 	}
-	if PUBREL != 6 {
-		t.Errorf("Const for PUBREL is %d, should be %d", PUBREL, 6)
+	if Pubrel != 6 {
+		t.Errorf("Const for Pubrel is %d, should be %d", Pubrel, 6)
 	}
-	if PUBCOMP != 7 {
-		t.Errorf("Const for PUBCOMP is %d, should be %d", PUBCOMP, 7)
+	if Pubcomp != 7 {
+		t.Errorf("Const for Pubcomp is %d, should be %d", Pubcomp, 7)
 	}
-	if SUBSCRIBE != 8 {
-		t.Errorf("Const for SUBSCRIBE is %d, should be %d", SUBSCRIBE, 8)
+	if Subscribe != 8 {
+		t.Errorf("Const for Subscribe is %d, should be %d", Subscribe, 8)
 	}
-	if SUBACK != 9 {
-		t.Errorf("Const for SUBACK is %d, should be %d", SUBACK, 9)
+	if Suback != 9 {
+		t.Errorf("Const for Suback is %d, should be %d", Suback, 9)
 	}
-	if UNSUBSCRIBE != 10 {
-		t.Errorf("Const for UNSUBSCRIBE is %d, should be %d", UNSUBSCRIBE, 10)
+	if Unsubscribe != 10 {
+		t.Errorf("Const for Unsubscribe is %d, should be %d", Unsubscribe, 10)
 	}
-	if UNSUBACK != 11 {
-		t.Errorf("Const for UNSUBACK is %d, should be %d", UNSUBACK, 11)
+	if Unsuback != 11 {
+		t.Errorf("Const for Unsuback is %d, should be %d", Unsuback, 11)
 	}
-	if PINGREQ != 12 {
-		t.Errorf("Const for PINGREQ is %d, should be %d", PINGREQ, 12)
+	if Pingreq != 12 {
+		t.Errorf("Const for Pingreq is %d, should be %d", Pingreq, 12)
 	}
-	if PINGRESP != 13 {
-		t.Errorf("Const for PINGRESP is %d, should be %d", PINGRESP, 13)
+	if Pingresp != 13 {
+		t.Errorf("Const for Pingresp is %d, should be %d", Pingresp, 13)
 	}
-	if DISCONNECT != 14 {
-		t.Errorf("Const for DISCONNECT is %d, should be %d", DISCONNECT, 14)
+	if Disconnect != 14 {
+		t.Errorf("Const for Disconnect is %d, should be %d", Disconnect, 14)
 	}
 }
 
 func TestConnackConsts(t *testing.T) {
-	if CONN_ACCEPTED != 0x00 {
-		t.Errorf("Const for CONN_ACCEPTED is %d, should be %d", CONN_ACCEPTED, 0)
+	if Accepted != 0x00 {
+		t.Errorf("Const for Accepted is %d, should be %d", Accepted, 0)
 	}
-	if CONN_REF_BAD_PROTO_VER != 0x01 {
-		t.Errorf("Const for CONN_REF_BAD_PROTO_VER is %d, should be %d", CONN_REF_BAD_PROTO_VER, 1)
+	if RefusedBadProtocolVersion != 0x01 {
+		t.Errorf("Const for RefusedBadProtocolVersion is %d, should be %d", RefusedBadProtocolVersion, 1)
 	}
-	if CONN_REF_ID_REJ != 0x02 {
-		t.Errorf("Const for CONN_REF_ID_REJ is %d, should be %d", CONN_REF_ID_REJ, 2)
+	if RefusedIDRejected != 0x02 {
+		t.Errorf("Const for RefusedIDRejected is %d, should be %d", RefusedIDRejected, 2)
 	}
-	if CONN_REF_SERV_UNAVAIL != 0x03 {
-		t.Errorf("Const for CONN_REF_SERV_UNAVAIL is %d, should be %d", CONN_REF_SERV_UNAVAIL, 3)
+	if RefusedServerUnavailable != 0x03 {
+		t.Errorf("Const for RefusedServerUnavailable is %d, should be %d", RefusedServerUnavailable, 3)
 	}
-	if CONN_REF_BAD_USER_PASS != 0x04 {
-		t.Errorf("Const for CONN_REF_BAD_USER_PASS is %d, should be %d", CONN_REF_BAD_USER_PASS, 4)
+	if RefusedBadUsernameOrPassword != 0x04 {
+		t.Errorf("Const for RefusedBadUsernameOrPassword is %d, should be %d", RefusedBadUsernameOrPassword, 4)
 	}
-	if CONN_REF_NOT_AUTH != 0x05 {
-		t.Errorf("Const for CONN_REF_NOT_AUTH is %d, should be %d", CONN_REF_NOT_AUTH, 5)
+	if RefusedNotAuthorised != 0x05 {
+		t.Errorf("Const for RefusedNotAuthorised is %d, should be %d", RefusedNotAuthorised, 5)
 	}
 }
 

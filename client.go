@@ -72,7 +72,7 @@ type Client struct {
 	workers         sync.WaitGroup
 }
 
-// NewClient will create an MQTT v3.1 client with all of the options specified
+// NewClient will create an MQTT v3.1.1 client with all of the options specified
 // in the provided ClientOptions. The client must have the Start method called
 // on it before it may be used. This is to make sure resources (such as a net
 // connection) are created before the application is actually ready.
@@ -111,6 +111,10 @@ func (c *Client) setConnected(status bool) {
 	defer c.Unlock()
 	c.connected = status
 }
+
+//ErrNotConnected is the error returned from function calls that are
+//made when the client is not connected to a broker
+var ErrNotConnected = errors.New("Not Connected")
 
 // Connect will create a connection to the message broker
 // If clean session is false, then a slice will
@@ -165,17 +169,17 @@ func (c *Client) Connect() Token {
 			} else {
 				ERROR.Println(CLI, err.Error())
 				WARN.Println(CLI, "failed to connect to broker, trying next")
-				rc = packets.NetworkError
+				rc = packets.ErrNetworkError
 			}
 		}
 
 		if c.conn == nil {
 			ERROR.Println(CLI, "Failed to connect to a broker")
 			t.returnCode = rc
-			if rc != packets.NetworkError {
-				t.err = connErrors[rc]
+			if rc != packets.ErrNetworkError {
+				t.err = packets.ConnErrors[rc]
 			} else {
-				t.err = errors.New(connErrors[rc].Error() + " : " + err.Error())
+				t.err = errors.New(packets.ConnErrors[rc].Error() + " : " + err.Error())
 			}
 			t.flowComplete()
 			return
@@ -274,7 +278,7 @@ func (c *Client) reconnect() {
 			} else {
 				ERROR.Println(CLI, err.Error())
 				WARN.Println(CLI, "failed to connect to broker, trying next")
-				rc = packets.NetworkError
+				rc = packets.ErrNetworkError
 			}
 		}
 		if rc != 0 {
@@ -318,7 +322,7 @@ func (c *Client) connect() byte {
 	if err != nil {
 		ERROR.Println(NET, "connect got error", err)
 		//c.errors <- err
-		return packets.NetworkError
+		return packets.ErrNetworkError
 	}
 	msg := ca.(*packets.ConnackPacket)
 
@@ -473,4 +477,10 @@ func (c *Client) Unsubscribe(topics ...string) Token {
 
 	DEBUG.Println(CLI, "exit Unsubscribe")
 	return token
+}
+
+//DefaultConnectionLostHandler is a definition of a function that simply
+//reports to the DEBUG log the reason for the client losing a connection.
+func DefaultConnectionLostHandler(client *Client, reason error) {
+	DEBUG.Println("Connection lost:", reason.Error())
 }

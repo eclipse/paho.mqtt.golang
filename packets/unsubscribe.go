@@ -7,8 +7,8 @@ import (
 	"io"
 )
 
-//UNSUBSCRIBE packet
-
+//UnsubscribePacket is an internal representation of the fields of the
+//Unsubscribe MQTT packet
 type UnsubscribePacket struct {
 	FixedHeader
 	MessageID uint16
@@ -37,6 +37,8 @@ func (u *UnsubscribePacket) Write(w io.Writer) error {
 	return err
 }
 
+//Unpack decodes the details of a ControlPacket after the fixed
+//header has been read
 func (u *UnsubscribePacket) Unpack(b io.Reader) {
 	u.MessageID = decodeUint16(b)
 	var topic string
@@ -45,10 +47,15 @@ func (u *UnsubscribePacket) Unpack(b io.Reader) {
 	}
 }
 
+//Details returns a Details struct containing the Qos and
+//MessageID of this ControlPacket
 func (u *UnsubscribePacket) Details() Details {
 	return Details{Qos: 1, MessageID: u.MessageID}
 }
 
+//UUID returns the unique ID assigned to the ControlPacket when
+//it was originally received. Note: this is not related to the
+//MessageID field for MQTT packets
 func (u *UnsubscribePacket) UUID() uuid.UUID {
 	return u.uuid
 }

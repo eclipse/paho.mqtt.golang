@@ -110,7 +110,7 @@ func outgoing(c *Client) {
 			msg := pub.p.(*packets.PublishPacket)
 			if msg.Qos != 0 && msg.MessageID == 0 {
 				msg.MessageID = c.getID(pub.t)
-				pub.t.(*PublishToken).messageId = msg.MessageID
+				pub.t.(*PublishToken).messageID = msg.MessageID
 			}
 			//persist_obound(c.persist, msg)
 
@@ -273,7 +273,9 @@ func alllogic(c *Client) {
 			// Call onConnectionLost or default error handler
 			if c.IsConnected() {
 				go c.options.OnConnectionLost(c, err)
-				go c.reconnect()
+				if c.options.AutoReconnect {
+					go c.reconnect()
+				}
 			}
 			return
 		}

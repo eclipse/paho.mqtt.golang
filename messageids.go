@@ -36,7 +36,6 @@ const (
 func (mids *messageIds) freeID(id uint16) {
 	mids.Lock()
 	defer mids.Unlock()
-	//trace_v(MID, "freeing message id: %v", id)
 	delete(mids.index, id)
 }
 

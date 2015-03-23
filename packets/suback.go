@@ -7,8 +7,8 @@ import (
 	"io"
 )
 
-//SUBACK packet
-
+//SubackPacket is an internal representation of the fields of the
+//Suback MQTT packet
 type SubackPacket struct {
 	FixedHeader
 	MessageID   uint16
@@ -35,6 +35,8 @@ func (sa *SubackPacket) Write(w io.Writer) error {
 	return err
 }
 
+//Unpack decodes the details of a ControlPacket after the fixed
+//header has been read
 func (sa *SubackPacket) Unpack(b io.Reader) {
 	var qosBuffer bytes.Buffer
 	sa.MessageID = decodeUint16(b)
@@ -42,10 +44,15 @@ func (sa *SubackPacket) Unpack(b io.Reader) {
 	sa.GrantedQoss = qosBuffer.Bytes()
 }
 
+//Details returns a Details struct containing the Qos and
+//MessageID of this ControlPacket
 func (sa *SubackPacket) Details() Details {
 	return Details{Qos: 0, MessageID: sa.MessageID}
 }
 
+//UUID returns the unique ID assigned to the ControlPacket when
+//it was originally received. Note: this is not related to the
+//MessageID field for MQTT packets
 func (sa *SubackPacket) UUID() uuid.UUID {
 	return sa.uuid
 }

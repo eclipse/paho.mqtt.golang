@@ -33,33 +33,33 @@ import (
 	MQTT "git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
 )
 
-var broker_load = make(chan bool)
-var broker_connection = make(chan bool)
-var broker_clients = make(chan bool)
+var brokerLoad = make(chan bool)
+var brokerConnection = make(chan bool)
+var brokerClients = make(chan bool)
 
 func brokerLoadHandler(client *MQTT.Client, msg MQTT.Message) {
-	broker_load <- true
+	brokerLoad <- true
 	fmt.Printf("BrokerLoadHandler         ")
 	fmt.Printf("[%s]  ", msg.Topic())
 	fmt.Printf("%s\n", msg.Payload())
 }
 
 func brokerConnectionHandler(client *MQTT.Client, msg MQTT.Message) {
-	broker_connection <- true
+	brokerConnection <- true
 	fmt.Printf("BrokerConnectionHandler   ")
 	fmt.Printf("[%s]  ", msg.Topic())
 	fmt.Printf("%s\n", msg.Payload())
 }
 
 func brokerClientsHandler(client *MQTT.Client, msg MQTT.Message) {
-	broker_clients <- true
+	brokerClients <- true
 	fmt.Printf("BrokerClientsHandler      ")
 	fmt.Printf("[%s]  ", msg.Topic())
 	fmt.Printf("%s\n", msg.Payload())
 }
 
 func main() {
-	opts := MQTT.NewClientOptions().AddBroker("tcp://test.mosquitto.org:1883").SetClientId("router-sample")
+	opts := MQTT.NewClientOptions().AddBroker("tcp://iot.eclipse.org:1883").SetClientID("router-sample")
 	opts.SetCleanSession(true)
 
 	c := MQTT.NewClient(opts)
@@ -82,24 +82,24 @@ func main() {
 		os.Exit(1)
 	}
 
-	num_bload := 0
-	num_bconns := 0
-	num_bclients := 0
+	loadCount := 0
+	connectionCount := 0
+	clientsCount := 0
 
 	for i := 0; i < 100; i++ {
 		select {
-		case <-broker_load:
-			num_bload++
-		case <-broker_connection:
-			num_bconns++
-		case <-broker_clients:
-			num_bclients++
+		case <-brokerLoad:
+			loadCount++
+		case <-brokerConnection:
+			connectionCount++
+		case <-brokerClients:
+			clientsCount++
 		}
 	}
 
-	fmt.Printf("Received %3d Broker Load messages\n", num_bload)
-	fmt.Printf("Received %3d Broker Connection messages\n", num_bconns)
-	fmt.Printf("Received %3d Broker Clients messages\n", num_bclients)
+	fmt.Printf("Received %3d Broker Load messages\n", loadCount)
+	fmt.Printf("Received %3d Broker Connection messages\n", connectionCount)
+	fmt.Printf("Received %3d Broker Clients messages\n", clientsCount)
 
 	c.Disconnect(250)
 }
