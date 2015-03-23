@@ -15,7 +15,6 @@
 package mqtt
 
 import (
-	"errors"
 	"sync"
 )
 

@@ -89,39 +89,9 @@ func incoming(c *Client) {
 		// Not trying to disconnect, send the error to the errors channel
 	default:
 		ERROR.Println(NET, "incoming stopped with error")
-		select {
-		case c.errors <- err:
-		default:
-			// c.errors is a buffer of one, so there must already be an error closing this connection.
-		}
+		c.errors <- err
 		return
 	}
-}
-
-func sendSendableWithTimeout(sChan chan sendable, s sendable) error {
-
-	t := time.NewTimer(time.Second)
-	select {
-	case sChan <- s:
-		// stop timer so we don't leak it.
-		t.Stop()
-	case <-t.C:
-		return errors.New("Timed out sending message")
-	}
-	return nil
-}
-
-func sendMessageWithTimeout(mChan chan *Message, m *Message) error {
-
-	t := time.NewTimer(time.Second)
-	select {
-	case mChan <- m:
-		// stop timer so we don't leak it.
-		t.Stop()
-	case <-t.C:
-		return errors.New("Timed out sending message")
-	}
-	return nil
 }
 
 // receive a Message object on obound, and then
@@ -150,11 +120,7 @@ func outgoing(c *Client) {
 
 			if err := msg.Write(c.conn); err != nil {
 				ERROR.Println(NET, "outgoing stopped with error")
-				select {
-				case c.errors <- err:
-				default:
-					// c.errors is a buffer of one, so there must already be an error closing this connection.
-				}
+				c.errors <- err
 				return
 			}
 
@@ -180,11 +146,7 @@ func outgoing(c *Client) {
 			DEBUG.Println(NET, "obound priority msg to write, type", reflect.TypeOf(msg.p))
 			if err := msg.p.Write(c.conn); err != nil {
 				ERROR.Println(NET, "outgoing stopped with error")
-				select {
-				case c.errors <- err:
-				default:
-					// c.errors is a buffer of one, so there must already be an error closing this connection.
-				}
+				c.errors <- err
 				return
 			}
 			c.lastContact.update()
@@ -265,11 +227,7 @@ func alllogic(c *Client) {
 						// select can handle it appropriately.
 						if ok {
 							go func(errVal error, errChan chan error) {
-								select {
-								case errChan <- errVal:
-								default:
-									// c.errors is a buffer of one, so there must already be an error closing this connection.
-								}
+								errChan <- errVal
 							}(err, c.errors)
 						}
 					}
