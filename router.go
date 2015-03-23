@@ -145,7 +145,7 @@ func (r *router) matchAndDispatch(messages <-chan *packets.PublishPacket, order 
 					}
 				}
 				r.RUnlock()
-				if !sent {
+				if !sent && r.defaultHandler != nil {
 					if order {
 						r.RLock()
 						r.defaultHandler(client, messageFromPublish(message))
