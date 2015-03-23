@@ -25,56 +25,38 @@ import (
 type MId uint16
 
 type messageIds struct {
-	sync.Mutex
-	idChan   chan MId
-	index    map[MId]bool
-	stopChan chan struct{}
+	sync.RWMutex
+	index map[uint16]Token
 }
 
 const (
-	MId_MAX MId = 65535
-	MId_MIN MId = 1
+	midMin uint16 = 1
+	midMax uint16 = 65535
 )
 
-func (mids *messageIds) stop() {
-	close(mids.stopChan)
-}
-
-func (mids *messageIds) generateMsgIds() {
-
-	mids.idChan = make(chan MId, 10)
-	mids.stopChan = make(chan struct{})
-	go func(mid *messageIds) {
-		for {
-			mid.Lock()
-			for i := MId_MIN; i < MId_MAX; i++ {
-				if !mid.index[i] {
-					mid.index[i] = true
-					mid.Unlock()
-					select {
-					case mid.idChan <- i:
-					case <-mid.stopChan:
-						return
-					}
-					break
-				}
-			}
-		}
-	}(mids)
-}
-
-func (mids *messageIds) freeId(id MId) {
+func (mids *messageIds) freeID(id uint16) {
 	mids.Lock()
 	defer mids.Unlock()
-	//trace_v(MID, "freeing message id: %v", id)
-	mids.index[id] = false
+	delete(mids.index, id)
 }
 
-func (mids *messageIds) getId() (MId, error) {
-	select {
-	case i := <-mids.idChan:
-		return i, nil
-	case <-mids.stopChan:
+func (mids *messageIds) getID(t Token) uint16 {
+	mids.Lock()
+	defer mids.Unlock()
+	for i := midMin; i < midMax; i++ {
+		if _, ok := mids.index[i]; !ok {
+			mids.index[i] = t
+			return i
+		}
 	}
-	return 0, errors.New("Failed to get next message id.")
+	return 0
+}
+
+func (mids *messageIds) getToken(id uint16) Token {
+	mids.RLock()
+	defer mids.RUnlock()
+	if token, ok := mids.index[id]; ok {
+		return token
+	}
+	return nil
 }

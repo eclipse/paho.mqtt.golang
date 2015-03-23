@@ -17,106 +17,90 @@ package mqtt
 import (
 	"fmt"
 	"testing"
+	"time"
 )
 
-func Test_getId(t *testing.T) {
-	mids := &messageIds{index: make(map[MId]bool)}
-	mids.generateMsgIds()
+type DummyToken struct{}
 
-	i1, err := mids.getId()
-	if err != nil {
-		t.Fatalf("Failed to get id. %s", err.Error())
-	}
+func (d *DummyToken) Wait() bool {
+	return true
+}
 
-	if i1 != MId(1) {
+func (d *DummyToken) WaitTimeout(t time.Duration) bool {
+	return true
+}
+
+func (d *DummyToken) flowComplete() {}
+
+func (d *DummyToken) Error() error {
+	return nil
+}
+
+func Test_getID(t *testing.T) {
+	mids := &messageIds{index: make(map[uint16]Token)}
+
+	i1 := mids.getID(&DummyToken{})
+
+	if i1 != 1 {
 		t.Fatalf("i1 was wrong: %v", i1)
 	}
 
-	i2, err := mids.getId()
-	if err != nil {
-		t.Fatalf("Failed to get id. %s", err.Error())
-	}
+	i2 := mids.getID(&DummyToken{})
 
-	if i2 != MId(2) {
+	if i2 != 2 {
 		t.Fatalf("i2 was wrong: %v", i2)
 	}
 
-	for i := 3; i < 100; i++ {
-		id, err := mids.getId()
-		if err != nil {
-			t.Fatalf("Failed to get id. %s", err.Error())
-		}
-		if id != MId(i) {
+	for i := uint16(3); i < 100; i++ {
+		id := mids.getID(&DummyToken{})
+		if id != i {
 			t.Fatalf("id was wrong expected %v got %v", i, id)
 		}
 	}
 }
 
-func Test_freeId(t *testing.T) {
-	mids := &messageIds{index: make(map[MId]bool)}
-	mids.generateMsgIds()
+func Test_freeID(t *testing.T) {
+	mids := &messageIds{index: make(map[uint16]Token)}
 
-	i1, err := mids.getId()
-	if err != nil {
-		t.Fatalf("Failed to get id. %s", err.Error())
-	}
-	mids.freeId(i1)
+	i1 := mids.getID(&DummyToken{})
+	mids.freeID(i1)
 
-	if i1 != MId(1) {
+	if i1 != 1 {
 		t.Fatalf("i1 was wrong: %v", i1)
 	}
 
-	i2, err := mids.getId()
-	if err != nil {
-		t.Fatalf("Failed to get id. %s", err.Error())
-	}
+	i2 := mids.getID(&DummyToken{})
 	fmt.Printf("i2: %v\n", i2)
 }
 
 func Test_messageids_mix(t *testing.T) {
-	mids := &messageIds{index: make(map[MId]bool)}
-	mids.generateMsgIds()
+	mids := &messageIds{index: make(map[uint16]Token)}
 
 	done := make(chan bool)
-	a := make(chan MId, 3)
-	b := make(chan MId, 20)
-	c := make(chan MId, 100)
+	a := make(chan uint16, 3)
+	b := make(chan uint16, 20)
+	c := make(chan uint16, 100)
 
 	go func() {
 		for i := 0; i < 10000; i++ {
-			id, err := mids.getId()
-			if err != nil {
-				t.Fatalf("Failed to get id. %s", err.Error())
-			}
-			a <- id
-
-			mids.freeId(<-b)
+			a <- mids.getID(&DummyToken{})
+			mids.freeID(<-b)
 		}
 		done <- true
 	}()
 
 	go func() {
 		for i := 0; i < 10000; i++ {
-			id, err := mids.getId()
-			if err != nil {
-				t.Fatalf("Failed to get id. %s", err.Error())
-			}
-			b <- id
-
-			mids.freeId(<-c)
+			b <- mids.getID(&DummyToken{})
+			mids.freeID(<-c)
 		}
 		done <- true
 	}()
 
 	go func() {
 		for i := 0; i < 10000; i++ {
-			id, err := mids.getId()
-			if err != nil {
-				t.Fatalf("Failed to get id. %s", err.Error())
-			}
-			c <- id
-
-			mids.freeId(<-a)
+			c <- mids.getID(&DummyToken{})
+			mids.freeID(<-a)
 		}
 		done <- true
 	}()

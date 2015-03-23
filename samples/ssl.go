@@ -47,7 +47,7 @@ import "crypto/tls"
 import "crypto/x509"
 import MQTT "git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
 
-func NewTlsConfig() *tls.Config {
+func NewTLSConfig() *tls.Config {
 	// Import trusted certificates from CAfile.pem.
 	// Alternatively, manually add CA certificates to
 	// default openssl CA bundle.
@@ -88,28 +88,26 @@ func NewTlsConfig() *tls.Config {
 	}
 }
 
-var f MQTT.MessageHandler = func(client *MQTT.MqttClient, msg MQTT.Message) {
+var f MQTT.MessageHandler = func(client *MQTT.Client, msg MQTT.Message) {
 	fmt.Printf("TOPIC: %s\n", msg.Topic())
 	fmt.Printf("MSG: %s\n", msg.Payload())
 }
 
 func main() {
-	tlsconfig := NewTlsConfig()
+	tlsconfig := NewTLSConfig()
 
 	opts := MQTT.NewClientOptions()
-	opts.AddBroker("ssl://hushbox.net:17004")
-	opts.SetClientId("ssl-sample").SetTlsConfig(tlsconfig)
+	opts.AddBroker("ssl://iot.eclipse.org:8883")
+	opts.SetClientID("ssl-sample").SetTLSConfig(tlsconfig)
 	opts.SetDefaultPublishHandler(f)
 
 	// Start the connection
 	c := MQTT.NewClient(opts)
-	_, err := c.Start()
-	if err != nil {
-		panic(err)
+	if token := c.Connect(); token.Wait() && token.Error() != nil {
+		panic(token.Error())
 	}
 
-	filter, _ := MQTT.NewTopicFilter("/go-mqtt/sample", 0)
-	c.StartSubscription(nil, filter)
+	c.Subscribe("/go-mqtt/sample", 0, nil)
 
 	i := 0
 	for _ = range time.Tick(time.Duration(1) * time.Second) {
@@ -117,7 +115,7 @@ func main() {
 			break
 		}
 		text := fmt.Sprintf("this is msg #%d!", i)
-		c.Publish(MQTT.QOS_ZERO, "/go-mqtt/sample", []byte(text))
+		c.Publish("/go-mqtt/sample", 0, false, text)
 		i++
 	}
 

@@ -14,15 +14,19 @@
 
 package mqtt
 
-import "testing"
+import (
+	"bytes"
+	"git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git/packets"
+	"testing"
+)
 
 func Test_NewPingReqMessage(t *testing.T) {
-	pr := newPingReqMsg()
-	if pr.msgType() != PINGREQ {
-		t.Errorf("NewPingReqMessage bad msg type: %v", pr.msgType())
+	pr := packets.NewControlPacket(packets.Pingreq).(*packets.PingreqPacket)
+	if pr.MessageType != packets.Pingreq {
+		t.Errorf("NewPingReqMessage bad msg type: %v", pr.MessageType)
 	}
-	if pr.remLen() != 0 {
-		t.Errorf("NewPingReqMessage bad remlen, expected 0, got %d", pr.remLen())
+	if pr.RemainingLength != 0 {
+		t.Errorf("NewPingReqMessage bad remlen, expected 0, got %d", pr.RemainingLength)
 	}
 
 	exp := []byte{
@@ -30,7 +34,9 @@ func Test_NewPingReqMessage(t *testing.T) {
 		0x00,
 	}
 
-	bs := pr.Bytes()
+	var buf bytes.Buffer
+	pr.Write(&buf)
+	bs := buf.Bytes()
 
 	if len(bs) != 2 {
 		t.Errorf("NewPingReqMessage.Bytes() wrong length: %d", len(bs))
@@ -42,15 +48,15 @@ func Test_NewPingReqMessage(t *testing.T) {
 }
 
 func Test_DecodeMessage_pingresp(t *testing.T) {
-	bs := []byte{
+	bs := bytes.NewBuffer([]byte{
 		0xD0,
 		0x00,
+	})
+	presp, _ := packets.ReadPacket(bs)
+	if presp.(*packets.PingrespPacket).MessageType != packets.Pingresp {
+		t.Errorf("DecodeMessage ping response wrong msg type: %v", presp.(*packets.PingrespPacket).MessageType)
 	}
-	presp := decode(bs)
-	if presp.msgType() != PINGRESP {
-		t.Errorf("DecodeMessage ping response wrong msg type: %v", presp.msgType())
-	}
-	if presp.remLen() != 0 {
-		t.Errorf("DecodeMessage ping response wrong rem len: %d", presp.remLen())
+	if presp.(*packets.PingrespPacket).RemainingLength != 0 {
+		t.Errorf("DecodeMessage ping response wrong rem len: %d", presp.(*packets.PingrespPacket).RemainingLength)
 	}
 }

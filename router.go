@@ -16,6 +16,7 @@ package mqtt
 
 import (
 	"container/list"
+	"git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git/packets"
 	"strings"
 	"sync"
 )
@@ -73,14 +74,14 @@ type router struct {
 	sync.RWMutex
 	routes         *list.List
 	defaultHandler MessageHandler
-	messages       chan *Message
+	messages       chan *packets.PublishPacket
 	stop           chan bool
 }
 
 // newRouter returns a new instance of a Router and channel which can be used to tell the Router
 // to stop
 func newRouter() (*router, chan bool) {
-	router := &router{routes: list.New(), messages: make(chan *Message), stop: make(chan bool)}
+	router := &router{routes: list.New(), messages: make(chan *packets.PublishPacket), stop: make(chan bool)}
 	stop := router.stop
 	return router, stop
 }
@@ -124,7 +125,7 @@ func (r *router) setDefaultHandler(handler MessageHandler) {
 // takes messages off the channel, matches them against the internal route list and calls the
 // associated callback (or the defaultHandler, if one exists and no other route matched). If
 // anything is sent down the stop channel the function will end.
-func (r *router) matchAndDispatch(messages <-chan *Message, order bool, client *MqttClient) {
+func (r *router) matchAndDispatch(messages <-chan *packets.PublishPacket, order bool, client *Client) {
 	go func() {
 		for {
 			select {
@@ -132,13 +133,13 @@ func (r *router) matchAndDispatch(messages <-chan *Message, order bool, client *
 				sent := false
 				r.RLock()
 				for e := r.routes.Front(); e != nil; e = e.Next() {
-					if e.Value.(*route).match(message.Topic()) {
+					if e.Value.(*route).match(message.TopicName) {
 						if order {
 							r.RUnlock()
-							e.Value.(*route).callback(client, *message)
+							e.Value.(*route).callback(client, messageFromPublish(message))
 							r.RLock()
 						} else {
-							go e.Value.(*route).callback(client, *message)
+							go e.Value.(*route).callback(client, messageFromPublish(message))
 						}
 						sent = true
 					}
@@ -147,10 +148,10 @@ func (r *router) matchAndDispatch(messages <-chan *Message, order bool, client *
 				if !sent {
 					if order {
 						r.RLock()
-						r.defaultHandler(client, *message)
+						r.defaultHandler(client, messageFromPublish(message))
 						r.RUnlock()
 					} else {
-						go r.defaultHandler(client, *message)
+						go r.defaultHandler(client, messageFromPublish(message))
 					}
 				}
 			case <-r.stop:

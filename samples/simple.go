@@ -22,42 +22,36 @@ import (
 	MQTT "git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
 )
 
-var f MQTT.MessageHandler = func(client *MQTT.MqttClient, msg MQTT.Message) {
+var f MQTT.MessageHandler = func(client *MQTT.Client, msg MQTT.Message) {
 	fmt.Printf("TOPIC: %s\n", msg.Topic())
 	fmt.Printf("MSG: %s\n", msg.Payload())
 }
 
 func main() {
-	opts := MQTT.NewClientOptions().AddBroker("tcp://test.mosquitto.org:1883").SetClientId("trivial")
+	opts := MQTT.NewClientOptions().AddBroker("tcp://iot.eclipse.org:1883").SetClientID("gotrivial")
 	opts.SetDefaultPublishHandler(f)
 
 	c := MQTT.NewClient(opts)
-	_, err := c.Start()
-	if err != nil {
-		panic(err)
+	if token := c.Connect(); token.Wait() && token.Error() != nil {
+		panic(token.Error())
 	}
 
-	filter, _ := MQTT.NewTopicFilter("/go-mqtt/sample", 0)
-	if receipt, err := c.StartSubscription(nil, filter); err != nil {
-		fmt.Println(err)
+	if token := c.Subscribe("/go-mqtt/sample", 0, nil); token.Wait() && token.Error() != nil {
+		fmt.Println(token.Error())
 		os.Exit(1)
-	} else {
-		<-receipt
 	}
 
 	for i := 0; i < 5; i++ {
 		text := fmt.Sprintf("this is msg #%d!", i)
-		receipt := c.Publish(MQTT.QOS_ONE, "/go-mqtt/sample", []byte(text))
-		<-receipt
+		token := c.Publish("/go-mqtt/sample", 0, false, text)
+		token.Wait()
 	}
 
 	time.Sleep(3 * time.Second)
 
-	if receipt, err := c.EndSubscription("/go-mqtt/sample"); err != nil {
-		fmt.Println(err)
+	if token := c.Unsubscribe("/go-mqtt/sample"); token.Wait() && token.Error() != nil {
+		fmt.Println(token.Error())
 		os.Exit(1)
-	} else {
-		<-receipt
 	}
 
 	c.Disconnect(250)

@@ -18,103 +18,67 @@ import (
 	"code.google.com/p/go.net/websocket"
 	"crypto/tls"
 	"errors"
-	"io"
+	"git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git/packets"
 	"net"
 	"net/url"
+	"reflect"
 	"time"
 )
 
-func openConnection(uri *url.URL, tlsc *tls.Config) (conn net.Conn, err error) {
+func openConnection(uri *url.URL, tlsc *tls.Config) (net.Conn, error) {
 	switch uri.Scheme {
 	case "ws":
-		conn, err = websocket.Dial(uri.String(), "mqtt", "ws://localhost")
+		conn, err := websocket.Dial(uri.String(), "mqtt", "ws://localhost")
 		if err != nil {
-			return
+			return nil, err
 		}
-		conn.(*websocket.Conn).PayloadType = websocket.BinaryFrame
+		conn.PayloadType = websocket.BinaryFrame
+		return conn, err
+	case "wss":
+		config, _ := websocket.NewConfig(uri.String(), "ws://localhost")
+		config.Protocol = []string{"mqtt"}
+		config.TlsConfig = tlsc
+		conn, err := websocket.DialConfig(config)
+		if err != nil {
+			return nil, err
+		}
+		conn.PayloadType = websocket.BinaryFrame
+		return conn, err
 	case "tcp":
-		conn, err = net.Dial("tcp", uri.Host)
+		conn, err := net.Dial("tcp", uri.Host)
+		if err != nil {
+			return nil, err
+		}
+		return conn, nil
 	case "ssl":
 		fallthrough
 	case "tls":
 		fallthrough
 	case "tcps":
-		conn, err = tls.Dial("tcp", uri.Host, tlsc)
-	}
-	return
-}
-
-// This function is only used for receiving a connack
-// when the connection is first started.
-// This prevents receiving incoming data while resume
-// is in progress if clean session is false.
-func connect(c *MqttClient) (rc ConnRC) {
-	rc = CONN_FAILURE
-	DEBUG.Println(NET, "connect started")
-
-	//connack is always 4 bytes
-	ca := make([]byte, 4)
-	_, err := io.ReadFull(c.bufferedConn, ca)
-	if err != nil {
-		ERROR.Println(NET, "connect got error")
-		select {
-		case c.errors <- err:
-		default:
-			// c.errors is a buffer of one, so there must already be an error closing this connection.
+		conn, err := tls.Dial("tcp", uri.Host, tlsc)
+		if err != nil {
+			return nil, err
 		}
-		return
+		return conn, nil
 	}
-	msg := decode(ca)
-
-	if msg == nil || msg.msgType() != CONNACK {
-		ERROR.Println(NET, "received msg that was nil or not CONNACK")
-		return
-	}
-
-	DEBUG.Println(NET, "received connack")
-	return msg.connRC()
+	return nil, errors.New("Unknown protocol")
 }
 
 // actually read incoming messages off the wire
 // send Message object into ibound channel
-func incoming(c *MqttClient) {
-
+func incoming(c *Client) {
+	defer c.workers.Done()
 	var err error
+	var cp packets.ControlPacket
 
 	DEBUG.Println(NET, "incoming started")
 
 	for {
-		var rerr error
-		var msg *Message
-		msgType := make([]byte, 1)
-		DEBUG.Println(NET, "incoming waiting for network data")
-		msgType[0], rerr = c.bufferedConn.ReadByte()
-		if rerr != nil {
-			err = rerr
+		if cp, err = packets.ReadPacket(c.conn); err != nil {
 			break
 		}
-		bytes, remLen := decodeRemlenFromNetwork(c.bufferedConn)
-		fixedHeader := make([]byte, len(bytes)+1)
-		copy(fixedHeader, append(msgType, bytes...))
-		if remLen > 0 {
-			data := make([]byte, remLen)
-			DEBUG.Println(NET, remLen, "more incoming bytes to read")
-			_, rerr = io.ReadFull(c.bufferedConn, data)
-			if rerr != nil {
-				err = rerr
-				break
-			}
-			DEBUG.Println(NET, "data:", data)
-			msg = decode(append(fixedHeader, data...))
-		} else {
-			msg = decode(fixedHeader)
-		}
-		if msg != nil {
-			DEBUG.Println(NET, "incoming received inbound message, type", msg.msgType())
-			c.ibound <- msg
-		} else {
-			CRITICAL.Println(NET, "incoming msg was nil")
-		}
+		DEBUG.Println(NET, "Received Message")
+		c.ibound <- cp
 	}
 	// We received an error on read.
 	// If disconnect is in progress, swallow error and return
@@ -162,43 +126,29 @@ func sendMessageWithTimeout(mChan chan *Message, m *Message) error {
 
 // receive a Message object on obound, and then
 // actually send outgoing message to the wire
-func outgoing(c *MqttClient) {
-
+func outgoing(c *Client) {
+	defer c.workers.Done()
 	DEBUG.Println(NET, "outgoing started")
 
 	for {
 		DEBUG.Println(NET, "outgoing waiting for an outbound message")
 		select {
 		case <-c.stop:
-			// The connection has been closed, we won't be receiving any more requests.
+			DEBUG.Println(NET, "outgoing stopped")
 			return
-		case out := <-c.obound:
-			msg := out.m
-			msgtype := msg.msgType()
-			DEBUG.Println(NET, "obound got msg to write, type:", msgtype)
-			if msg.QoS() != QOS_ZERO && msg.MsgId() == 0 {
-				i, err := c.options.mids.getId()
-				if err != nil {
-					select {
-					case c.errors <- err:
-					default:
-						// c.errors is a buffer of one, so there must already be an error closing this connection.
-					}
-					return
-				}
-				msg.setMsgId(i)
+		case pub := <-c.obound:
+			msg := pub.p.(*packets.PublishPacket)
+			if msg.Qos != 0 && msg.MessageID == 0 {
+				msg.MessageID = c.getID(pub.t)
+				pub.t.(*PublishToken).messageID = msg.MessageID
 			}
-			if out.r != nil {
-				c.receipts.put(msg.MsgId(), out.r)
-			}
-			msg.setTime()
-			persist_obound(c.persist, msg)
+			//persist_obound(c.persist, msg)
 
-			if c.options.writeTimeout > 0 {
-				c.conn.SetWriteDeadline(time.Now().Add(c.options.writeTimeout))
+			if c.options.WriteTimeout > 0 {
+				c.conn.SetWriteDeadline(time.Now().Add(c.options.WriteTimeout))
 			}
 
-			if _, err := c.conn.Write(msg.Bytes()); err != nil {
+			if err := msg.Write(c.conn); err != nil {
 				ERROR.Println(NET, "outgoing stopped with error")
 				select {
 				case c.errors <- err:
@@ -208,24 +158,27 @@ func outgoing(c *MqttClient) {
 				return
 			}
 
-			if c.options.writeTimeout > 0 {
+			if c.options.WriteTimeout > 0 {
 				// If we successfully wrote, we don't want the timeout to happen during an idle period
 				// so we reset it to infinite.
 				c.conn.SetWriteDeadline(time.Time{})
 			}
 
-			if (msg.QoS() == QOS_ZERO) &&
-				(msgtype == PUBLISH || msgtype == SUBSCRIBE || msgtype == UNSUBSCRIBE) {
-				c.receipts.get(msg.MsgId()) <- Receipt{}
-				c.receipts.end(msg.MsgId())
+			if msg.Qos == 0 {
+				pub.t.flowComplete()
 			}
+
 			c.lastContact.update()
-			DEBUG.Println(NET, "obound wrote msg, id:", msg.MsgId())
+			DEBUG.Println(NET, "obound wrote msg, id:", msg.MessageID)
 		case msg := <-c.oboundP:
-			msgtype := msg.msgType()
-			DEBUG.Println(NET, "obound priority msg to write, type", msgtype)
-			_, err := c.conn.Write(msg.Bytes())
-			if err != nil {
+			switch msg.p.(type) {
+			case *packets.SubscribePacket:
+				msg.p.(*packets.SubscribePacket).MessageID = c.getID(msg.t)
+			case *packets.UnsubscribePacket:
+				msg.p.(*packets.UnsubscribePacket).MessageID = c.getID(msg.t)
+			}
+			DEBUG.Println(NET, "obound priority msg to write, type", reflect.TypeOf(msg.p))
+			if err := msg.p.Write(c.conn); err != nil {
 				ERROR.Println(NET, "outgoing stopped with error")
 				select {
 				case c.errors <- err:
@@ -235,9 +188,11 @@ func outgoing(c *MqttClient) {
 				return
 			}
 			c.lastContact.update()
-			if msgtype == DISCONNECT {
-				DEBUG.Println(NET, "outbound wrote disconnect, now closing connection")
+			switch msg.p.(type) {
+			case *packets.DisconnectPacket:
+				msg.t.(*DisconnectToken).flowComplete()
 				c.conn.Close()
+				DEBUG.Println(NET, "outbound wrote disconnect, stopping")
 				return
 			}
 		}
@@ -248,7 +203,7 @@ func outgoing(c *MqttClient) {
 // store messages if necessary
 // send replies on obound
 // delete messages from store if necessary
-func alllogic(c *MqttClient) {
+func alllogic(c *Client) {
 
 	DEBUG.Println(NET, "logic started")
 
@@ -257,45 +212,52 @@ func alllogic(c *MqttClient) {
 
 		select {
 		case msg := <-c.ibound:
-			DEBUG.Println(NET, "logic got msg on ibound, type", msg.msgType())
-			persist_ibound(c.persist, msg)
-			switch msg.msgType() {
-			case PINGRESP:
+			DEBUG.Println(NET, "logic got msg on ibound")
+			//persist_ibound(c.persist, msg)
+			switch msg.(type) {
+			case *packets.PingrespPacket:
 				DEBUG.Println(NET, "received pingresp")
 				c.pingOutstanding = false
-			case SUBACK:
-				DEBUG.Println(NET, "received suback, id:", msg.MsgId())
-				c.receipts.get(msg.MsgId()) <- Receipt{}
-				c.receipts.end(msg.MsgId())
-				go c.options.mids.freeId(msg.MsgId())
-			case UNSUBACK:
-				DEBUG.Println(NET, "received unsuback, id:", msg.MsgId())
-				c.receipts.get(msg.MsgId()) <- Receipt{}
-				c.receipts.end(msg.MsgId())
-				go c.options.mids.freeId(msg.MsgId())
-			case PUBLISH:
-				DEBUG.Println(NET, "received publish, msgId:", msg.MsgId())
+			case *packets.SubackPacket:
+				sa := msg.(*packets.SubackPacket)
+				DEBUG.Println(NET, "received suback, id:", sa.MessageID)
+				token := c.getToken(sa.MessageID).(*SubscribeToken)
+				DEBUG.Println(NET, "granted qoss", sa.GrantedQoss)
+				for i, qos := range sa.GrantedQoss {
+					token.subResult[token.subs[i]] = qos
+				}
+				token.flowComplete()
+				go c.freeID(sa.MessageID)
+			case *packets.UnsubackPacket:
+				ua := msg.(*packets.UnsubackPacket)
+				DEBUG.Println(NET, "received unsuback, id:", ua.MessageID)
+				// c.receipts.get(msg.MsgId()) <- Receipt{}
+				// c.receipts.end(msg.MsgId())
+				go c.freeID(ua.MessageID)
+			case *packets.PublishPacket:
+				pp := msg.(*packets.PublishPacket)
+				DEBUG.Println(NET, "received publish, msgId:", pp.MessageID)
 				DEBUG.Println(NET, "putting msg on onPubChan")
-				switch msg.QoS() {
-				case QOS_TWO:
-					c.options.incomingPubChan <- msg
+				switch pp.Qos {
+				case 2:
+					c.incomingPubChan <- pp
 					DEBUG.Println(NET, "done putting msg on incomingPubChan")
-					pubrecMsg := newPubRecMsg()
-					pubrecMsg.setMsgId(msg.MsgId())
+					pr := packets.NewControlPacket(packets.Pubrec).(*packets.PubrecPacket)
+					pr.MessageID = pp.MessageID
 					DEBUG.Println(NET, "putting pubrec msg on obound")
-					c.obound <- sendable{pubrecMsg, nil}
+					c.oboundP <- &PacketAndToken{p: pr, t: nil}
 					DEBUG.Println(NET, "done putting pubrec msg on obound")
-				case QOS_ONE:
-					c.options.incomingPubChan <- msg
+				case 1:
+					c.incomingPubChan <- pp
 					DEBUG.Println(NET, "done putting msg on incomingPubChan")
-					pubackMsg := newPubAckMsg()
-					pubackMsg.setMsgId(msg.MsgId())
+					pa := packets.NewControlPacket(packets.Puback).(*packets.PubackPacket)
+					pa.MessageID = pp.MessageID
 					DEBUG.Println(NET, "putting puback msg on obound")
-					c.obound <- sendable{pubackMsg, nil}
+					c.oboundP <- &PacketAndToken{p: pa, t: nil}
 					DEBUG.Println(NET, "done putting puback msg on obound")
-				case QOS_ZERO:
+				case 0:
 					select {
-					case c.options.incomingPubChan <- msg:
+					case c.incomingPubChan <- pp:
 						DEBUG.Println(NET, "done putting msg on incomingPubChan")
 					case err, ok := <-c.errors:
 						DEBUG.Println(NET, "error while putting msg on pubChanZero")
@@ -312,45 +274,53 @@ func alllogic(c *MqttClient) {
 						}
 					}
 				}
-			case PUBACK:
-				DEBUG.Println(NET, "received puback, id:", msg.MsgId())
-				c.receipts.get(msg.MsgId()) <- Receipt{}
-				c.receipts.end(msg.MsgId())
-				go c.options.mids.freeId(msg.MsgId())
-			case PUBREC:
-				DEBUG.Println(NET, "received pubrec, id:", msg.MsgId())
-				id := msg.MsgId()
-				pubrelMsg := newPubRelMsg()
-				pubrelMsg.setMsgId(id)
-				sendSendableWithTimeout(c.obound, sendable{pubrelMsg, nil})
-			case PUBREL:
-				DEBUG.Println(NET, "received pubrel, id:", msg.MsgId())
-				pubcompMsg := newPubCompMsg()
-				pubcompMsg.setMsgId(msg.MsgId())
-				sendSendableWithTimeout(c.obound, sendable{pubcompMsg, nil})
-			case PUBCOMP:
-				DEBUG.Println(NET, "received pubcomp, id:", msg.MsgId())
-				c.receipts.get(msg.MsgId()) <- Receipt{}
-				c.receipts.end(msg.MsgId())
-				go c.options.mids.freeId(msg.MsgId())
+			case *packets.PubackPacket:
+				pa := msg.(*packets.PubackPacket)
+				DEBUG.Println(NET, "received puback, id:", pa.MessageID)
+				// c.receipts.get(msg.MsgId()) <- Receipt{}
+				// c.receipts.end(msg.MsgId())
+				c.getToken(pa.MessageID).flowComplete()
+				c.freeID(pa.MessageID)
+			case *packets.PubrecPacket:
+				prec := msg.(*packets.PubrecPacket)
+				DEBUG.Println(NET, "received pubrec, id:", prec.MessageID)
+				prel := packets.NewControlPacket(packets.Pubrel).(*packets.PubrelPacket)
+				prel.MessageID = prec.MessageID
+				select {
+				case c.oboundP <- &PacketAndToken{p: prel, t: nil}:
+				case <-time.After(time.Second):
+				}
+			case *packets.PubrelPacket:
+				pr := msg.(*packets.PubrelPacket)
+				DEBUG.Println(NET, "received pubrel, id:", pr.MessageID)
+				pc := packets.NewControlPacket(packets.Pubcomp).(*packets.PubcompPacket)
+				pc.MessageID = pr.MessageID
+				select {
+				case c.oboundP <- &PacketAndToken{p: pc, t: nil}:
+				case <-time.After(time.Second):
+				}
+			case *packets.PubcompPacket:
+				pc := msg.(*packets.PubcompPacket)
+				DEBUG.Println(NET, "received pubcomp, id:", pc.MessageID)
+				c.getToken(pc.MessageID).flowComplete()
+				c.freeID(pc.MessageID)
 			}
 		case <-c.stop:
 			WARN.Println(NET, "logic stopped")
 			return
 		case err := <-c.errors:
-			c.connected = false
 			ERROR.Println(NET, "logic got error")
-			// clean up go routines
-			// incoming most likely stopped if outgoing stopped,
-			// but let it know to stop anyways.
-			close(c.options.stopRouter)
-			close(c.stop)
-			c.options.mids.stop()
 			c.conn.Close()
 
 			// Call onConnectionLost or default error handler
-			go c.options.onconnlost(c, err)
+			if c.IsConnected() {
+				go c.options.OnConnectionLost(c, err)
+				if c.options.AutoReconnect {
+					go c.reconnect()
+				}
+			}
 			return
 		}
+		c.lastContact.update()
 	}
 }

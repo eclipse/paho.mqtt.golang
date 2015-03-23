@@ -41,10 +41,10 @@ Options:
 
 func main() {
 	topic := flag.String("topic", "", "The topic name to/from which to publish/subscribe")
-	broker := flag.String("broker", "", "The broker URI. ex: tcp://10.10.1.1:1883")
+	broker := flag.String("broker", "tcp://iot.eclipse.org:1883", "The broker URI. ex: tcp://10.10.1.1:1883")
 	password := flag.String("password", "", "The password (optional)")
 	user := flag.String("user", "", "The User (optional)")
-	id := flag.String("id", "", "The ClientID (optional)")
+	id := flag.String("id", "testgoid", "The ClientID (optional)")
 	cleansess := flag.Bool("clean", false, "Set Clean Session (default false)")
 	qos := flag.Int("qos", 0, "The Quality of Service 0,1,2 (default 0)")
 	num := flag.Int("num", 1, "The number of messages to publish or subscribe (default 1)")
@@ -52,11 +52,6 @@ func main() {
 	action := flag.String("action", "", "Action publish or subscribe (required)")
 	store := flag.String("store", ":memory:", "The Store Directory (default use memory store)")
 	flag.Parse()
-
-	if *broker == "" {
-		fmt.Println("Invalid setting for -broker")
-		return
-	}
 
 	if *action != "pub" && *action != "sub" {
 		fmt.Println("Invalid setting for -action, must be pub or sub")
@@ -83,7 +78,7 @@ func main() {
 
 	opts := MQTT.NewClientOptions()
 	opts.AddBroker(*broker)
-	opts.SetClientId(*id)
+	opts.SetClientID(*id)
 	opts.SetUsername(*user)
 	opts.SetPassword(*password)
 	opts.SetCleanSession(*cleansess)
@@ -93,55 +88,40 @@ func main() {
 
 	if *action == "pub" {
 		client := MQTT.NewClient(opts)
-		_, err := client.Start()
-		gotareceipt := make(chan bool)
-		if err != nil {
-			panic(err)
+		if token := client.Connect(); token.Wait() && token.Error() != nil {
+			panic(token.Error())
 		}
 		fmt.Println("Sample Publisher Started")
 		for i := 0; i < *num; i++ {
 			fmt.Println("---- doing publish ----")
-			receipt := client.Publish(MQTT.QoS(*qos), *topic, []byte(*payload))
-
-			go func() {
-				<-receipt
-				fmt.Println("  message delivered!")
-				gotareceipt <- true
-			}()
-		}
-
-		for i := 0; i < *num; i++ {
-			<-gotareceipt
+			token := client.Publish(*topic, byte(*qos), false, *payload)
+			token.Wait()
 		}
 
 		client.Disconnect(250)
 		fmt.Println("Sample Publisher Disconnected")
 	} else {
-		num_received := 0
+		receiveCount := 0
 		choke := make(chan [2]string)
 
-		opts.SetDefaultPublishHandler(func(client *MQTT.MqttClient, msg MQTT.Message) {
+		opts.SetDefaultPublishHandler(func(client *MQTT.Client, msg MQTT.Message) {
 			choke <- [2]string{msg.Topic(), string(msg.Payload())}
 		})
 
 		client := MQTT.NewClient(opts)
-		_, err := client.Start()
-		if err != nil {
-			panic(err)
+		if token := client.Connect(); token.Wait() && token.Error() != nil {
+			panic(token.Error())
 		}
 
-		filter, e := MQTT.NewTopicFilter(*topic, byte(*qos))
-		if e != nil {
-			fmt.Println(e)
+		if token := client.Subscribe(*topic, byte(*qos), nil); token.Wait() && token.Error() != nil {
+			fmt.Println(token.Error())
 			os.Exit(1)
 		}
 
-		client.StartSubscription(nil, filter)
-
-		for num_received < *num {
+		for receiveCount < *num {
 			incoming := <-choke
 			fmt.Printf("RECEIVED TOPIC: %s MESSAGE: %s\n", incoming[0], incoming[1])
-			num_received++
+			receiveCount++
 		}
 
 		client.Disconnect(250)
