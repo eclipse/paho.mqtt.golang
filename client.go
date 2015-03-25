@@ -380,6 +380,12 @@ func (c *Client) disconnect() {
 // the delivery of the message.
 func (c *Client) Publish(topic string, qos byte, retained bool, payload interface{}) Token {
 	token := newToken(packets.Publish).(*PublishToken)
+	DEBUG.Println(CLI, "enter Publish")
+	if !c.IsConnected() {
+		token.err = ErrNotConnected
+		token.flowComplete()
+		return token
+	}
 	pub := packets.NewControlPacket(packets.Publish).(*packets.PublishPacket)
 	pub.Qos = qos
 	pub.TopicName = topic
@@ -407,6 +413,7 @@ func (c *Client) Subscribe(topic string, qos byte, callback MessageHandler) Toke
 	DEBUG.Println(CLI, "enter Subscribe")
 	if !c.IsConnected() {
 		token.err = ErrNotConnected
+		token.flowComplete()
 		return token
 	}
 	sub := packets.NewControlPacket(packets.Subscribe).(*packets.SubscribePacket)
@@ -436,6 +443,7 @@ func (c *Client) SubscribeMultiple(filters map[string]byte, callback MessageHand
 	DEBUG.Println(CLI, "enter SubscribeMultiple")
 	if !c.IsConnected() {
 		token.err = ErrNotConnected
+		token.flowComplete()
 		return token
 	}
 	sub := packets.NewControlPacket(packets.Subscribe).(*packets.SubscribePacket)
@@ -464,6 +472,7 @@ func (c *Client) Unsubscribe(topics ...string) Token {
 	DEBUG.Println(CLI, "enter Unsubscribe")
 	if !c.IsConnected() {
 		token.err = ErrNotConnected
+		token.flowComplete()
 		return token
 	}
 	unsub := packets.NewControlPacket(packets.Unsubscribe).(*packets.UnsubscribePacket)
