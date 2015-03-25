@@ -149,7 +149,7 @@ func NewControlPacket(packetType byte) (cp ControlPacket) {
 	case Suback:
 		cp = &SubackPacket{FixedHeader: FixedHeader{MessageType: Suback}, uuid: uuid.NewUUID()}
 	case Unsubscribe:
-		cp = &UnsubscribePacket{FixedHeader: FixedHeader{MessageType: Unsubscribe}, uuid: uuid.NewUUID()}
+		cp = &UnsubscribePacket{FixedHeader: FixedHeader{MessageType: Unsubscribe, Qos: 1}, uuid: uuid.NewUUID()}
 	case Unsuback:
 		cp = &UnsubackPacket{FixedHeader: FixedHeader{MessageType: Unsuback}, uuid: uuid.NewUUID()}
 	case Pingreq:

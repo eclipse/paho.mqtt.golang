@@ -193,8 +193,8 @@ func alllogic(c *Client) {
 			case *packets.UnsubackPacket:
 				ua := msg.(*packets.UnsubackPacket)
 				DEBUG.Println(NET, "received unsuback, id:", ua.MessageID)
-				// c.receipts.get(msg.MsgId()) <- Receipt{}
-				// c.receipts.end(msg.MsgId())
+				token := c.getToken(ua.MessageID).(*UnsubscribeToken)
+				token.flowComplete()
 				go c.freeID(ua.MessageID)
 			case *packets.PublishPacket:
 				pp := msg.(*packets.PublishPacket)
