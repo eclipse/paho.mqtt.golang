@@ -366,6 +366,20 @@ func (c *Client) ForceDisconnect() {
 	c.disconnect()
 }
 
+func (c *Client) internalConnLost(err error) {
+	close(c.stop)
+	c.conn.Close()
+	c.workers.Wait()
+	if c.IsConnected() {
+		go c.options.OnConnectionLost(c, err)
+		if c.options.AutoReconnect {
+			go c.reconnect()
+		} else {
+			c.setConnected(false)
+		}
+	}
+}
+
 func (c *Client) disconnect() {
 	close(c.stop)
 	//Wait for all workers to finish before closing connection

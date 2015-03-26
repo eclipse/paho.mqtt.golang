@@ -40,13 +40,13 @@ func (l *lastcontact) get() time.Time {
 }
 
 func keepalive(c *Client) {
-	defer c.workers.Done()
 	DEBUG.Println(PNG, "keepalive starting")
 
 	for {
 		select {
 		case <-c.stop:
 			DEBUG.Println(PNG, "keepalive stopped")
+			c.workers.Done()
 			return
 		default:
 			last := uint(time.Since(c.lastContact.get()).Seconds())
@@ -61,10 +61,9 @@ func keepalive(c *Client) {
 					c.pingOutstanding = true
 				} else {
 					CRITICAL.Println(PNG, "pingresp not received, disconnecting")
-					go c.options.OnConnectionLost(c, errors.New("pingresp not received, disconnecting"))
-					if c.options.AutoReconnect {
-						go c.reconnect()
-					}
+					c.workers.Done()
+					c.internalConnLost(errors.New("pingresp not received, disconnecting"))
+					return
 				}
 			}
 			time.Sleep(1 * time.Second)

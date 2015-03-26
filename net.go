@@ -268,15 +268,7 @@ func alllogic(c *Client) {
 			return
 		case err := <-c.errors:
 			ERROR.Println(NET, "logic got error")
-			c.conn.Close()
-
-			// Call onConnectionLost or default error handler
-			if c.IsConnected() {
-				go c.options.OnConnectionLost(c, err)
-				if c.options.AutoReconnect {
-					go c.reconnect()
-				}
-			}
+			c.internalConnLost(err)
 			return
 		}
 		c.lastContact.update()
