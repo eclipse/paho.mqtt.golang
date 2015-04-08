@@ -17,6 +17,7 @@ package mqtt
 
 import (
 	"errors"
+	"fmt"
 	"git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git/packets"
 	"net"
 	"sync"
@@ -179,7 +180,7 @@ func (c *Client) Connect() Token {
 			if rc != packets.ErrNetworkError {
 				t.err = packets.ConnErrors[rc]
 			} else {
-				t.err = errors.New(packets.ConnErrors[rc].Error() + " : " + err.Error())
+				t.err = fmt.Errorf("%s : %s", packets.ConnErrors[rc], err)
 			}
 			t.flowComplete()
 			return
