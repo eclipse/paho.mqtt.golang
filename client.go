@@ -382,7 +382,12 @@ func (c *Client) internalConnLost(err error) {
 }
 
 func (c *Client) disconnect() {
-	close(c.stop)
+	select {
+	case _, ok := <-c.stop:
+		if ok {
+			close(c.stop)
+		}
+	}
 	//Wait for all workers to finish before closing connection
 	c.workers.Wait()
 	DEBUG.Println(CLI, "disconnected")

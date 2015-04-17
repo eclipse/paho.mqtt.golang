@@ -99,20 +99,20 @@ func TestConnackConsts(t *testing.T) {
 	if Accepted != 0x00 {
 		t.Errorf("Const for Accepted is %d, should be %d", Accepted, 0)
 	}
-	if RefusedBadProtocolVersion != 0x01 {
-		t.Errorf("Const for RefusedBadProtocolVersion is %d, should be %d", RefusedBadProtocolVersion, 1)
+	if ErrRefusedBadProtocolVersion != 0x01 {
+		t.Errorf("Const for RefusedBadProtocolVersion is %d, should be %d", ErrRefusedBadProtocolVersion, 1)
 	}
-	if RefusedIDRejected != 0x02 {
-		t.Errorf("Const for RefusedIDRejected is %d, should be %d", RefusedIDRejected, 2)
+	if ErrRefusedIDRejected != 0x02 {
+		t.Errorf("Const for RefusedIDRejected is %d, should be %d", ErrRefusedIDRejected, 2)
 	}
-	if RefusedServerUnavailable != 0x03 {
-		t.Errorf("Const for RefusedServerUnavailable is %d, should be %d", RefusedServerUnavailable, 3)
+	if ErrRefusedServerUnavailable != 0x03 {
+		t.Errorf("Const for RefusedServerUnavailable is %d, should be %d", ErrRefusedServerUnavailable, 3)
 	}
-	if RefusedBadUsernameOrPassword != 0x04 {
-		t.Errorf("Const for RefusedBadUsernameOrPassword is %d, should be %d", RefusedBadUsernameOrPassword, 4)
+	if ErrRefusedBadUsernameOrPassword != 0x04 {
+		t.Errorf("Const for RefusedBadUsernameOrPassword is %d, should be %d", ErrRefusedBadUsernameOrPassword, 4)
 	}
-	if RefusedNotAuthorised != 0x05 {
-		t.Errorf("Const for RefusedNotAuthorised is %d, should be %d", RefusedNotAuthorised, 5)
+	if ErrRefusedNotAuthorised != 0x05 {
+		t.Errorf("Const for RefusedNotAuthorised is %d, should be %d", ErrRefusedNotAuthorised, 5)
 	}
 }
 
