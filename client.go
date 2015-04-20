@@ -372,7 +372,9 @@ func (c *Client) internalConnLost(err error) {
 	c.conn.Close()
 	c.workers.Wait()
 	if c.IsConnected() {
-		go c.options.OnConnectionLost(c, err)
+		if c.options.OnConnectionLost != nil {
+			go c.options.OnConnectionLost(c, err)
+		}
 		if c.options.AutoReconnect {
 			go c.reconnect()
 		} else {
