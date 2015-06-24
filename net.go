@@ -153,7 +153,6 @@ func outgoing(c *Client) {
 			switch msg.p.(type) {
 			case *packets.DisconnectPacket:
 				msg.t.(*DisconnectToken).flowComplete()
-				c.conn.Close()
 				DEBUG.Println(NET, "outbound wrote disconnect, stopping")
 				return
 			}

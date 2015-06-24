@@ -30,7 +30,6 @@ type ClientInt interface {
 	IsConnected() bool
 	Connect() Token
 	Disconnect(uint)
-	ForceDisconnect()
 	disconnect()
 	Publish(string, byte, bool, interface{}) Token
 	Subscribe(string, byte, MessageHandler) Token
@@ -356,7 +355,7 @@ func (c *Client) Disconnect(quiesce uint) {
 }
 
 // ForceDisconnect will end the connection with the mqtt broker immediately.
-func (c *Client) ForceDisconnect() {
+func (c *Client) forceDisconnect() {
 	if !c.IsConnected() {
 		WARN.Println(CLI, "already disconnected")
 		return
@@ -392,6 +391,7 @@ func (c *Client) disconnect() {
 	}
 	//Wait for all workers to finish before closing connection
 	c.workers.Wait()
+	c.conn.Close()
 	DEBUG.Println(CLI, "disconnected")
 	c.persist.Close()
 }

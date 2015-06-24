@@ -218,7 +218,7 @@ func Test_Will(t *testing.T) {
 	}
 	time.Sleep(time.Duration(1) * time.Second)
 
-	c.ForceDisconnect()
+	c.forceDisconnect()
 
 	wsub.Disconnect(250)
 
@@ -266,7 +266,7 @@ func Test_Binary_Will(t *testing.T) {
 	}
 	time.Sleep(time.Duration(1) * time.Second)
 
-	c.ForceDisconnect()
+	c.forceDisconnect()
 
 	wsub.Disconnect(250)
 
