@@ -15,10 +15,10 @@
 package mqtt
 
 import (
-	"code.google.com/p/go.net/websocket"
 	"crypto/tls"
 	"errors"
 	"git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git/packets"
+	"golang.org/x/net/websocket"
 	"net"
 	"net/url"
 	"reflect"

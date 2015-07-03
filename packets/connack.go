@@ -2,8 +2,8 @@ package packets
 
 import (
 	"bytes"
-	"code.google.com/p/go-uuid/uuid"
 	"fmt"
+	"github.com/pborman/uuid"
 	"io"
 )
 

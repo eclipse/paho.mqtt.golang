@@ -2,10 +2,10 @@ package packets
 
 import (
 	"bytes"
-	"code.google.com/p/go-uuid/uuid"
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"github.com/pborman/uuid"
 	"io"
 )
 
