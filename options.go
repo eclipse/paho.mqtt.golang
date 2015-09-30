@@ -53,6 +53,7 @@ type ClientOptions struct {
 	protocolVersionExplicit bool
 	TLSConfig               tls.Config
 	KeepAlive               time.Duration
+	ConnectTimeout          time.Duration
 	MaxReconnectInterval    time.Duration
 	AutoReconnect           bool
 	Store                   Store
@@ -85,6 +86,7 @@ func NewClientOptions() *ClientOptions {
 		protocolVersionExplicit: false,
 		TLSConfig:               tls.Config{},
 		KeepAlive:               30 * time.Second,
+		ConnectTimeout:          30 * time.Second,
 		MaxReconnectInterval:    10 * time.Minute,
 		AutoReconnect:           true,
 		Store:                   nil,
@@ -235,9 +237,17 @@ func (o *ClientOptions) SetConnectionLostHandler(onLost ConnectionLostHandler) *
 }
 
 // SetWriteTimeout puts a limit on how long a mqtt publish should block until it unblocks with a
-// timeout error. A duration of 0 never times out.
+// timeout error. A duration of 0 never times out. Default 30 seconds
 func (o *ClientOptions) SetWriteTimeout(t time.Duration) *ClientOptions {
 	o.WriteTimeout = t
+	return o
+}
+
+// SetConnectTimeout limits how long the client will wait when trying to open a connection
+// to an MQTT server before timeing out and erroring the attempt. A duration of 0 never times out.
+// Default 30 seconds. Currently only operational on TCP/TLS connections.
+func (o *ClientOptions) SetConnectTimeout(t time.Duration) *ClientOptions {
+	o.ConnectTimeout = t
 	return o
 }
 

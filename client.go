@@ -134,7 +134,7 @@ func (c *Client) Connect() Token {
 		for _, broker := range c.options.Servers {
 		CONN:
 			DEBUG.Println(CLI, "about to write new connect msg")
-			c.conn, err = openConnection(broker, &c.options.TLSConfig)
+			c.conn, err = openConnection(broker, &c.options.TLSConfig, c.options.ConnectTimeout)
 			if err == nil {
 				DEBUG.Println(CLI, "socket connected to broker")
 				switch c.options.ProtocolVersion {
@@ -243,7 +243,7 @@ func (c *Client) reconnect() {
 		for _, broker := range c.options.Servers {
 		CONN:
 			DEBUG.Println(CLI, "about to write new connect msg")
-			c.conn, err = openConnection(broker, &c.options.TLSConfig)
+			c.conn, err = openConnection(broker, &c.options.TLSConfig, c.options.ConnectTimeout)
 			if err == nil {
 				DEBUG.Println(CLI, "socket connected to broker")
 				switch c.options.ProtocolVersion {
