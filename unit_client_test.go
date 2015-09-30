@@ -16,14 +16,22 @@ package mqtt
 
 import (
 	"log"
+	"net/http"
 	"os"
 	"testing"
+
+	_ "net/http/pprof"
 )
 
 func init() {
 	DEBUG = log.New(os.Stderr, "DEBUG    ", log.Ltime)
 	WARN = log.New(os.Stderr, "WARNING  ", log.Ltime)
 	CRITICAL = log.New(os.Stderr, "CRITICAL ", log.Ltime)
+	ERROR = log.New(os.Stderr, "ERROR    ", log.Ltime)
+
+	go func() {
+		log.Println(http.ListenAndServe("localhost:6060", nil))
+	}()
 }
 
 func Test_NewClient_simple(t *testing.T) {
