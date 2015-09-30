@@ -67,8 +67,11 @@ type ClientOptions struct {
 // default values.
 //   Port: 1883
 //   CleanSession: True
-//   Timeout: 30 (seconds)
-//   Tracefile: os.Stdout
+//   Order: True
+//   KeepAlive: 30 (seconds)
+//   ConnectTimeout: 30 (seconds)
+//   MaxReconnectInterval 10 (minutes)
+//   AutoReconnect: True
 func NewClientOptions() *ClientOptions {
 	o := &ClientOptions{
 		Servers:                 nil,
