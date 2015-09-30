@@ -41,6 +41,7 @@ func (l *lastcontact) get() time.Time {
 
 func keepalive(c *Client) {
 	DEBUG.Println(PNG, "keepalive starting")
+	c.pingOutstanding = false
 
 	for {
 		select {
