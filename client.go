@@ -321,16 +321,20 @@ func (c *Client) connect() byte {
 	ca, err := packets.ReadPacket(c.conn)
 	if err != nil {
 		ERROR.Println(NET, "connect got error", err)
-		//c.errors <- err
 		return packets.ErrNetworkError
 	}
-	msg := ca.(*packets.ConnackPacket)
-
-	if msg == nil || msg.FixedHeader.MessageType != packets.Connack {
-		ERROR.Println(NET, "received msg that was nil or not CONNACK")
-	} else {
-		DEBUG.Println(NET, "received connack")
+	if ca == nil {
+		ERROR.Println(NET, "received nil packet")
+		return packets.ErrNetworkError
 	}
+
+	msg, ok := ca.(*packets.ConnackPacket)
+	if !ok {
+		ERROR.Println(NET, "received msg that was not CONNACK")
+		return packets.ErrNetworkError
+	}
+
+	DEBUG.Println(NET, "received connack")
 	return msg.ReturnCode
 }
 
