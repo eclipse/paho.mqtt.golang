@@ -47,7 +47,7 @@ func Test_NewClientOptions_mix(t *testing.T) {
 	o.SetClientID("myclientid")
 	o.SetUsername("myuser")
 	o.SetPassword("mypassword")
-	o.SetKeepAlive(88)
+	o.SetKeepAlive(88 * time.Second)
 
 	if o.Servers[0].Scheme != "tcp" {
 		t.Fatalf("bad scheme")
@@ -69,8 +69,8 @@ func Test_NewClientOptions_mix(t *testing.T) {
 		t.Fatalf("bad set password")
 	}
 
-	if o.KeepAlive != 88 {
-		t.Fatalf("bad set timeout")
+	if o.KeepAlive != 88000000000 {
+		t.Fatalf("bad set timeout: %d", o.KeepAlive)
 	}
 }
 
