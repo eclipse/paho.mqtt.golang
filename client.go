@@ -25,6 +25,15 @@ import (
 	"git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git/packets"
 )
 
+type connStatus uint
+
+const (
+	disconnected connStatus = iota
+	connecting
+	reconnecting
+	connected
+)
+
 // ClientInt is the interface definition for a Client as used by this
 // library, the interface is primarily to allow mocking tests.
 type ClientInt interface {
@@ -69,7 +78,7 @@ type Client struct {
 	options         ClientOptions
 	pingTimer       *time.Timer
 	pingRespTimer   *time.Timer
-	connected       bool
+	status          connStatus
 	workers         sync.WaitGroup
 }
 
@@ -92,7 +101,7 @@ func NewClient(o *ClientOptions) *Client {
 		c.options.protocolVersionExplicit = false
 	}
 	c.persist = c.options.Store
-	c.connected = false
+	c.status = disconnected
 	c.messageIds = messageIds{index: make(map[uint16]Token)}
 	c.msgRouter, c.stopRouter = newRouter()
 	c.msgRouter.setDefaultHandler(c.options.DefaultPublishHander)
@@ -104,13 +113,26 @@ func NewClient(o *ClientOptions) *Client {
 func (c *Client) IsConnected() bool {
 	c.RLock()
 	defer c.RUnlock()
-	return c.connected
+	switch {
+	case c.status == connected:
+		return true
+	case c.options.AutoReconnect && c.status > disconnected:
+		return true
+	default:
+		return false
+	}
 }
 
-func (c *Client) setConnected(status bool) {
+func (c *Client) connectionStatus() connStatus {
+	c.RLock()
+	defer c.RUnlock()
+	return c.status
+}
+
+func (c *Client) setConnected(status connStatus) {
 	c.Lock()
 	defer c.Unlock()
-	c.connected = status
+	c.status = status
 }
 
 //ErrNotConnected is the error returned from function calls that are
@@ -129,6 +151,7 @@ func (c *Client) Connect() Token {
 	DEBUG.Println(CLI, "Connect()")
 
 	go func() {
+		c.setConnected(connecting)
 		var rc byte
 		cm := newConnectMsgFromOptions(&c.options)
 
@@ -204,7 +227,7 @@ func (c *Client) Connect() Token {
 		go outgoing(c)
 		go alllogic(c)
 
-		c.connected = true
+		c.setConnected(connected)
 		DEBUG.Println(CLI, "client is connected")
 		if c.options.OnConnect != nil {
 			go c.options.OnConnect(c)
@@ -236,6 +259,7 @@ func (c *Client) Connect() Token {
 // internal function used to reconnect the client when it loses its connection
 func (c *Client) reconnect() {
 	DEBUG.Println(CLI, "enter reconnect")
+	c.setConnected(reconnecting)
 	var rc byte = 1
 	var sleep uint = 1
 	var err error
@@ -300,7 +324,7 @@ func (c *Client) reconnect() {
 	go outgoing(c)
 	go alllogic(c)
 
-	c.setConnected(true)
+	c.setConnected(connected)
 	DEBUG.Println(CLI, "client is reconnected")
 	if c.options.OnConnect != nil {
 		go c.options.OnConnect(c)
@@ -350,7 +374,7 @@ func (c *Client) Disconnect(quiesce uint) {
 		return
 	}
 	DEBUG.Println(CLI, "disconnecting")
-	c.setConnected(false)
+	c.setConnected(disconnected)
 
 	dm := packets.NewControlPacket(packets.Disconnect).(*packets.DisconnectPacket)
 	dt := newToken(packets.Disconnect)
@@ -367,7 +391,7 @@ func (c *Client) forceDisconnect() {
 		WARN.Println(CLI, "already disconnected")
 		return
 	}
-	c.setConnected(false)
+	c.setConnected(disconnected)
 	c.conn.Close()
 	DEBUG.Println(CLI, "forcefully disconnecting")
 	c.disconnect()
@@ -384,7 +408,7 @@ func (c *Client) internalConnLost(err error) {
 		if c.options.AutoReconnect {
 			go c.reconnect()
 		} else {
-			c.setConnected(false)
+			c.setConnected(disconnected)
 		}
 	}
 }
@@ -403,15 +427,18 @@ func (c *Client) disconnect() {
 	c.persist.Close()
 }
 
-// Publish will publish a message with the specified QoS
-// and content to the specified topic.
-// Returns a read only channel used to track
-// the delivery of the message.
+// Publish will publish a message with the specified QoS and content
+// to the specified topic.
+// Returns a token to track delivery of the message to the broker
 func (c *Client) Publish(topic string, qos byte, retained bool, payload interface{}) Token {
 	token := newToken(packets.Publish).(*PublishToken)
 	DEBUG.Println(CLI, "enter Publish")
-	if !c.IsConnected() {
+	switch {
+	case !c.IsConnected():
 		token.err = ErrNotConnected
+		token.flowComplete()
+		return token
+	case c.connectionStatus() == reconnecting && qos == 0:
 		token.flowComplete()
 		return token
 	}

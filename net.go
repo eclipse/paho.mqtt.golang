@@ -134,8 +134,6 @@ func outgoing(c *Client) {
 			if msg.Qos == 0 {
 				pub.t.flowComplete()
 			}
-
-			c.pingTimer.Reset(c.options.KeepAlive)
 			DEBUG.Println(NET, "obound wrote msg, id:", msg.MessageID)
 		case msg := <-c.oboundP:
 			switch msg.p.(type) {
@@ -150,7 +148,6 @@ func outgoing(c *Client) {
 				c.errors <- err
 				return
 			}
-			c.pingTimer.Reset(c.options.KeepAlive)
 			switch msg.p.(type) {
 			case *packets.DisconnectPacket:
 				msg.t.(*DisconnectToken).flowComplete()
@@ -158,6 +155,8 @@ func outgoing(c *Client) {
 				return
 			}
 		}
+		// Reset ping timer after sending control packet.
+		c.pingTimer.Reset(c.options.KeepAlive)
 	}
 }
 
@@ -180,6 +179,7 @@ func alllogic(c *Client) {
 			case *packets.PingrespPacket:
 				DEBUG.Println(NET, "received pingresp")
 				c.pingRespTimer.Stop()
+				c.pingTimer.Reset(c.options.PingTimeout)
 			case *packets.SubackPacket:
 				sa := msg.(*packets.SubackPacket)
 				DEBUG.Println(NET, "received suback, id:", sa.MessageID)
@@ -271,6 +271,5 @@ func alllogic(c *Client) {
 			c.internalConnLost(err)
 			return
 		}
-		c.pingTimer.Reset(c.options.KeepAlive)
 	}
 }
