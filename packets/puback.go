@@ -2,7 +2,6 @@ package packets
 
 import (
 	"fmt"
-	"github.com/pborman/uuid"
 	"io"
 )
 
@@ -11,7 +10,6 @@ import (
 type PubackPacket struct {
 	FixedHeader
 	MessageID uint16
-	uuid      uuid.UUID
 }
 
 func (pa *PubackPacket) String() string {
@@ -40,11 +38,4 @@ func (pa *PubackPacket) Unpack(b io.Reader) {
 //MessageID of this ControlPacket
 func (pa *PubackPacket) Details() Details {
 	return Details{Qos: pa.Qos, MessageID: pa.MessageID}
-}
-
-//UUID returns the unique ID assigned to the ControlPacket when
-//it was originally received. Note: this is not related to the
-//MessageID field for MQTT packets
-func (pa *PubackPacket) UUID() uuid.UUID {
-	return pa.uuid
 }

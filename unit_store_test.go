@@ -17,10 +17,11 @@ package mqtt
 import (
 	"bufio"
 	"fmt"
-	"git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git/packets"
 	"io/ioutil"
 	"os"
 	"testing"
+
+	"git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git/packets"
 )
 
 func Test_fullpath(t *testing.T) {

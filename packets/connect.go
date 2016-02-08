@@ -3,7 +3,6 @@ package packets
 import (
 	"bytes"
 	"fmt"
-	"github.com/pborman/uuid"
 	"io"
 )
 
@@ -27,7 +26,6 @@ type ConnectPacket struct {
 	WillMessage      []byte
 	Username         string
 	Password         []byte
-	uuid             uuid.UUID
 }
 
 func (c *ConnectPacket) String() string {
@@ -118,11 +116,4 @@ func (c *ConnectPacket) Validate() byte {
 //MessageID of this ControlPacket
 func (c *ConnectPacket) Details() Details {
 	return Details{Qos: 0, MessageID: 0}
-}
-
-//UUID returns the unique ID assigned to the ControlPacket when
-//it was originally received. Note: this is not related to the
-//MessageID field for MQTT packets
-func (c *ConnectPacket) UUID() uuid.UUID {
-	return c.uuid
 }

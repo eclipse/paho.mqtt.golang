@@ -16,8 +16,9 @@ package mqtt
 
 import (
 	"fmt"
-	"git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git/packets"
 	"strconv"
+
+	"git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git/packets"
 )
 
 const (

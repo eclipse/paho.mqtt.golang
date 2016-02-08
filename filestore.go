@@ -15,12 +15,13 @@
 package mqtt
 
 import (
-	"git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git/packets"
 	"io"
 	"io/ioutil"
 	"os"
 	"path"
 	"sync"
+
+	"git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git/packets"
 )
 
 const (

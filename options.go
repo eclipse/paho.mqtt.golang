@@ -53,6 +53,7 @@ type ClientOptions struct {
 	protocolVersionExplicit bool
 	TLSConfig               tls.Config
 	KeepAlive               time.Duration
+	PingTimeout             time.Duration
 	ConnectTimeout          time.Duration
 	MaxReconnectInterval    time.Duration
 	AutoReconnect           bool
@@ -89,6 +90,7 @@ func NewClientOptions() *ClientOptions {
 		protocolVersionExplicit: false,
 		TLSConfig:               tls.Config{},
 		KeepAlive:               30 * time.Second,
+		PingTimeout:             10 * time.Second,
 		ConnectTimeout:          30 * time.Second,
 		MaxReconnectInterval:    10 * time.Minute,
 		AutoReconnect:           true,
@@ -177,6 +179,14 @@ func (o *ClientOptions) SetStore(s Store) *ClientOptions {
 // server.
 func (o *ClientOptions) SetKeepAlive(k time.Duration) *ClientOptions {
 	o.KeepAlive = k
+	return o
+}
+
+// SetPingTimeout will set the amount of time (in seconds) that the client
+// will wait after sending a PING request to the broker, before deciding
+// that the connection has been lost. Default is 10 seconds.
+func (o *ClientOptions) SetPingTimeout(k time.Duration) *ClientOptions {
+	o.PingTimeout = k
 	return o
 }
 

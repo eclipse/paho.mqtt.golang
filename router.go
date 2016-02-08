@@ -16,9 +16,10 @@ package mqtt
 
 import (
 	"container/list"
-	"git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git/packets"
 	"strings"
 	"sync"
+
+	"git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git/packets"
 )
 
 // route is a type which associates MQTT Topic strings with a

@@ -5,7 +5,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/pborman/uuid"
 	"io"
 )
 
@@ -17,7 +16,6 @@ type ControlPacket interface {
 	Unpack(io.Reader)
 	String() string
 	Details() Details
-	UUID() uuid.UUID
 }
 
 //PacketNames maps the constants for each of the MQTT packet types
@@ -129,33 +127,33 @@ func ReadPacket(r io.Reader) (cp ControlPacket, err error) {
 func NewControlPacket(packetType byte) (cp ControlPacket) {
 	switch packetType {
 	case Connect:
-		cp = &ConnectPacket{FixedHeader: FixedHeader{MessageType: Connect}, uuid: uuid.NewUUID()}
+		cp = &ConnectPacket{FixedHeader: FixedHeader{MessageType: Connect}}
 	case Connack:
-		cp = &ConnackPacket{FixedHeader: FixedHeader{MessageType: Connack}, uuid: uuid.NewUUID()}
+		cp = &ConnackPacket{FixedHeader: FixedHeader{MessageType: Connack}}
 	case Disconnect:
-		cp = &DisconnectPacket{FixedHeader: FixedHeader{MessageType: Disconnect}, uuid: uuid.NewUUID()}
+		cp = &DisconnectPacket{FixedHeader: FixedHeader{MessageType: Disconnect}}
 	case Publish:
-		cp = &PublishPacket{FixedHeader: FixedHeader{MessageType: Publish}, uuid: uuid.NewUUID()}
+		cp = &PublishPacket{FixedHeader: FixedHeader{MessageType: Publish}}
 	case Puback:
-		cp = &PubackPacket{FixedHeader: FixedHeader{MessageType: Puback}, uuid: uuid.NewUUID()}
+		cp = &PubackPacket{FixedHeader: FixedHeader{MessageType: Puback}}
 	case Pubrec:
-		cp = &PubrecPacket{FixedHeader: FixedHeader{MessageType: Pubrec}, uuid: uuid.NewUUID()}
+		cp = &PubrecPacket{FixedHeader: FixedHeader{MessageType: Pubrec}}
 	case Pubrel:
-		cp = &PubrelPacket{FixedHeader: FixedHeader{MessageType: Pubrel, Qos: 1}, uuid: uuid.NewUUID()}
+		cp = &PubrelPacket{FixedHeader: FixedHeader{MessageType: Pubrel, Qos: 1}}
 	case Pubcomp:
-		cp = &PubcompPacket{FixedHeader: FixedHeader{MessageType: Pubcomp}, uuid: uuid.NewUUID()}
+		cp = &PubcompPacket{FixedHeader: FixedHeader{MessageType: Pubcomp}}
 	case Subscribe:
-		cp = &SubscribePacket{FixedHeader: FixedHeader{MessageType: Subscribe, Qos: 1}, uuid: uuid.NewUUID()}
+		cp = &SubscribePacket{FixedHeader: FixedHeader{MessageType: Subscribe, Qos: 1}}
 	case Suback:
-		cp = &SubackPacket{FixedHeader: FixedHeader{MessageType: Suback}, uuid: uuid.NewUUID()}
+		cp = &SubackPacket{FixedHeader: FixedHeader{MessageType: Suback}}
 	case Unsubscribe:
-		cp = &UnsubscribePacket{FixedHeader: FixedHeader{MessageType: Unsubscribe, Qos: 1}, uuid: uuid.NewUUID()}
+		cp = &UnsubscribePacket{FixedHeader: FixedHeader{MessageType: Unsubscribe, Qos: 1}}
 	case Unsuback:
-		cp = &UnsubackPacket{FixedHeader: FixedHeader{MessageType: Unsuback}, uuid: uuid.NewUUID()}
+		cp = &UnsubackPacket{FixedHeader: FixedHeader{MessageType: Unsuback}}
 	case Pingreq:
-		cp = &PingreqPacket{FixedHeader: FixedHeader{MessageType: Pingreq}, uuid: uuid.NewUUID()}
+		cp = &PingreqPacket{FixedHeader: FixedHeader{MessageType: Pingreq}}
 	case Pingresp:
-		cp = &PingrespPacket{FixedHeader: FixedHeader{MessageType: Pingresp}, uuid: uuid.NewUUID()}
+		cp = &PingrespPacket{FixedHeader: FixedHeader{MessageType: Pingresp}}
 	default:
 		return nil
 	}
@@ -168,33 +166,33 @@ func NewControlPacket(packetType byte) (cp ControlPacket) {
 func NewControlPacketWithHeader(fh FixedHeader) (cp ControlPacket) {
 	switch fh.MessageType {
 	case Connect:
-		cp = &ConnectPacket{FixedHeader: fh, uuid: uuid.NewUUID()}
+		cp = &ConnectPacket{FixedHeader: fh}
 	case Connack:
-		cp = &ConnackPacket{FixedHeader: fh, uuid: uuid.NewUUID()}
+		cp = &ConnackPacket{FixedHeader: fh}
 	case Disconnect:
-		cp = &DisconnectPacket{FixedHeader: fh, uuid: uuid.NewUUID()}
+		cp = &DisconnectPacket{FixedHeader: fh}
 	case Publish:
-		cp = &PublishPacket{FixedHeader: fh, uuid: uuid.NewUUID()}
+		cp = &PublishPacket{FixedHeader: fh}
 	case Puback:
-		cp = &PubackPacket{FixedHeader: fh, uuid: uuid.NewUUID()}
+		cp = &PubackPacket{FixedHeader: fh}
 	case Pubrec:
-		cp = &PubrecPacket{FixedHeader: fh, uuid: uuid.NewUUID()}
+		cp = &PubrecPacket{FixedHeader: fh}
 	case Pubrel:
-		cp = &PubrelPacket{FixedHeader: fh, uuid: uuid.NewUUID()}
+		cp = &PubrelPacket{FixedHeader: fh}
 	case Pubcomp:
-		cp = &PubcompPacket{FixedHeader: fh, uuid: uuid.NewUUID()}
+		cp = &PubcompPacket{FixedHeader: fh}
 	case Subscribe:
-		cp = &SubscribePacket{FixedHeader: fh, uuid: uuid.NewUUID()}
+		cp = &SubscribePacket{FixedHeader: fh}
 	case Suback:
-		cp = &SubackPacket{FixedHeader: fh, uuid: uuid.NewUUID()}
+		cp = &SubackPacket{FixedHeader: fh}
 	case Unsubscribe:
-		cp = &UnsubscribePacket{FixedHeader: fh, uuid: uuid.NewUUID()}
+		cp = &UnsubscribePacket{FixedHeader: fh}
 	case Unsuback:
-		cp = &UnsubackPacket{FixedHeader: fh, uuid: uuid.NewUUID()}
+		cp = &UnsubackPacket{FixedHeader: fh}
 	case Pingreq:
-		cp = &PingreqPacket{FixedHeader: fh, uuid: uuid.NewUUID()}
+		cp = &PingreqPacket{FixedHeader: fh}
 	case Pingresp:
-		cp = &PingrespPacket{FixedHeader: fh, uuid: uuid.NewUUID()}
+		cp = &PingrespPacket{FixedHeader: fh}
 	default:
 		return nil
 	}

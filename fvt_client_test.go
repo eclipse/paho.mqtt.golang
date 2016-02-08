@@ -197,7 +197,6 @@ func Test_Will(t *testing.T) {
 	wops := NewClientOptions()
 	wops.AddBroker(FVTTCP)
 	wops.SetClientID("will-subscriber")
-	wops.SetStore(NewFileStore("/tmp/fvt/Will"))
 	wops.SetDefaultPublishHandler(func(client *Client, msg Message) {
 		fmt.Printf("TOPIC: %s\n", msg.Topic())
 		fmt.Printf("MSG: %s\n", msg.Payload())
@@ -205,20 +204,20 @@ func Test_Will(t *testing.T) {
 	})
 	wsub := NewClient(wops)
 
-	wToken := wsub.Connect()
-	if wToken.Wait() && wToken.Error() != nil {
+	if wToken := wsub.Connect(); wToken.Wait() && wToken.Error() != nil {
 		t.Fatalf("Error on Client.Connect(): %v", wToken.Error())
 	}
 
 	wsub.Subscribe("/wills", 0, nil)
 
-	token := c.Connect()
-	if token.Wait() && token.Error() != nil {
+	if token := c.Connect(); token.Wait() && token.Error() != nil {
 		t.Fatalf("Error on Client.Connect(): %v", token.Error())
 	}
 	time.Sleep(time.Duration(1) * time.Second)
 
 	c.forceDisconnect()
+
+	time.Sleep(time.Duration(2) * time.Second)
 
 	wsub.Disconnect(250)
 
@@ -267,6 +266,8 @@ func Test_Binary_Will(t *testing.T) {
 	time.Sleep(time.Duration(1) * time.Second)
 
 	c.forceDisconnect()
+
+	time.Sleep(time.Duration(2) * time.Second)
 
 	wsub.Disconnect(250)
 

@@ -2,7 +2,6 @@ package packets
 
 import (
 	"fmt"
-	"github.com/pborman/uuid"
 	"io"
 )
 
@@ -10,7 +9,6 @@ import (
 //Pingreq MQTT packet
 type PingreqPacket struct {
 	FixedHeader
-	uuid uuid.UUID
 }
 
 func (pr *PingreqPacket) String() string {
@@ -34,11 +32,4 @@ func (pr *PingreqPacket) Unpack(b io.Reader) {
 //MessageID of this ControlPacket
 func (pr *PingreqPacket) Details() Details {
 	return Details{Qos: 0, MessageID: 0}
-}
-
-//UUID returns the unique ID assigned to the ControlPacket when
-//it was originally received. Note: this is not related to the
-//MessageID field for MQTT packets
-func (pr *PingreqPacket) UUID() uuid.UUID {
-	return pr.uuid
 }

@@ -3,7 +3,6 @@ package packets
 import (
 	"bytes"
 	"fmt"
-	"github.com/pborman/uuid"
 	"io"
 )
 
@@ -14,7 +13,6 @@ type PublishPacket struct {
 	TopicName string
 	MessageID uint16
 	Payload   []byte
-	uuid      uuid.UUID
 }
 
 func (p *PublishPacket) String() string {
@@ -72,11 +70,4 @@ func (p *PublishPacket) Copy() *PublishPacket {
 //MessageID of this ControlPacket
 func (p *PublishPacket) Details() Details {
 	return Details{Qos: p.Qos, MessageID: p.MessageID}
-}
-
-//UUID returns the unique ID assigned to the ControlPacket when
-//it was originally received. Note: this is not related to the
-//MessageID field for MQTT packets
-func (p *PublishPacket) UUID() uuid.UUID {
-	return p.uuid
 }

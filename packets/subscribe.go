@@ -3,7 +3,6 @@ package packets
 import (
 	"bytes"
 	"fmt"
-	"github.com/pborman/uuid"
 	"io"
 )
 
@@ -14,11 +13,10 @@ type SubscribePacket struct {
 	MessageID uint16
 	Topics    []string
 	Qoss      []byte
-	uuid      uuid.UUID
 }
 
 func (s *SubscribePacket) String() string {
-	str := fmt.Sprintf("%s\n", s.FixedHeader)
+	str := fmt.Sprintf("%s", s.FixedHeader)
 	str += fmt.Sprintf("MessageID: %d topics: %s", s.MessageID, s.Topics)
 	return str
 }
@@ -58,11 +56,4 @@ func (s *SubscribePacket) Unpack(b io.Reader) {
 //MessageID of this ControlPacket
 func (s *SubscribePacket) Details() Details {
 	return Details{Qos: 1, MessageID: s.MessageID}
-}
-
-//UUID returns the unique ID assigned to the ControlPacket when
-//it was originally received. Note: this is not related to the
-//MessageID field for MQTT packets
-func (s *SubscribePacket) UUID() uuid.UUID {
-	return s.uuid
 }

@@ -3,7 +3,6 @@ package packets
 import (
 	"bytes"
 	"fmt"
-	"github.com/pborman/uuid"
 	"io"
 )
 
@@ -13,7 +12,6 @@ type ConnackPacket struct {
 	FixedHeader
 	TopicNameCompression byte
 	ReturnCode           byte
-	uuid                 uuid.UUID
 }
 
 func (ca *ConnackPacket) String() string {
@@ -47,11 +45,4 @@ func (ca *ConnackPacket) Unpack(b io.Reader) {
 //MessageID of this ControlPacket
 func (ca *ConnackPacket) Details() Details {
 	return Details{Qos: 0, MessageID: 0}
-}
-
-//UUID returns the unique ID assigned to the ControlPacket when
-//it was originally received. Note: this is not related to the
-//MessageID field for MQTT packets
-func (ca *ConnackPacket) UUID() uuid.UUID {
-	return ca.uuid
 }

@@ -18,10 +18,11 @@ package mqtt
 import (
 	"errors"
 	"fmt"
-	"git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git/packets"
 	"net"
 	"sync"
 	"time"
+
+	"git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git/packets"
 )
 
 // ClientInt is the interface definition for a Client as used by this
@@ -66,8 +67,8 @@ type Client struct {
 	stop            chan struct{}
 	persist         Store
 	options         ClientOptions
-	lastContact     lastcontact
-	pingOutstanding bool
+	pingTimer       *time.Timer
+	pingRespTimer   *time.Timer
 	connected       bool
 	workers         sync.WaitGroup
 }
@@ -185,7 +186,6 @@ func (c *Client) Connect() Token {
 			return
 		}
 
-		c.lastContact.update()
 		c.persist.Open()
 
 		c.obound = make(chan *PacketAndToken, 100)
@@ -193,6 +193,9 @@ func (c *Client) Connect() Token {
 		c.ibound = make(chan packets.ControlPacket)
 		c.errors = make(chan error)
 		c.stop = make(chan struct{})
+		c.pingTimer = time.NewTimer(c.options.KeepAlive)
+		c.pingRespTimer = time.NewTimer(time.Duration(10) * time.Second)
+		c.pingRespTimer.Stop()
 
 		c.incomingPubChan = make(chan *packets.PublishPacket, 100)
 		c.msgRouter.matchAndDispatch(c.incomingPubChan, c.options.Order, c)
@@ -290,7 +293,7 @@ func (c *Client) reconnect() {
 		}
 	}
 
-	c.lastContact.update()
+	c.pingTimer.Reset(c.options.KeepAlive)
 	c.stop = make(chan struct{})
 
 	c.workers.Add(1)
@@ -449,7 +452,7 @@ func (c *Client) Subscribe(topic string, qos byte, callback MessageHandler) Toke
 	}
 	sub.Topics = append(sub.Topics, topic)
 	sub.Qoss = append(sub.Qoss, qos)
-	DEBUG.Println(sub.String())
+	DEBUG.Println(CLI, sub.String())
 
 	if callback != nil {
 		c.msgRouter.addRoute(topic, callback)

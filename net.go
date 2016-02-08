@@ -17,12 +17,13 @@ package mqtt
 import (
 	"crypto/tls"
 	"errors"
-	"git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git/packets"
-	"golang.org/x/net/websocket"
 	"net"
 	"net/url"
 	"reflect"
 	"time"
+
+	"git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git/packets"
+	"golang.org/x/net/websocket"
 )
 
 func openConnection(uri *url.URL, tlsc *tls.Config, timeout time.Duration) (net.Conn, error) {
@@ -134,7 +135,7 @@ func outgoing(c *Client) {
 				pub.t.flowComplete()
 			}
 
-			c.lastContact.update()
+			c.pingTimer.Reset(c.options.KeepAlive)
 			DEBUG.Println(NET, "obound wrote msg, id:", msg.MessageID)
 		case msg := <-c.oboundP:
 			switch msg.p.(type) {
@@ -149,7 +150,7 @@ func outgoing(c *Client) {
 				c.errors <- err
 				return
 			}
-			c.lastContact.update()
+			c.pingTimer.Reset(c.options.KeepAlive)
 			switch msg.p.(type) {
 			case *packets.DisconnectPacket:
 				msg.t.(*DisconnectToken).flowComplete()
@@ -178,7 +179,7 @@ func alllogic(c *Client) {
 			switch msg.(type) {
 			case *packets.PingrespPacket:
 				DEBUG.Println(NET, "received pingresp")
-				c.pingOutstanding = false
+				c.pingRespTimer.Stop()
 			case *packets.SubackPacket:
 				sa := msg.(*packets.SubackPacket)
 				DEBUG.Println(NET, "received suback, id:", sa.MessageID)
@@ -270,6 +271,6 @@ func alllogic(c *Client) {
 			c.internalConnLost(err)
 			return
 		}
-		c.lastContact.update()
+		c.pingTimer.Reset(c.options.KeepAlive)
 	}
 }
