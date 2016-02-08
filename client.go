@@ -105,6 +105,9 @@ func NewClient(o *ClientOptions) *Client {
 	c.messageIds = messageIds{index: make(map[uint16]Token)}
 	c.msgRouter, c.stopRouter = newRouter()
 	c.msgRouter.setDefaultHandler(c.options.DefaultPublishHander)
+	if !c.options.AutoReconnect {
+		c.options.MessageChannelDepth = 0
+	}
 	return c
 }
 
@@ -211,8 +214,8 @@ func (c *Client) Connect() Token {
 
 		c.persist.Open()
 
-		c.obound = make(chan *PacketAndToken, 100)
-		c.oboundP = make(chan *PacketAndToken, 100)
+		c.obound = make(chan *PacketAndToken, c.options.MessageChannelDepth)
+		c.oboundP = make(chan *PacketAndToken, c.options.MessageChannelDepth)
 		c.ibound = make(chan packets.ControlPacket)
 		c.errors = make(chan error)
 		c.stop = make(chan struct{})
@@ -220,7 +223,7 @@ func (c *Client) Connect() Token {
 		c.pingRespTimer = time.NewTimer(time.Duration(10) * time.Second)
 		c.pingRespTimer.Stop()
 
-		c.incomingPubChan = make(chan *packets.PublishPacket, 100)
+		c.incomingPubChan = make(chan *packets.PublishPacket, c.options.MessageChannelDepth)
 		c.msgRouter.matchAndDispatch(c.incomingPubChan, c.options.Order, c)
 
 		c.workers.Add(1)

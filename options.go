@@ -62,6 +62,7 @@ type ClientOptions struct {
 	OnConnect               OnConnectHandler
 	OnConnectionLost        ConnectionLostHandler
 	WriteTimeout            time.Duration
+	MessageChannelDepth     uint
 }
 
 // NewClientOptions will create a new ClientClientOptions type with some
@@ -98,6 +99,7 @@ func NewClientOptions() *ClientOptions {
 		OnConnect:               nil,
 		OnConnectionLost:        DefaultConnectionLostHandler,
 		WriteTimeout:            0, // 0 represents timeout disabled
+		MessageChannelDepth:     100,
 	}
 	return o
 }
@@ -276,5 +278,14 @@ func (o *ClientOptions) SetMaxReconnectInterval(t time.Duration) *ClientOptions 
 // called
 func (o *ClientOptions) SetAutoReconnect(a bool) *ClientOptions {
 	o.AutoReconnect = a
+	return o
+}
+
+// SetMessageChannelDepth sets the size of the internal queue that holds messages while the
+// client is temporairily offline, allowing the application to publish when the client is
+// reconnecting. This setting is only valid if AutoReconnect is set to true, it is otherwise
+// ignored.
+func (o *ClientOptions) SetMessageChannelDepth(s uint) *ClientOptions {
+	o.MessageChannelDepth = s
 	return o
 }
