@@ -28,20 +28,7 @@ Before your contribution can be accepted by the project, you need to create and 
 Contributing Code:
 ------------------
 
-The Go client uses git with Gerrit for code review, use the following URLs for Gerrit access;
-
-ssh://<username>@git.eclipse.org:29418/paho/org.eclipse.paho.mqtt.golang
-
-Configure a remote called review to push your changes to;
-
-git config remote.review.url ssh://<username>@git.eclipse.org:29418/paho/org.eclipse.paho.mqtt.golang
-git config remote.review.push HEAD:refs/for/<branch>
-
-When you have made and committed a change you can push it to Gerrit for review with;
-
-git push review
-
-See https://wiki.eclipse.org/Gerrit for more details on how Gerrit is used in Eclipse, https://wiki.eclipse.org/Gerrit#Gerrit_Code_Review_Cheatsheet has some particularly useful information.
+The Go client is developed in Github, see their documentation on the process of forking and pull requests; https://help.github.com/categories/collaborating-on-projects-using-pull-requests/
 
 Git commit messages should follow the style described here;
 
@@ -57,13 +44,13 @@ Contact the project developers via the project's "dev" list.
 Search for bugs:
 ----------------
 
-This project uses Bugzilla to track ongoing development and issues.
+This project uses Github issues to track ongoing development and issues.
 
-- https://bugs.eclipse.org/bugs/buglist.cgi?product=Paho&component=MQTT-Go
+- https://github.com/eclipse/paho.mqtt.golang/issues
 
 Create a new bug:
 -----------------
 
 Be sure to search for existing bugs before you create another one. Remember that contributions are always welcome!
 
-- https://bugs.eclipse.org/bugs/enter_bug.cgi?product=Paho
+- https://github.com/eclipse/paho.mqtt.golang/issues

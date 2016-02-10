@@ -20,7 +20,7 @@ import (
 	"os"
 	"time"
 
-	"git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
+	"github.com/eclipse/paho.mqtt.golang"
 )
 
 var f mqtt.MessageHandler = func(client *mqtt.Client, msg mqtt.Message) {

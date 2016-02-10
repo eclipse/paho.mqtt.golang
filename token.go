@@ -16,7 +16,7 @@ import (
 	"sync"
 	"time"
 
-	"git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git/packets"
+	"github.com/eclipse/paho.mqtt.golang/packets"
 )
 
 //PacketAndToken is a struct that contains both a ControlPacket and a
