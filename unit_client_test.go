@@ -36,7 +36,7 @@ func init() {
 
 func Test_NewClient_simple(t *testing.T) {
 	ops := NewClientOptions().SetClientID("foo").AddBroker("tcp://10.10.0.1:1883")
-	c := NewClient(ops)
+	c := NewClient(ops).(*client)
 
 	if c == nil {
 		t.Fatalf("ops is nil")
