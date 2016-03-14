@@ -36,7 +36,7 @@ func Test_newRouter(t *testing.T) {
 func Test_AddRoute(t *testing.T) {
 	router, _ := newRouter()
 	calledback := false
-	cb := func(client *Client, msg Message) {
+	cb := func(client Client, msg Message) {
 		calledback = true
 	}
 	router.addRoute("/alpha", cb)
@@ -257,7 +257,7 @@ func Test_match(t *testing.T) {
 func Test_MatchAndDispatch(t *testing.T) {
 	calledback := make(chan bool)
 
-	cb := func(c *Client, m Message) {
+	cb := func(c Client, m Message) {
 		calledback <- true
 	}
 
