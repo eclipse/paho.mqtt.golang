@@ -401,7 +401,11 @@ func (c *Client) forceDisconnect() {
 }
 
 func (c *Client) internalConnLost(err error) {
-	close(c.stop)
+	select { // Avoid panic when c has already been closed
+	case <-c.stop:
+	default:
+		close(c.stop)
+	}
 	c.conn.Close()
 	c.workers.Wait()
 	if c.IsConnected() {
