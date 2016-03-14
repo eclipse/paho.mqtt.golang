@@ -77,7 +77,7 @@ func Test_NewClientOptions_mix(t *testing.T) {
 func Test_ModifyOptions(t *testing.T) {
 	o := NewClientOptions()
 	o.AddBroker("tcp://3.3.3.3:12345")
-	c := NewClient(o)
+	c := NewClient(o).(*client)
 	o.AddBroker("ws://2.2.2.2:9999")
 	o.SetOrderMatters(false)
 
@@ -101,7 +101,7 @@ func Test_TLSConfig(t *testing.T) {
 		ClientCAs:          x509.NewCertPool(),
 		InsecureSkipVerify: true})
 
-	c := NewClient(o)
+	c := NewClient(o).(*client)
 
 	if c.options.TLSConfig.ClientAuth != tls.NoClientCert {
 		t.Fatalf("client options.tlsConfig ClientAuth incorrect")
@@ -113,12 +113,12 @@ func Test_TLSConfig(t *testing.T) {
 }
 
 func Test_OnConnectionLost(t *testing.T) {
-	onconnlost := func(client *Client, err error) {
+	onconnlost := func(client Client, err error) {
 		panic(err)
 	}
 	o := NewClientOptions().SetConnectionLostHandler(onconnlost)
 
-	c := NewClient(o)
+	c := NewClient(o).(*client)
 
 	if c.options.OnConnectionLost == nil {
 		t.Fatalf("client options.onconnlost was nil")
