@@ -158,7 +158,7 @@ func Test_Subscribe(t *testing.T) {
 	sops.AddBroker(FVTTCP)
 	sops.SetClientID("Subscribe_rx")
 	sops.SetStore(NewFileStore("/tmp/fvt/Subscribe/s"))
-	var f MessageHandler = func(client *Client, msg Message) {
+	var f MessageHandler = func(client Client, msg Message) {
 		fmt.Printf("TOPIC: %s\n", msg.Topic())
 		fmt.Printf("MSG: %s\n", msg.Payload())
 	}
@@ -189,15 +189,15 @@ func Test_Will(t *testing.T) {
 	sops := NewClientOptions().AddBroker(FVTTCP)
 	sops.SetClientID("will-giver")
 	sops.SetWill("/wills", "good-byte!", 0, false)
-	sops.SetConnectionLostHandler(func(client *Client, err error) {
+	sops.SetConnectionLostHandler(func(client Client, err error) {
 		fmt.Println("OnConnectionLost!")
 	})
-	c := NewClient(sops)
+	c := NewClient(sops).(*client)
 
 	wops := NewClientOptions()
 	wops.AddBroker(FVTTCP)
 	wops.SetClientID("will-subscriber")
-	wops.SetDefaultPublishHandler(func(client *Client, msg Message) {
+	wops.SetDefaultPublishHandler(func(client Client, msg Message) {
 		fmt.Printf("TOPIC: %s\n", msg.Topic())
 		fmt.Printf("MSG: %s\n", msg.Payload())
 		willmsgc <- string(msg.Payload())
@@ -238,14 +238,14 @@ func Test_Binary_Will(t *testing.T) {
 	sops := NewClientOptions().AddBroker(FVTTCP)
 	sops.SetClientID("will-giver")
 	sops.SetBinaryWill("/wills", will, 0, false)
-	sops.SetConnectionLostHandler(func(client *Client, err error) {
+	sops.SetConnectionLostHandler(func(client Client, err error) {
 	})
-	c := NewClient(sops)
+	c := NewClient(sops).(*client)
 
 	wops := NewClientOptions().AddBroker(FVTTCP)
 	wops.SetClientID("will-subscriber")
 	wops.SetStore(NewFileStore("/tmp/fvt/Binary_Will"))
-	wops.SetDefaultPublishHandler(func(client *Client, msg Message) {
+	wops.SetDefaultPublishHandler(func(client Client, msg Message) {
 		fmt.Printf("TOPIC: %s\n", msg.Topic())
 		fmt.Printf("MSG: %v\n", msg.Payload())
 		willmsgc <- msg.Payload()
@@ -309,7 +309,7 @@ func Test_p0s0(t *testing.T) {
 	sops.AddBroker(FVTTCP)
 	sops.SetClientID("p0s0-sub")
 	sops.SetStore(NewFileStore(store + "/s"))
-	var f MessageHandler = func(client *Client, msg Message) {
+	var f MessageHandler = func(client Client, msg Message) {
 		fmt.Printf("TOPIC: %s\n", msg.Topic())
 		fmt.Printf("MSG: %s\n", msg.Payload())
 		choke <- true
@@ -364,7 +364,7 @@ func Test_p0s1(t *testing.T) {
 	sops.AddBroker(FVTTCP)
 	sops.SetClientID("p0s1-sub")
 	sops.SetStore(NewFileStore(store + "/s"))
-	var f MessageHandler = func(client *Client, msg Message) {
+	var f MessageHandler = func(client Client, msg Message) {
 		fmt.Printf("TOPIC: %s\n", msg.Topic())
 		fmt.Printf("MSG: %s\n", msg.Payload())
 		choke <- true
@@ -419,7 +419,7 @@ func Test_p0s2(t *testing.T) {
 	sops.AddBroker(FVTTCP)
 	sops.SetClientID("p0s2-sub")
 	sops.SetStore(NewFileStore(store + "/s"))
-	var f MessageHandler = func(client *Client, msg Message) {
+	var f MessageHandler = func(client Client, msg Message) {
 		fmt.Printf("TOPIC: %s\n", msg.Topic())
 		fmt.Printf("MSG: %s\n", msg.Payload())
 		choke <- true
@@ -475,7 +475,7 @@ func Test_p1s0(t *testing.T) {
 	sops.AddBroker(FVTTCP)
 	sops.SetClientID("p1s0-sub")
 	sops.SetStore(NewFileStore(store + "/s"))
-	var f MessageHandler = func(client *Client, msg Message) {
+	var f MessageHandler = func(client Client, msg Message) {
 		fmt.Printf("TOPIC: %s\n", msg.Topic())
 		fmt.Printf("MSG: %s\n", msg.Payload())
 		choke <- true
@@ -531,7 +531,7 @@ func Test_p1s1(t *testing.T) {
 	sops.AddBroker(FVTTCP)
 	sops.SetClientID("p1s1-sub")
 	sops.SetStore(NewFileStore(store + "/s"))
-	var f MessageHandler = func(client *Client, msg Message) {
+	var f MessageHandler = func(client Client, msg Message) {
 		fmt.Printf("TOPIC: %s\n", msg.Topic())
 		fmt.Printf("MSG: %s\n", msg.Payload())
 		choke <- true
@@ -586,7 +586,7 @@ func Test_p1s2(t *testing.T) {
 	sops.AddBroker(FVTTCP)
 	sops.SetClientID("p1s2-sub")
 	sops.SetStore(NewFileStore(store + "/s"))
-	var f MessageHandler = func(client *Client, msg Message) {
+	var f MessageHandler = func(client Client, msg Message) {
 		fmt.Printf("TOPIC: %s\n", msg.Topic())
 		fmt.Printf("MSG: %s\n", msg.Payload())
 		choke <- true
@@ -642,7 +642,7 @@ func Test_p2s0(t *testing.T) {
 	sops.AddBroker(FVTTCP)
 	sops.SetClientID("p2s0-sub")
 	sops.SetStore(NewFileStore(store + "/s"))
-	var f MessageHandler = func(client *Client, msg Message) {
+	var f MessageHandler = func(client Client, msg Message) {
 		fmt.Printf("TOPIC: %s\n", msg.Topic())
 		fmt.Printf("MSG: %s\n", msg.Payload())
 		choke <- true
@@ -696,7 +696,7 @@ func Test_p2s1(t *testing.T) {
 	sops.AddBroker(FVTTCP)
 	sops.SetClientID("p2s1-sub")
 	sops.SetStore(NewFileStore(store + "/s"))
-	var f MessageHandler = func(client *Client, msg Message) {
+	var f MessageHandler = func(client Client, msg Message) {
 		fmt.Printf("TOPIC: %s\n", msg.Topic())
 		fmt.Printf("MSG: %s\n", msg.Payload())
 		choke <- true
@@ -752,7 +752,7 @@ func Test_p2s2(t *testing.T) {
 	sops.AddBroker(FVTTCP)
 	sops.SetClientID("p2s2-sub")
 	sops.SetStore(NewFileStore(store + "/s"))
-	var f MessageHandler = func(client *Client, msg Message) {
+	var f MessageHandler = func(client Client, msg Message) {
 		fmt.Printf("TOPIC: %s\n", msg.Topic())
 		fmt.Printf("MSG: %s\n", msg.Payload())
 		choke <- true
@@ -806,7 +806,7 @@ func Test_PublishMessage(t *testing.T) {
 	sops.AddBroker(FVTTCP)
 	sops.SetClientID("pubmsg-sub")
 	sops.SetStore(NewFileStore(store + "/s"))
-	var f MessageHandler = func(client *Client, msg Message) {
+	var f MessageHandler = func(client Client, msg Message) {
 		fmt.Printf("TOPIC: %s\n", msg.Topic())
 		fmt.Printf("MSG: %s\n", msg.Payload())
 		if string(msg.Payload()) != "pubmsg payload" {
@@ -864,7 +864,7 @@ func Test_PublishEmptyMessage(t *testing.T) {
 	sops.AddBroker(FVTTCP)
 	sops.SetClientID("pubmsgempty-sub")
 	sops.SetStore(NewFileStore(store + "/s"))
-	var f MessageHandler = func(client *Client, msg Message) {
+	var f MessageHandler = func(client Client, msg Message) {
 		fmt.Printf("TOPIC: %s\n", msg.Topic())
 		fmt.Printf("MSG: %s\n", msg.Payload())
 		if string(msg.Payload()) != "" {
@@ -917,7 +917,7 @@ func Test_PublishEmptyMessage(t *testing.T) {
 // 	sops.SetClientID("cleanstore-sub")
 // 	sops.SetCleanSession(false)
 // 	sops.SetStore(NewFileStore(store + "/s"))
-// 	var f MessageHandler = func(client *Client, msg Message) {
+// 	var f MessageHandler = func(client Client, msg Message) {
 // 		fmt.Printf("TOPIC: %s\n", msg.Topic())
 // 		fmt.Printf("MSG: %s\n", msg.Payload())
 // 		// Close the connection after receiving
