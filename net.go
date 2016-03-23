@@ -113,7 +113,6 @@ func outgoing(c *client) {
 				msg.MessageID = c.getID(pub.t)
 				pub.t.(*PublishToken).messageID = msg.MessageID
 			}
-			//persist_obound(c.persist, msg)
 
 			if c.options.WriteTimeout > 0 {
 				c.conn.SetWriteDeadline(time.Now().Add(c.options.WriteTimeout))
@@ -174,7 +173,7 @@ func alllogic(c *client) {
 		select {
 		case msg := <-c.ibound:
 			DEBUG.Println(NET, "logic got msg on ibound")
-			//persist_ibound(c.persist, msg)
+			persistInbound(c.persist, msg)
 			switch msg.(type) {
 			case *packets.PingrespPacket:
 				DEBUG.Println(NET, "received pingresp")
