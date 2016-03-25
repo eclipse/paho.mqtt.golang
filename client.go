@@ -57,7 +57,6 @@ type Client interface {
 	IsConnected() bool
 	Connect() Token
 	Disconnect(uint)
-	disconnect()
 	Publish(string, byte, bool, interface{}) Token
 	Subscribe(string, byte, MessageHandler) Token
 	SubscribeMultiple(map[string]byte, MessageHandler) Token
