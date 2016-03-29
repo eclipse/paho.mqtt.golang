@@ -109,10 +109,6 @@ func outgoing(c *client) {
 			return
 		case pub := <-c.obound:
 			msg := pub.p.(*packets.PublishPacket)
-			if msg.Qos != 0 && msg.MessageID == 0 {
-				msg.MessageID = c.getID(pub.t)
-				pub.t.(*PublishToken).messageID = msg.MessageID
-			}
 
 			if c.options.WriteTimeout > 0 {
 				c.conn.SetWriteDeadline(time.Now().Add(c.options.WriteTimeout))
