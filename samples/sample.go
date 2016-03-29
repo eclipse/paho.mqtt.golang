@@ -104,7 +104,7 @@ func main() {
 		receiveCount := 0
 		choke := make(chan [2]string)
 
-		opts.SetDefaultPublishHandler(func(client *MQTT.Client, msg MQTT.Message) {
+		opts.SetDefaultPublishHandler(func(client MQTT.Client, msg MQTT.Message) {
 			choke <- [2]string{msg.Topic(), string(msg.Payload())}
 		})
 

@@ -37,21 +37,21 @@ var brokerLoad = make(chan bool)
 var brokerConnection = make(chan bool)
 var brokerClients = make(chan bool)
 
-func brokerLoadHandler(client *MQTT.Client, msg MQTT.Message) {
+func brokerLoadHandler(client MQTT.Client, msg MQTT.Message) {
 	brokerLoad <- true
 	fmt.Printf("BrokerLoadHandler         ")
 	fmt.Printf("[%s]  ", msg.Topic())
 	fmt.Printf("%s\n", msg.Payload())
 }
 
-func brokerConnectionHandler(client *MQTT.Client, msg MQTT.Message) {
+func brokerConnectionHandler(client MQTT.Client, msg MQTT.Message) {
 	brokerConnection <- true
 	fmt.Printf("BrokerConnectionHandler   ")
 	fmt.Printf("[%s]  ", msg.Topic())
 	fmt.Printf("%s\n", msg.Payload())
 }
 
-func brokerClientsHandler(client *MQTT.Client, msg MQTT.Message) {
+func brokerClientsHandler(client MQTT.Client, msg MQTT.Message) {
 	brokerClients <- true
 	fmt.Printf("BrokerClientsHandler      ")
 	fmt.Printf("[%s]  ", msg.Topic())

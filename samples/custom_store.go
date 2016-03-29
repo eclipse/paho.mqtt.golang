@@ -70,7 +70,7 @@ func main() {
 	opts.SetClientID("custom-store")
 	opts.SetStore(myNoOpStore)
 
-	var callback MQTT.MessageHandler = func(client *MQTT.Client, msg MQTT.Message) {
+	var callback MQTT.MessageHandler = func(client MQTT.Client, msg MQTT.Message) {
 		fmt.Printf("TOPIC: %s\n", msg.Topic())
 		fmt.Printf("MSG: %s\n", msg.Payload())
 	}
