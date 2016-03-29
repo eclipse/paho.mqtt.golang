@@ -34,20 +34,10 @@ const (
 	connected
 )
 
-// ClientInt is the interface definition for a Client as used by this
+// Client is the interface definition for a Client as used by this
 // library, the interface is primarily to allow mocking tests.
-type ClientInt interface {
-	IsConnected() bool
-	Connect() Token
-	Disconnect(uint)
-	disconnect()
-	Publish(string, byte, bool, interface{}) Token
-	Subscribe(string, byte, MessageHandler) Token
-	SubscribeMultiple(map[string]byte, MessageHandler) Token
-	Unsubscribe(...string) Token
-}
-
-// Client is an MQTT v3.1.1 client for communicating
+//
+// It is an MQTT v3.1.1 client for communicating
 // with an MQTT server using non-blocking methods that allow work
 // to be done in the background.
 // An application may connect to an MQTT server using:
@@ -62,7 +52,19 @@ type ClientInt interface {
 // information can be found in their respective documentation.
 // Numerous connection options may be specified by configuring a
 // and then supplying a ClientOptions type.
-type Client struct {
+
+type Client interface {
+	IsConnected() bool
+	Connect() Token
+	Disconnect(uint)
+	Publish(string, byte, bool, interface{}) Token
+	Subscribe(string, byte, MessageHandler) Token
+	SubscribeMultiple(map[string]byte, MessageHandler) Token
+	Unsubscribe(...string) Token
+}
+
+// client implements the Client interface
+type client struct {
 	sync.RWMutex
 	messageIds
 	conn            net.Conn
@@ -86,8 +88,8 @@ type Client struct {
 // in the provided ClientOptions. The client must have the Start method called
 // on it before it may be used. This is to make sure resources (such as a net
 // connection) are created before the application is actually ready.
-func NewClient(o *ClientOptions) *Client {
-	c := &Client{}
+func NewClient(o *ClientOptions) Client {
+	c := &client{}
 	c.options = *o
 
 	if c.options.Store == nil {
@@ -113,7 +115,7 @@ func NewClient(o *ClientOptions) *Client {
 
 // IsConnected returns a bool signifying whether
 // the client is connected or not.
-func (c *Client) IsConnected() bool {
+func (c *client) IsConnected() bool {
 	c.RLock()
 	defer c.RUnlock()
 	switch {
@@ -126,13 +128,13 @@ func (c *Client) IsConnected() bool {
 	}
 }
 
-func (c *Client) connectionStatus() connStatus {
+func (c *client) connectionStatus() connStatus {
 	c.RLock()
 	defer c.RUnlock()
 	return c.status
 }
 
-func (c *Client) setConnected(status connStatus) {
+func (c *client) setConnected(status connStatus) {
 	c.Lock()
 	defer c.Unlock()
 	c.status = status
@@ -148,7 +150,7 @@ var ErrNotConnected = errors.New("Not Connected")
 // that were in-flight at the last disconnect.
 // If clean session is true, then any existing client
 // state will be removed.
-func (c *Client) Connect() Token {
+func (c *client) Connect() Token {
 	var err error
 	t := newToken(packets.Connect).(*ConnectToken)
 	DEBUG.Println(CLI, "Connect()")
@@ -260,7 +262,7 @@ func (c *Client) Connect() Token {
 }
 
 // internal function used to reconnect the client when it loses its connection
-func (c *Client) reconnect() {
+func (c *client) reconnect() {
 	DEBUG.Println(CLI, "enter reconnect")
 	c.setConnected(reconnecting)
 	var rc byte = 1
@@ -345,7 +347,7 @@ func (c *Client) reconnect() {
 // when the connection is first started.
 // This prevents receiving incoming data while resume
 // is in progress if clean session is false.
-func (c *Client) connect() byte {
+func (c *client) connect() byte {
 	DEBUG.Println(NET, "connect started")
 
 	ca, err := packets.ReadPacket(c.conn)
@@ -371,7 +373,7 @@ func (c *Client) connect() byte {
 // Disconnect will end the connection with the server, but not before waiting
 // the specified number of milliseconds to wait for existing work to be
 // completed.
-func (c *Client) Disconnect(quiesce uint) {
+func (c *client) Disconnect(quiesce uint) {
 	if !c.IsConnected() {
 		WARN.Println(CLI, "already disconnected")
 		return
@@ -389,7 +391,7 @@ func (c *Client) Disconnect(quiesce uint) {
 }
 
 // ForceDisconnect will end the connection with the mqtt broker immediately.
-func (c *Client) forceDisconnect() {
+func (c *client) forceDisconnect() {
 	if !c.IsConnected() {
 		WARN.Println(CLI, "already disconnected")
 		return
@@ -400,7 +402,7 @@ func (c *Client) forceDisconnect() {
 	c.disconnect()
 }
 
-func (c *Client) internalConnLost(err error) {
+func (c *client) internalConnLost(err error) {
 	close(c.stop)
 	c.conn.Close()
 	c.workers.Wait()
@@ -416,7 +418,7 @@ func (c *Client) internalConnLost(err error) {
 	}
 }
 
-func (c *Client) disconnect() {
+func (c *client) disconnect() {
 	select {
 	case <-c.stop:
 		//someone else has already closed the channel, must be error
@@ -433,7 +435,7 @@ func (c *Client) disconnect() {
 // Publish will publish a message with the specified QoS and content
 // to the specified topic.
 // Returns a token to track delivery of the message to the broker
-func (c *Client) Publish(topic string, qos byte, retained bool, payload interface{}) Token {
+func (c *client) Publish(topic string, qos byte, retained bool, payload interface{}) Token {
 	token := newToken(packets.Publish).(*PublishToken)
 	DEBUG.Println(CLI, "enter Publish")
 	switch {
@@ -467,7 +469,7 @@ func (c *Client) Publish(topic string, qos byte, retained bool, payload interfac
 
 // Subscribe starts a new subscription. Provide a MessageHandler to be executed when
 // a message is published on the topic provided.
-func (c *Client) Subscribe(topic string, qos byte, callback MessageHandler) Token {
+func (c *client) Subscribe(topic string, qos byte, callback MessageHandler) Token {
 	token := newToken(packets.Subscribe).(*SubscribeToken)
 	DEBUG.Println(CLI, "enter Subscribe")
 	if !c.IsConnected() {
@@ -496,7 +498,7 @@ func (c *Client) Subscribe(topic string, qos byte, callback MessageHandler) Toke
 
 // SubscribeMultiple starts a new subscription for multiple topics. Provide a MessageHandler to
 // be executed when a message is published on one of the topics provided.
-func (c *Client) SubscribeMultiple(filters map[string]byte, callback MessageHandler) Token {
+func (c *client) SubscribeMultiple(filters map[string]byte, callback MessageHandler) Token {
 	var err error
 	token := newToken(packets.Subscribe).(*SubscribeToken)
 	DEBUG.Println(CLI, "enter SubscribeMultiple")
@@ -526,7 +528,7 @@ func (c *Client) SubscribeMultiple(filters map[string]byte, callback MessageHand
 // Unsubscribe will end the subscription from each of the topics provided.
 // Messages published to those topics from other clients will no longer be
 // received.
-func (c *Client) Unsubscribe(topics ...string) Token {
+func (c *client) Unsubscribe(topics ...string) Token {
 	token := newToken(packets.Unsubscribe).(*UnsubscribeToken)
 	DEBUG.Println(CLI, "enter Unsubscribe")
 	if !c.IsConnected() {
@@ -549,6 +551,6 @@ func (c *Client) Unsubscribe(topics ...string) Token {
 
 //DefaultConnectionLostHandler is a definition of a function that simply
 //reports to the DEBUG log the reason for the client losing a connection.
-func DefaultConnectionLostHandler(client *Client, reason error) {
+func DefaultConnectionLostHandler(client Client, reason error) {
 	DEBUG.Println("Connection lost:", reason.Error())
 }
