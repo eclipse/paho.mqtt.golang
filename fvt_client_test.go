@@ -987,22 +987,21 @@ func Test_MultipleURLs(t *testing.T) {
 	c.Disconnect(250)
 }
 
-/*
 // A test to make sure ping mechanism is working
-// This test can be left commented out because it's annoying to wait for
-func Test_ping3_idle10(t *testing.T) {
+func Test_ping1_idle5(t *testing.T) {
 	ops := NewClientOptions()
 	ops.AddBroker(FVTTCP)
-	//ops.AddBroker("tcp://test.mosquitto.org:1883")
 	ops.SetClientID("p3i10")
-	ops.SetKeepAlive(4)
+	ops.SetConnectionLostHandler(func(c Client, err error) {
+		t.Fatalf("Connection-lost handler was called: %s", err)
+	})
+	ops.SetKeepAlive(1 * time.Second)
 
 	c := NewClient(ops)
 	token := c.Connect()
 	if token.Wait() && token.Error() != nil {
 		t.Fatalf("Error on Client.Connect(): %v", token.Error())
 	}
-	time.Sleep(time.Duration(10) * time.Second)
+	time.Sleep(5 * time.Second)
 	c.Disconnect(250)
 }
-*/
