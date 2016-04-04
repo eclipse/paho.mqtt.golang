@@ -14,18 +14,18 @@
 
 package mqtt
 
-import "fmt"
-import "time"
-import "bytes"
-
-import "io/ioutil"
-import "crypto/tls"
-import "crypto/x509"
-import "testing"
+import (
+	"bytes"
+	"crypto/tls"
+	"crypto/x509"
+	"fmt"
+	"io/ioutil"
+	"testing"
+	"time"
+)
 
 func Test_Start(t *testing.T) {
-	ops := NewClientOptions().SetClientID("Start").
-		AddBroker(FVTTCP)
+	ops := NewClientOptions().SetClientID("Start").AddBroker(FVTTCP)
 	c := NewClient(ops)
 
 	if token := c.Connect(); token.Wait() && token.Error() != nil {
@@ -177,7 +177,7 @@ func Test_Subscribe(t *testing.T) {
 }
 
 func Test_Will(t *testing.T) {
-	willmsgc := make(chan string)
+	willmsgc := make(chan string, 1)
 
 	sops := NewClientOptions().AddBroker(FVTTCP)
 	sops.SetClientID("will-giver")
@@ -221,7 +221,7 @@ func Test_Will(t *testing.T) {
 }
 
 func Test_Binary_Will(t *testing.T) {
-	willmsgc := make(chan []byte)
+	willmsgc := make(chan []byte, 1)
 	will := []byte{
 		0xDE,
 		0xAD,
@@ -892,7 +892,7 @@ func Test_ping1_idle5(t *testing.T) {
 	ops.SetConnectionLostHandler(func(c Client, err error) {
 		t.Fatalf("Connection-lost handler was called: %s", err)
 	})
-	ops.SetKeepAlive(1 * time.Second)
+	ops.SetKeepAlive(2 * time.Second)
 
 	c := NewClient(ops)
 

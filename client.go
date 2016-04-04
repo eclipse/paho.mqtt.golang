@@ -219,7 +219,7 @@ func (c *client) Connect() Token {
 		c.obound = make(chan *PacketAndToken, c.options.MessageChannelDepth)
 		c.oboundP = make(chan *PacketAndToken, c.options.MessageChannelDepth)
 		c.ibound = make(chan packets.ControlPacket)
-		c.errors = make(chan error)
+		c.errors = make(chan error, 1)
 		c.stop = make(chan struct{})
 		c.pingTimer = time.NewTimer(c.options.KeepAlive)
 		c.pingRespTimer = time.NewTimer(time.Duration(10) * time.Second)
