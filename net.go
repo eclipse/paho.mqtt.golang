@@ -89,7 +89,7 @@ func incoming(c *client) {
 		return
 		// Not trying to disconnect, send the error to the errors channel
 	default:
-		ERROR.Println(NET, "incoming stopped with error")
+		ERROR.Println(NET, "incoming stopped with error", err)
 		c.errors <- err
 		return
 	}
@@ -120,7 +120,7 @@ func outgoing(c *client) {
 			}
 
 			if err := msg.Write(c.conn); err != nil {
-				ERROR.Println(NET, "outgoing stopped with error")
+				ERROR.Println(NET, "outgoing stopped with error", err)
 				c.errors <- err
 				return
 			}
@@ -144,7 +144,7 @@ func outgoing(c *client) {
 			}
 			DEBUG.Println(NET, "obound priority msg to write, type", reflect.TypeOf(msg.p))
 			if err := msg.p.Write(c.conn); err != nil {
-				ERROR.Println(NET, "outgoing stopped with error")
+				ERROR.Println(NET, "outgoing stopped with error", err)
 				c.errors <- err
 				return
 			}
@@ -267,7 +267,7 @@ func alllogic(c *client) {
 			WARN.Println(NET, "logic stopped")
 			return
 		case err := <-c.errors:
-			ERROR.Println(NET, "logic got error")
+			ERROR.Println(NET, "logic got error", err)
 			c.internalConnLost(err)
 			return
 		}
