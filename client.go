@@ -210,6 +210,7 @@ func (c *client) Connect() Token {
 			} else {
 				t.err = fmt.Errorf("%s : %s", packets.ConnErrors[rc], err)
 			}
+			c.setConnected(disconnected)
 			t.flowComplete()
 			return
 		}
