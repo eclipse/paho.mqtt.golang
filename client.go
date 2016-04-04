@@ -403,10 +403,13 @@ func (c *client) forceDisconnect() {
 }
 
 func (c *client) internalConnLost(err error) {
-	close(c.stop)
-	c.conn.Close()
-	c.workers.Wait()
+	// Only do anything if this was called and we are still "connected"
+	// forceDisconnect can cause incoming/outgoing/alllogic to end with
+	// error from closing the socket but state will be "disconnected"
 	if c.IsConnected() {
+		close(c.stop)
+		c.conn.Close()
+		c.workers.Wait()
 		if c.options.OnConnectionLost != nil {
 			go c.options.OnConnectionLost(c, err)
 		}
@@ -421,7 +424,7 @@ func (c *client) internalConnLost(err error) {
 func (c *client) disconnect() {
 	select {
 	case <-c.stop:
-		//someone else has already closed the channel, must be error
+		DEBUG.Println("In disconnect and stop channel is already closed")
 	default:
 		close(c.stop)
 	}
