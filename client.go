@@ -408,7 +408,7 @@ func (c *client) internalConnLost(err error) {
 	// forceDisconnect can cause incoming/outgoing/alllogic to end with
 	// error from closing the socket but state will be "disconnected"
 	if c.IsConnected() {
-		close(c.stop)
+		c.closeStop()
 		c.conn.Close()
 		c.workers.Wait()
 		if c.options.OnConnectionLost != nil {
@@ -422,13 +422,19 @@ func (c *client) internalConnLost(err error) {
 	}
 }
 
-func (c *client) disconnect() {
+func (c *client) closeStop() {
+	c.Lock()
+	defer c.Unlock()
 	select {
 	case <-c.stop:
 		DEBUG.Println("In disconnect and stop channel is already closed")
 	default:
 		close(c.stop)
 	}
+}
+
+func (c *client) disconnect() {
+	c.closeStop()
 	c.conn.Close()
 	c.workers.Wait()
 	close(c.stopRouter)
