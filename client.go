@@ -156,6 +156,8 @@ func (c *client) Connect() Token {
 	DEBUG.Println(CLI, "Connect()")
 
 	go func() {
+		c.persist.Open()
+
 		c.setConnected(connecting)
 		var rc byte
 		cm := newConnectMsgFromOptions(&c.options)
@@ -211,11 +213,10 @@ func (c *client) Connect() Token {
 				t.err = fmt.Errorf("%s : %s", packets.ConnErrors[rc], err)
 			}
 			c.setConnected(disconnected)
+			c.persist.Close()
 			t.flowComplete()
 			return
 		}
-
-		c.persist.Open()
 
 		c.obound = make(chan *PacketAndToken, c.options.MessageChannelDepth)
 		c.oboundP = make(chan *PacketAndToken, c.options.MessageChannelDepth)
