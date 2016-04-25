@@ -15,10 +15,7 @@
 package mqtt
 
 import (
-	"bufio"
-	"fmt"
 	"io/ioutil"
-	"os"
 	"testing"
 
 	"github.com/eclipse/paho.mqtt.golang/packets"
@@ -575,95 +572,5 @@ func Test_persistInbound_pingresp(t *testing.T) {
 
 	if len(ts.mdel) != 0 {
 		t.Fatalf("persistInbound in bad state")
-	}
-}
-
-/***********
- * restore *
- ***********/
-
-func ensureRestoreDir() {
-	if exists("/tmp/restore") {
-		rerr := os.RemoveAll("/tmp/restore")
-		chkerr(rerr)
-	}
-	os.Mkdir("/tmp/restore", 0766)
-}
-
-func writeToRestore(fname, content string) {
-	f, cerr := os.Create("/tmp/restore/" + fname)
-	chkerr(cerr)
-	chkcond(f != nil)
-	w := bufio.NewWriter(f)
-	w.Write([]byte(content))
-	w.Flush()
-	f.Close()
-}
-
-func verifyFromRestore(fname, content string, t *testing.T) {
-	msg, oerr := os.Open("/tmp/restore/" + fname)
-	chkerr(oerr)
-	all, rerr := ioutil.ReadAll(msg)
-	chkerr(rerr)
-	msg.Close()
-	s := string(all)
-	if s != content {
-		t.Fatalf("verify content expected `%s` but got `%s`", content, s)
-	}
-}
-
-func Test_restore_1(t *testing.T) {
-	ensureRestoreDir()
-
-	writeToRestore("i.1.bkp", "this is critical 1")
-
-	restore("/tmp/restore")
-
-	chkcond(!exists("/tmp/restore/i.1.bkp"))
-	chkcond(exists("/tmp/restore/i.1.msg"))
-
-	verifyFromRestore("i.1.msg", "this is critical 1", t)
-}
-
-func Test_restore_2(t *testing.T) {
-	ensureRestoreDir()
-
-	writeToRestore("o.2.msg", "this is critical 2")
-
-	restore("/tmp/restore")
-
-	chkcond(!exists("/tmp/restore/o.2.bkp"))
-	chkcond(exists("/tmp/restore/o.2.msg"))
-
-	verifyFromRestore("o.2.msg", "this is critical 2", t)
-}
-
-func Test_restore_3(t *testing.T) {
-	ensureRestoreDir()
-
-	N := 20
-	// evens are .msg
-	// odds are .bkp
-	for i := 0; i < N; i++ {
-		content := fmt.Sprintf("foo %d bar", i)
-		if i%2 == 0 {
-			mname := fmt.Sprintf("i.%d.msg", i)
-			writeToRestore(mname, content)
-		} else {
-			mname := fmt.Sprintf("i.%d.bkp", i)
-			writeToRestore(mname, content)
-		}
-	}
-
-	restore("/tmp/restore")
-
-	for i := 0; i < N; i++ {
-		mname := fmt.Sprintf("i.%d.msg", i)
-		bname := fmt.Sprintf("i.%d.bkp", i)
-		content := fmt.Sprintf("foo %d bar", i)
-		chkcond(!exists("/tmp/restore/" + bname))
-		chkcond(exists("/tmp/restore/" + mname))
-
-		verifyFromRestore(mname, content, t)
 	}
 }

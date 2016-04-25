@@ -16,23 +16,12 @@ package mqtt
 
 import (
 	"bytes"
-	"fmt"
+	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/eclipse/paho.mqtt.golang/packets"
 )
-
-/*******************************
- **** Some helper functions ****
- *******************************/
-
-func b2s(bs []byte) string {
-	s := ""
-	for _, b := range bs {
-		s += fmt.Sprintf("%x ", b)
-	}
-	return s
-}
 
 /**********************************************
  **** A mock store implementation for test ****
@@ -206,6 +195,63 @@ func Test_FileStore_Get(t *testing.T) {
 	}
 }
 
+func Test_FileStore_Get_Corrupted(t *testing.T) {
+	storedir := "/tmp/TestStore/_get_error"
+	f := NewFileStore(storedir)
+	f.Open()
+	pm := packets.NewControlPacket(packets.Publish).(*packets.PublishPacket)
+	pm.Qos = 1
+	pm.TopicName = "/a/b/c"
+	pm.Payload = []byte{0xBE, 0xEF, 0xED}
+	pm.MessageID = 120
+
+	key := outboundKeyFromMID(pm.MessageID)
+
+	exp := []byte{
+		/* msg type */
+		0x32, // qos 1
+
+		/* remlen */
+		0x0d,
+
+		/* topic, msg id in varheader */
+		0x00, // length of topic
+		0x06,
+		// Oh no the rest is gone!
+	}
+
+	file, err := os.Create(storedir + "/o.120.msg")
+	chkerr(err)
+	_, err = file.Write(exp)
+	chkerr(err)
+	chkerr(file.Close())
+
+	if !exists(storedir + "/o.120.msg") {
+		t.Fatalf("corrupt message not in store")
+	}
+
+	m := f.Get(key)
+
+	if m != nil {
+		t.Fatalf("corrupted message retrieved from store")
+	}
+
+	if exists(storedir + "/o.120.msg") {
+		t.Fatalf("corrupt message left in store")
+	}
+
+	if !exists(storedir + "/o.120.CORRUPT") {
+		t.Fatalf("corrupt message not archived")
+	}
+
+	contents, err := ioutil.ReadFile(storedir + "/o.120.CORRUPT")
+	chkerr(err)
+
+	if !bytes.Equal(exp, contents) {
+		t.Fatal("archived corrupted bytes not the same as those saved", exp, contents)
+	}
+}
+
 func Test_FileStore_All(t *testing.T) {
 	storedir := "/tmp/TestStore/_all"
 	f := NewFileStore(storedir)
@@ -221,6 +267,7 @@ func Test_FileStore_All(t *testing.T) {
 
 	keys := f.All()
 	if len(keys) != 1 {
+		t.Logf("Keys: %s", keys)
 		t.Fatalf("FileStore.All does not have the messages")
 	}
 

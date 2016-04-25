@@ -15,7 +15,6 @@
 package mqtt
 
 import (
-	"io"
 	"io/ioutil"
 	"os"
 	"path"
@@ -25,8 +24,9 @@ import (
 )
 
 const (
-	msgExt = ".msg"
-	bkpExt = ".bkp"
+	msgExt     = ".msg"
+	tmpExt     = ".tmp"
+	corruptExt = ".CORRUPT"
 )
 
 // FileStore implements the store interface using the filesystem to provide
@@ -85,10 +85,6 @@ func (store *FileStore) Put(key string, m packets.ControlPacket) {
 	defer store.Unlock()
 	chkcond(store.opened)
 	full := fullpath(store.directory, key)
-	if exists(full) {
-		backup(store.directory, key) // make a copy of what already exists
-		defer unbackup(store.directory, key)
-	}
 	write(store.directory, key, m)
 	chkcond(exists(full))
 }
@@ -105,12 +101,16 @@ func (store *FileStore) Get(key string) packets.ControlPacket {
 	}
 	mfile, oerr := os.Open(filepath)
 	chkerr(oerr)
-	//all, rerr := ioutil.ReadAll(mfile)
-	//chkerr(rerr)
 	msg, rerr := packets.ReadPacket(mfile)
-	chkerr(rerr)
-	cerr := mfile.Close()
-	chkerr(cerr)
+	chkerr(mfile.Close())
+
+	// Message was unreadable, return nil
+	if rerr != nil {
+		newpath := corruptpath(store.directory, key)
+		WARN.Println(STR, "corrupted file detected:", rerr.Error(), "archived at:", newpath)
+		os.Rename(filepath, newpath)
+		return nil
+	}
 	return msg
 }
 
@@ -148,7 +148,12 @@ func (store *FileStore) all() []string {
 	chkerr(rderr)
 	for _, f := range files {
 		DEBUG.Println(STR, "file in All():", f.Name())
-		key := f.Name()[0 : len(f.Name())-4] // remove file extension
+		name := f.Name()
+		if name[len(name)-4:len(name)] != msgExt {
+			DEBUG.Println(STR, "skipping file, doesn't have right extension: ", name)
+			continue
+		}
+		key := name[0 : len(name)-4] // remove file extension
 		keys = append(keys, key)
 	}
 	return keys
@@ -176,24 +181,31 @@ func fullpath(store string, key string) string {
 	return p
 }
 
-func bkppath(store string, key string) string {
-	p := path.Join(store, key+bkpExt)
+func tmppath(store string, key string) string {
+	p := path.Join(store, key+tmpExt)
 	return p
 }
 
-// create file called "X.[messageid].msg" located in the store
-// the contents of the file is the bytes of the message
-// if a message with m's message id already exists, it will
-// be overwritten
+func corruptpath(store string, key string) string {
+	p := path.Join(store, key+corruptExt)
+	return p
+}
+
+// create file called "X.[messageid].tmp" located in the store
+// the contents of the file is the bytes of the message, then
+// rename it to "X.[messageid].msg", overwriting any existing
+// message with the same id
 // X will be 'i' for inbound messages, and O for outbound messages
 func write(store, key string, m packets.ControlPacket) {
-	filepath := fullpath(store, key)
-	f, err := os.Create(filepath)
+	temppath := tmppath(store, key)
+	f, err := os.Create(temppath)
 	chkerr(err)
 	werr := m.Write(f)
 	chkerr(werr)
 	cerr := f.Close()
 	chkerr(cerr)
+	rerr := os.Rename(temppath, fullpath(store, key))
+	chkerr(rerr)
 }
 
 func exists(file string) bool {
@@ -204,56 +216,4 @@ func exists(file string) bool {
 		chkerr(err)
 	}
 	return true
-}
-
-func backup(store, key string) {
-	bkpp := bkppath(store, key)
-	fulp := fullpath(store, key)
-	backup, err := os.Create(bkpp)
-	chkerr(err)
-	mfile, oerr := os.Open(fulp)
-	chkerr(oerr)
-	_, cerr := io.Copy(backup, mfile)
-	chkerr(cerr)
-	clberr := backup.Close()
-	chkerr(clberr)
-	clmerr := mfile.Close()
-	chkerr(clmerr)
-}
-
-// Identify .bkp files in the store and turn them into .msg files,
-// whether or not it overwrites an existing file. This is safe because
-// I'm copying the Paho Java client and they say it is.
-func restore(store string) {
-	files, rderr := ioutil.ReadDir(store)
-	chkerr(rderr)
-	for _, f := range files {
-		fname := f.Name()
-		if len(fname) > 4 {
-			if fname[len(fname)-4:] == bkpExt {
-				key := fname[0 : len(fname)-4]
-				fulp := fullpath(store, key)
-				msg, cerr := os.Create(fulp)
-				chkerr(cerr)
-				bkpp := path.Join(store, fname)
-				bkp, oerr := os.Open(bkpp)
-				chkerr(oerr)
-				n, cerr := io.Copy(msg, bkp)
-				chkerr(cerr)
-				chkcond(n > 0)
-				clmerr := msg.Close()
-				chkerr(clmerr)
-				clberr := bkp.Close()
-				chkerr(clberr)
-				remerr := os.Remove(bkpp)
-				chkerr(remerr)
-			}
-		}
-	}
-}
-
-func unbackup(store, key string) {
-	bkpp := bkppath(store, key)
-	remerr := os.Remove(bkpp)
-	chkerr(remerr)
 }
