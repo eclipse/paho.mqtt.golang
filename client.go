@@ -80,6 +80,7 @@ type client struct {
 	options         ClientOptions
 	pingTimer       *time.Timer
 	pingRespTimer   *time.Timer
+	pingRespChannel chan packets.ControlPacket
 	status          connStatus
 	workers         sync.WaitGroup
 }
@@ -241,6 +242,7 @@ func (c *client) Connect() Token {
 		}
 
 		if c.options.KeepAlive != 0 {
+			c.pingRespChannel = make(chan packets.ControlPacket, 1)
 			c.workers.Add(1)
 			go keepalive(c)
 		}
