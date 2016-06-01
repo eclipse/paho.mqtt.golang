@@ -71,6 +71,7 @@ type client struct {
 	ibound          chan packets.ControlPacket
 	obound          chan *PacketAndToken
 	oboundP         chan *PacketAndToken
+	pingResp        chan int
 	msgRouter       *router
 	stopRouter      chan bool
 	incomingPubChan chan *packets.PublishPacket
@@ -221,6 +222,7 @@ func (c *client) Connect() Token {
 		c.obound = make(chan *PacketAndToken, c.options.MessageChannelDepth)
 		c.oboundP = make(chan *PacketAndToken, c.options.MessageChannelDepth)
 		c.ibound = make(chan packets.ControlPacket)
+		c.pingResp = make(chan int, 3)
 		c.errors = make(chan error, 1)
 		c.stop = make(chan struct{})
 		c.pingTimer = time.NewTimer(c.options.KeepAlive)
