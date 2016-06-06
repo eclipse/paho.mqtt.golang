@@ -80,6 +80,7 @@ type client struct {
 	options         ClientOptions
 	pingTimer       *time.Timer
 	pingRespTimer   *time.Timer
+	pingResp        chan struct{}
 	status          connStatus
 	workers         sync.WaitGroup
 }
@@ -226,6 +227,7 @@ func (c *client) Connect() Token {
 		c.pingTimer = time.NewTimer(c.options.KeepAlive)
 		c.pingRespTimer = time.NewTimer(time.Duration(10) * time.Second)
 		c.pingRespTimer.Stop()
+		c.pingResp = make(chan struct{}, 1)
 
 		c.incomingPubChan = make(chan *packets.PublishPacket, c.options.MessageChannelDepth)
 		c.msgRouter.matchAndDispatch(c.incomingPubChan, c.options.Order, c)
