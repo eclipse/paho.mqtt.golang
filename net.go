@@ -180,8 +180,7 @@ func alllogic(c *client) {
 			switch msg.(type) {
 			case *packets.PingrespPacket:
 				DEBUG.Println(NET, "received pingresp")
-				c.pingRespTimer.Stop()
-				c.pingTimer.Reset(c.options.KeepAlive)
+				c.pingResp <- 1
 			case *packets.SubackPacket:
 				sa := msg.(*packets.SubackPacket)
 				DEBUG.Println(NET, "received suback, id:", sa.MessageID)
