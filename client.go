@@ -85,7 +85,7 @@ type client struct {
 }
 
 // NewClient will create an MQTT v3.1.1 client with all of the options specified
-// in the provided ClientOptions. The client must have the Start method called
+// in the provided ClientOptions. The client must have the Connect method called
 // on it before it may be used. This is to make sure resources (such as a net
 // connection) are created before the application is actually ready.
 func NewClient(o *ClientOptions) Client {
