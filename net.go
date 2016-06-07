@@ -75,9 +75,10 @@ func openConnection(uri *url.URL, tlsc *tls.Config, timeout time.Duration) (net.
 // actually read incoming messages off the wire
 // send Message object into ibound channel
 func incoming(c *client) {
-	defer c.workers.Done()
 	var err error
 	var cp packets.ControlPacket
+
+	defer c.workers.Done()
 
 	DEBUG.Println(NET, "incoming started")
 

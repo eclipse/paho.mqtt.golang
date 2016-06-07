@@ -902,3 +902,32 @@ func Test_ping1_idle5(t *testing.T) {
 	time.Sleep(5 * time.Second)
 	c.Disconnect(250)
 }
+
+func Test_autoreconnect(t *testing.T) {
+	ops := NewClientOptions()
+	ops.AddBroker(FVTTCP)
+	ops.SetClientID("auto_reconnect")
+	ops.SetAutoReconnect(true)
+	ops.SetOnConnectHandler(func(c Client) {
+		t.Log("Connected")
+	})
+	ops.SetKeepAlive(2 * time.Second)
+
+	c := NewClient(ops)
+
+	if token := c.Connect(); token.Wait() && token.Error() != nil {
+		t.Fatalf("Error on Client.Connect(): %v", token.Error())
+	}
+
+	time.Sleep(5 * time.Second)
+
+	fmt.Println("Breaking connection")
+	c.(*client).internalConnLost(fmt.Errorf("Autoreconnect test"))
+
+	time.Sleep(5 * time.Second)
+	if !c.IsConnected() {
+		t.Fail()
+	}
+
+	c.Disconnect(250)
+}
