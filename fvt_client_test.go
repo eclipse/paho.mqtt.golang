@@ -220,6 +220,76 @@ func Test_Will(t *testing.T) {
 	wsub.Disconnect(250)
 }
 
+func Test_CleanSession(t *testing.T) {
+	clsnc := make(chan string, 1)
+
+	sops := NewClientOptions().AddBroker(FVTTCP)
+	sops.SetClientID("clsn-sender")
+	sops.SetConnectionLostHandler(func(client Client, err error) {
+		fmt.Println("OnConnectionLost!")
+	})
+	sops.SetAutoReconnect(false)
+	c := NewClient(sops).(*client)
+
+	wops := NewClientOptions()
+	wops.AddBroker(FVTTCP)
+	wops.SetClientID("clsn-tester")
+	wops.SetCleanSession(false)
+	wops.SetDefaultPublishHandler(func(client Client, msg Message) {
+		fmt.Printf("TOPIC: %s\n", msg.Topic())
+		fmt.Printf("MSG: %s\n", msg.Payload())
+		clsnc <- string(msg.Payload())
+	})
+	wops.SetAutoReconnect(false)
+	wsub := NewClient(wops)
+
+	if wToken := wsub.Connect(); wToken.Wait() && wToken.Error() != nil {
+		t.Fatalf("Error on Client.Connect(): %v", wToken.Error())
+	}
+
+	if wsubToken := wsub.Subscribe("clean", 1, nil); wsubToken.Wait() && wsubToken.Error() != nil {
+		t.Fatalf("Error on Client.Subscribe(): %v", wsubToken.Error())
+	}
+
+	wsub.Disconnect(250)
+	time.Sleep(2 * time.Second)
+
+	if token := c.Connect(); token.Wait() && token.Error() != nil {
+		t.Fatalf("Error on Client.Connect(): %v", token.Error())
+	}
+
+	if pToken := c.Publish("clean", 1, false, "clean!"); pToken.Wait() && pToken.Error() != nil {
+		t.Fatalf("Error on Client.Publish(): %v", pToken.Error())
+	}
+
+	c.Disconnect(250)
+
+	wsub = NewClient(wops)
+	if wToken := wsub.Connect(); wToken.Wait() && wToken.Error() != nil {
+		t.Fatalf("Error on Client.Connect(): %v", wToken.Error())
+	}
+
+	select {
+	case msg := <-clsnc:
+		if msg != "clean!" {
+			t.Fatalf("will message did not have correct payload")
+		}
+	case <-time.NewTicker(5 * time.Second).C:
+		t.Fatalf("failed to receive publish")
+	}
+
+	wsub.Disconnect(250)
+
+	wops.SetCleanSession(true)
+
+	wsub = NewClient(wops)
+	if wToken := wsub.Connect(); wToken.Wait() && wToken.Error() != nil {
+		t.Fatalf("Error on Client.Connect(): %v", wToken.Error())
+	}
+
+	wsub.Disconnect(250)
+}
+
 func Test_Binary_Will(t *testing.T) {
 	willmsgc := make(chan []byte, 1)
 	will := []byte{
