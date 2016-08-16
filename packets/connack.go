@@ -10,13 +10,13 @@ import (
 //Connack MQTT packet
 type ConnackPacket struct {
 	FixedHeader
-	TopicNameCompression byte
-	ReturnCode           byte
+	SessionPresent bool
+	ReturnCode     byte
 }
 
 func (ca *ConnackPacket) String() string {
 	str := fmt.Sprintf("%s\n", ca.FixedHeader)
-	str += fmt.Sprintf("returncode: %d", ca.ReturnCode)
+	str += fmt.Sprintf("sessionpresent: %t returncode: %d", ca.SessionPresent, ca.ReturnCode)
 	return str
 }
 
@@ -24,7 +24,7 @@ func (ca *ConnackPacket) Write(w io.Writer) error {
 	var body bytes.Buffer
 	var err error
 
-	body.WriteByte(ca.TopicNameCompression)
+	body.WriteByte(boolToByte(ca.SessionPresent))
 	body.WriteByte(ca.ReturnCode)
 	ca.FixedHeader.RemainingLength = 2
 	packet := ca.FixedHeader.pack()
@@ -37,7 +37,7 @@ func (ca *ConnackPacket) Write(w io.Writer) error {
 //Unpack decodes the details of a ControlPacket after the fixed
 //header has been read
 func (ca *ConnackPacket) Unpack(b io.Reader) {
-	ca.TopicNameCompression = decodeByte(b)
+	ca.SessionPresent = 1&decodeByte(b) > 0
 	ca.ReturnCode = decodeByte(b)
 }
 
