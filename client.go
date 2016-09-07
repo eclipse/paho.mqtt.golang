@@ -268,12 +268,11 @@ func (c *client) Connect() Token {
 // internal function used to reconnect the client when it loses its connection
 func (c *client) reconnect() {
 	DEBUG.Println(CLI, "enter reconnect")
-	c.setConnected(reconnecting)
 	var rc byte = 1
 	var sleep uint = 1
 	var err error
 
-	for rc != 0 {
+	for rc != 0 && c.status != disconnected {
 		cm := newConnectMsgFromOptions(&c.options)
 
 		for _, broker := range c.options.Servers {
@@ -324,6 +323,11 @@ func (c *client) reconnect() {
 				sleep *= 2
 			}
 		}
+	}
+	// Disconnect() must have been called while we were trying to reconnect.
+	if c.status == disconnected {
+		DEBUG.Println(CLI, "Client moved to disconnected state while reconnecting, abandoning reconnect")
+		return
 	}
 
 	c.pingTimer.Reset(c.options.KeepAlive)
@@ -378,19 +382,21 @@ func (c *client) connect() byte {
 // the specified number of milliseconds to wait for existing work to be
 // completed.
 func (c *client) Disconnect(quiesce uint) {
-	if !c.IsConnected() {
-		WARN.Println(CLI, "already disconnected")
-		return
+	if c.status == connected {
+		DEBUG.Println(CLI, "disconnecting")
+		c.setConnected(disconnected)
+
+		dm := packets.NewControlPacket(packets.Disconnect).(*packets.DisconnectPacket)
+		dt := newToken(packets.Disconnect)
+		c.oboundP <- &PacketAndToken{p: dm, t: dt}
+
+		// wait for work to finish, or quiesce time consumed
+		dt.WaitTimeout(time.Duration(quiesce) * time.Millisecond)
+	} else {
+		WARN.Println(CLI, "Disconnect() called but not connected (disconnected/reconnecting)")
+		c.setConnected(disconnected)
 	}
-	DEBUG.Println(CLI, "disconnecting")
-	c.setConnected(disconnected)
 
-	dm := packets.NewControlPacket(packets.Disconnect).(*packets.DisconnectPacket)
-	dt := newToken(packets.Disconnect)
-	c.oboundP <- &PacketAndToken{p: dm, t: dt}
-
-	// wait for work to finish, or quiesce time consumed
-	dt.WaitTimeout(time.Duration(quiesce) * time.Millisecond)
 	c.disconnect()
 }
 
@@ -414,13 +420,14 @@ func (c *client) internalConnLost(err error) {
 		c.closeStop()
 		c.conn.Close()
 		c.workers.Wait()
-		if c.options.OnConnectionLost != nil {
-			go c.options.OnConnectionLost(c, err)
-		}
 		if c.options.AutoReconnect {
+			c.setConnected(reconnecting)
 			go c.reconnect()
 		} else {
 			c.setConnected(disconnected)
+		}
+		if c.options.OnConnectionLost != nil {
+			go c.options.OnConnectionLost(c, err)
 		}
 	}
 }
@@ -436,9 +443,17 @@ func (c *client) closeStop() {
 	}
 }
 
+func (c *client) closeConn() {
+	c.Lock()
+	defer c.Unlock()
+	if c.conn != nil {
+		c.conn.Close()
+	}
+}
+
 func (c *client) disconnect() {
 	c.closeStop()
-	c.conn.Close()
+	c.closeConn()
 	c.workers.Wait()
 	close(c.stopRouter)
 	DEBUG.Println(CLI, "disconnected")
