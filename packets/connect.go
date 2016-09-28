@@ -63,7 +63,7 @@ func (c *ConnectPacket) Write(w io.Writer) error {
 
 //Unpack decodes the details of a ControlPacket after the fixed
 //header has been read
-func (c *ConnectPacket) Unpack(b io.Reader) {
+func (c *ConnectPacket) Unpack(b io.Reader) error {
 	c.ProtocolName = decodeString(b)
 	c.ProtocolVersion = decodeByte(b)
 	options := decodeByte(b)
@@ -86,6 +86,8 @@ func (c *ConnectPacket) Unpack(b io.Reader) {
 	if c.PasswordFlag {
 		c.Password = decodeBytes(b)
 	}
+
+	return nil
 }
 
 //Validate performs validation of the fields of a Connect packet

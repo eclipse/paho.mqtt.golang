@@ -35,11 +35,13 @@ func (sa *SubackPacket) Write(w io.Writer) error {
 
 //Unpack decodes the details of a ControlPacket after the fixed
 //header has been read
-func (sa *SubackPacket) Unpack(b io.Reader) {
+func (sa *SubackPacket) Unpack(b io.Reader) error {
 	var qosBuffer bytes.Buffer
 	sa.MessageID = decodeUint16(b)
 	qosBuffer.ReadFrom(b)
 	sa.ReturnCodes = qosBuffer.Bytes()
+
+	return nil
 }
 
 //Details returns a Details struct containing the Qos and

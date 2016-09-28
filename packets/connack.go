@@ -36,9 +36,11 @@ func (ca *ConnackPacket) Write(w io.Writer) error {
 
 //Unpack decodes the details of a ControlPacket after the fixed
 //header has been read
-func (ca *ConnackPacket) Unpack(b io.Reader) {
+func (ca *ConnackPacket) Unpack(b io.Reader) error {
 	ca.SessionPresent = 1&decodeByte(b) > 0
 	ca.ReturnCode = decodeByte(b)
+
+	return nil
 }
 
 //Details returns a Details struct containing the Qos and
