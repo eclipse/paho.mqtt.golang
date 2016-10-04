@@ -268,9 +268,12 @@ func (c *client) Connect() Token {
 // internal function used to reconnect the client when it loses its connection
 func (c *client) reconnect() {
 	DEBUG.Println(CLI, "enter reconnect")
-	var rc byte = 1
-	var sleep uint = 1
-	var err error
+	var (
+		err error
+
+		rc    = byte(1)
+		sleep = time.Duration(1 * time.Second)
+	)
 
 	for rc != 0 && c.status != disconnected {
 		cm := newConnectMsgFromOptions(&c.options)
@@ -317,10 +320,14 @@ func (c *client) reconnect() {
 			}
 		}
 		if rc != 0 {
-			DEBUG.Println(CLI, "Reconnect failed, sleeping for", sleep, "seconds")
-			time.Sleep(time.Duration(sleep) * time.Second)
-			if sleep <= uint(c.options.MaxReconnectInterval.Seconds()) {
+			DEBUG.Println(CLI, "Reconnect failed, sleeping for", int(sleep.Seconds()), "seconds")
+			time.Sleep(sleep)
+			if sleep < c.options.MaxReconnectInterval {
 				sleep *= 2
+			}
+
+			if sleep > c.options.MaxReconnectInterval {
+				sleep = c.options.MaxReconnectInterval
 			}
 		}
 	}
