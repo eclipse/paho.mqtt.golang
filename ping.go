@@ -16,6 +16,7 @@ package mqtt
 
 import (
 	"errors"
+	"time"
 
 	"github.com/eclipse/paho.mqtt.golang/packets"
 )
@@ -23,29 +24,62 @@ import (
 func keepalive(c *client) {
 	DEBUG.Println(PNG, "keepalive starting")
 
+	pingTimer := timer{Timer: time.NewTimer(c.options.KeepAlive)}
+	pingRespTimer := timer{Timer: time.NewTimer(c.options.PingTimeout)}
+
+	pingRespTimer.Stop()
+
 	for {
 		select {
 		case <-c.stop:
 			DEBUG.Println(PNG, "keepalive stopped")
 			c.workers.Done()
 			return
-		case <-c.pingTimer.C:
+		case <-pingTimer.C:
+			pingTimer.SetRead(true)
 			DEBUG.Println(PNG, "keepalive sending ping")
 			ping := packets.NewControlPacket(packets.Pingreq).(*packets.PingreqPacket)
 			//We don't want to wait behind large messages being sent, the Write call
 			//will block until it it able to send the packet.
 			ping.Write(c.conn)
-			c.pingRespTimer.Reset(c.options.PingTimeout)
+
+			pingRespTimer.Reset(c.options.PingTimeout)
 		case <-c.pingResp:
 			DEBUG.Println(NET, "resetting ping timers")
-			c.pingRespTimer.Stop()
-			c.pingTimer.Reset(c.options.KeepAlive)
-		case <-c.pingRespTimer.C:
+			pingRespTimer.Stop()
+			pingTimer.Reset(c.options.KeepAlive)
+		case <-pingRespTimer.C:
+			pingRespTimer.SetRead(true)
 			CRITICAL.Println(PNG, "pingresp not received, disconnecting")
 			c.workers.Done()
 			c.internalConnLost(errors.New("pingresp not received, disconnecting"))
-			c.pingTimer.Stop()
+			pingTimer.Stop()
 			return
 		}
 	}
+}
+
+type timer struct {
+	*time.Timer
+	readFrom bool
+}
+
+func (t *timer) SetRead(v bool) {
+	t.readFrom = v
+}
+
+func (t *timer) Stop() bool {
+	defer t.SetRead(true)
+
+	if !t.Timer.Stop() && !t.readFrom {
+		<-t.C
+		return false
+	}
+	return true
+}
+
+func (t *timer) Reset(d time.Duration) bool {
+	defer t.SetRead(false)
+	t.Stop()
+	return t.Timer.Reset(d)
 }
