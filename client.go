@@ -78,8 +78,6 @@ type client struct {
 	stop            chan struct{}
 	persist         Store
 	options         ClientOptions
-	pingTimer       *time.Timer
-	pingRespTimer   *time.Timer
 	pingResp        chan struct{}
 	status          connStatus
 	workers         sync.WaitGroup
@@ -224,9 +222,6 @@ func (c *client) Connect() Token {
 		c.ibound = make(chan packets.ControlPacket)
 		c.errors = make(chan error, 1)
 		c.stop = make(chan struct{})
-		c.pingTimer = time.NewTimer(c.options.KeepAlive)
-		c.pingRespTimer = time.NewTimer(time.Duration(10) * time.Second)
-		c.pingRespTimer.Stop()
 		c.pingResp = make(chan struct{}, 1)
 
 		c.incomingPubChan = make(chan *packets.PublishPacket, c.options.MessageChannelDepth)
@@ -337,7 +332,6 @@ func (c *client) reconnect() {
 		return
 	}
 
-	c.pingTimer.Reset(c.options.KeepAlive)
 	c.stop = make(chan struct{})
 
 	c.workers.Add(1)

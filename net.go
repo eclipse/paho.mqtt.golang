@@ -159,7 +159,7 @@ func outgoing(c *client) {
 			}
 		}
 		// Reset ping timer after sending control packet.
-		c.pingTimer.Reset(c.options.KeepAlive)
+		c.pingResp <- struct{}{}
 	}
 }
 
