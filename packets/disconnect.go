@@ -1,36 +1,22 @@
 package packets
 
 import (
-	"fmt"
-	"io"
+	"bufio"
+	"bytes"
 )
 
-//DisconnectPacket is an internal representation of the fields of the
-//Disconnect MQTT packet
-type DisconnectPacket struct {
-	FixedHeader
+// Disconnect is the Variable Header definition for a Disconnect control packet
+type Disconnect struct {
+	sessionExpiryInterval sessionExpiryInterval
+	ServerReference       serverReference
+	ReasonString          reasonString
 }
 
-func (d *DisconnectPacket) String() string {
-	str := fmt.Sprintf("%s\n", d.FixedHeader)
-	return str
+//Unpack is the implementation of the interface required function for a packet
+func (d *Disconnect) Unpack(r bufio.Reader) (int, error) {
+	return 0, nil
 }
 
-func (d *DisconnectPacket) Write(w io.Writer) error {
-	packet := d.FixedHeader.pack()
-	_, err := packet.WriteTo(w)
-
-	return err
-}
-
-//Unpack decodes the details of a ControlPacket after the fixed
-//header has been read
-func (d *DisconnectPacket) Unpack(b io.Reader) error {
-	return nil
-}
-
-//Details returns a Details struct containing the Qos and
-//MessageID of this ControlPacket
-func (d *DisconnectPacket) Details() Details {
-	return Details{Qos: 0, MessageID: 0}
+// Pack is the implementation of the interface required function for a packet
+func (d *Disconnect) Pack(b bytes.Buffer) {
 }

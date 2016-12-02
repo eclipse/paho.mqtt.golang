@@ -1,43 +1,20 @@
 package packets
 
 import (
-	"fmt"
-	"io"
+	"bufio"
+	"bytes"
 )
 
-//PubcompPacket is an internal representation of the fields of the
-//Pubcomp MQTT packet
-type PubcompPacket struct {
-	FixedHeader
-	MessageID uint16
+// Pubcomp is the Variable Header definition for a Pubcomp control packet
+type Pubcomp struct {
+	packetID packetID
 }
 
-func (pc *PubcompPacket) String() string {
-	str := fmt.Sprintf("%s\n", pc.FixedHeader)
-	str += fmt.Sprintf("MessageID: %d", pc.MessageID)
-	return str
+//Unpack is the implementation of the interface required function for a packet
+func (p *Pubcomp) Unpack(r bufio.Reader) (int, error) {
+	return 0, nil
 }
 
-func (pc *PubcompPacket) Write(w io.Writer) error {
-	var err error
-	pc.FixedHeader.RemainingLength = 2
-	packet := pc.FixedHeader.pack()
-	packet.Write(encodeUint16(pc.MessageID))
-	_, err = packet.WriteTo(w)
-
-	return err
-}
-
-//Unpack decodes the details of a ControlPacket after the fixed
-//header has been read
-func (pc *PubcompPacket) Unpack(b io.Reader) error {
-	pc.MessageID = decodeUint16(b)
-
-	return nil
-}
-
-//Details returns a Details struct containing the Qos and
-//MessageID of this ControlPacket
-func (pc *PubcompPacket) Details() Details {
-	return Details{Qos: pc.Qos, MessageID: pc.MessageID}
+// Pack is the implementation of the interface required function for a packet
+func (p *Pubcomp) Pack(b bytes.Buffer) {
 }
