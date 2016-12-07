@@ -33,10 +33,10 @@ const (
 // possible by prepending "i." or "o." to each message id
 type Store interface {
 	Open()
-	Put(string, packets.ControlPacket)
-	Get(string) packets.ControlPacket
+	Put(key string, message packets.ControlPacket)
+	Get(key string) packets.ControlPacket
 	All() []string
-	Del(string)
+	Del(key string)
 	Close()
 	Reset()
 }

@@ -56,11 +56,11 @@ const (
 type Client interface {
 	IsConnected() bool
 	Connect() Token
-	Disconnect(uint)
-	Publish(string, byte, bool, interface{}) Token
-	Subscribe(string, byte, MessageHandler) Token
-	SubscribeMultiple(map[string]byte, MessageHandler) Token
-	Unsubscribe(...string) Token
+	Disconnect(quiesce uint)
+	Publish(topic string, qos byte, retained bool, payload interface{}) Token
+	Subscribe(topic string, qos byte, callback MessageHandler) Token
+	SubscribeMultiple(filters map[string]byte, callback MessageHandler) Token
+	Unsubscribe(topics ...string) Token
 }
 
 // client implements the Client interface
