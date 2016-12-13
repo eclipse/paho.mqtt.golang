@@ -11,13 +11,16 @@ type Connect struct {
 	ProtocolVersion           byte
 	UsernameFlag              bool
 	PasswordFlag              bool
+	WillTopic                 string
 	WillRetain                bool
 	WillQOS                   byte
 	WillFlag                  bool
+	WillMessage               []byte
 	CleanStart                bool
 	Username                  string
-	Password                  string
+	Password                  []byte
 	KeepAlive                 uint16
+	ClientID                  string
 	IdvpLen                   int
 	SessionExpiryIntervalFlag bool
 	SessionExpiryInterval     sessionExpiryInterval
@@ -107,4 +110,18 @@ func (c *Connect) Pack(b bytes.Buffer) {
 	b.WriteByte(c.ProtocolVersion)
 	b.WriteByte(c.connectFlags())
 	writeUint16(c.KeepAlive, b)
+	idvp := c.packIDVP()
+	encodeVBI(idvp.Len(), b)
+	b.Write(idvp.Bytes())
+	writeString(c.ClientID, b)
+	if c.WillFlag {
+		writeString(c.WillTopic, b)
+		writeBinary(c.WillMessage, b)
+	}
+	if c.UsernameFlag {
+		writeString(c.Username, b)
+	}
+	if c.PasswordFlag {
+		writeBinary(c.Password, b)
+	}
 }

@@ -197,3 +197,8 @@ func writeString(s string, b bytes.Buffer) {
 	writeUint16(uint16(len(s)), b)
 	b.WriteString(s)
 }
+
+func writeBinary(d []byte, b bytes.Buffer) {
+	writeUint16(uint16(len(d)), b)
+	b.Write(d)
+}
