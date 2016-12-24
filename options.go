@@ -109,8 +109,10 @@ func NewClientOptions() *ClientOptions {
 // Where "scheme" is one of "tcp", "ssl", or "ws", "host" is the ip-address (or hostname)
 // and "port" is the port on which the broker is accepting connections.
 func (o *ClientOptions) AddBroker(server string) *ClientOptions {
-	brokerURI, _ := url.Parse(server)
-	o.Servers = append(o.Servers, brokerURI)
+	brokerURI, err := url.Parse(server)
+	if err == nil {
+		o.Servers = append(o.Servers, brokerURI)
+	}
 	return o
 }
 
