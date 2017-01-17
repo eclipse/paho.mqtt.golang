@@ -52,14 +52,40 @@ const (
 // information can be found in their respective documentation.
 // Numerous connection options may be specified by configuring a
 // and then supplying a ClientOptions type.
-
 type Client interface {
+	// IsConnected returns a bool signifying whether
+	// the client is connected or not.
 	IsConnected() bool
+
+	// Connect will create a connection to the message broker
+	// If clean session is false, then a slice will
+	// be returned containing Receipts for all messages
+	// that were in-flight at the last disconnect.
+	// If clean session is true, then any existing client
+	// state will be removed.
 	Connect() Token
+
+	// Disconnect will end the connection with the server, but not before waiting
+	// the specified number of milliseconds to wait for existing work to be
+	// completed.
 	Disconnect(quiesce uint)
+
+	// Publish will publish a message with the specified QoS and content
+	// to the specified topic.
+	// Returns a token to track delivery of the message to the broker.
 	Publish(topic string, qos byte, retained bool, payload interface{}) Token
+
+	// Subscribe starts a new subscription. Provide a MessageHandler to be executed when
+	// a message is published on the topic provided.
 	Subscribe(topic string, qos byte, callback MessageHandler) Token
+
+	// SubscribeMultiple starts a new subscription for multiple topics. Provide a MessageHandler to
+	// be executed when a message is published on one of the topics provided.
 	SubscribeMultiple(filters map[string]byte, callback MessageHandler) Token
+
+	// Unsubscribe will end the subscription from each of the topics provided.
+	// Messages published to those topics from other clients will no longer be
+	// received.
 	Unsubscribe(topics ...string) Token
 }
 
@@ -112,8 +138,6 @@ func NewClient(o *ClientOptions) Client {
 	return c
 }
 
-// IsConnected returns a bool signifying whether
-// the client is connected or not.
 func (c *client) IsConnected() bool {
 	c.RLock()
 	defer c.RUnlock()
@@ -143,12 +167,6 @@ func (c *client) setConnected(status connStatus) {
 //made when the client is not connected to a broker
 var ErrNotConnected = errors.New("Not Connected")
 
-// Connect will create a connection to the message broker
-// If clean session is false, then a slice will
-// be returned containing Receipts for all messages
-// that were in-flight at the last disconnect.
-// If clean session is true, then any existing client
-// state will be removed.
 func (c *client) Connect() Token {
 	var err error
 	t := newToken(packets.Connect).(*ConnectToken)
@@ -379,9 +397,6 @@ func (c *client) connect() byte {
 	return msg.ReturnCode
 }
 
-// Disconnect will end the connection with the server, but not before waiting
-// the specified number of milliseconds to wait for existing work to be
-// completed.
 func (c *client) Disconnect(quiesce uint) {
 	if c.status == connected {
 		DEBUG.Println(CLI, "disconnecting")
@@ -461,9 +476,6 @@ func (c *client) disconnect() {
 	c.persist.Close()
 }
 
-// Publish will publish a message with the specified QoS and content
-// to the specified topic.
-// Returns a token to track delivery of the message to the broker
 func (c *client) Publish(topic string, qos byte, retained bool, payload interface{}) Token {
 	token := newToken(packets.Publish).(*PublishToken)
 	DEBUG.Println(CLI, "enter Publish")
@@ -501,8 +513,6 @@ func (c *client) Publish(topic string, qos byte, retained bool, payload interfac
 	return token
 }
 
-// Subscribe starts a new subscription. Provide a MessageHandler to be executed when
-// a message is published on the topic provided.
 func (c *client) Subscribe(topic string, qos byte, callback MessageHandler) Token {
 	token := newToken(packets.Subscribe).(*SubscribeToken)
 	DEBUG.Println(CLI, "enter Subscribe")
@@ -530,8 +540,6 @@ func (c *client) Subscribe(topic string, qos byte, callback MessageHandler) Toke
 	return token
 }
 
-// SubscribeMultiple starts a new subscription for multiple topics. Provide a MessageHandler to
-// be executed when a message is published on one of the topics provided.
 func (c *client) SubscribeMultiple(filters map[string]byte, callback MessageHandler) Token {
 	var err error
 	token := newToken(packets.Subscribe).(*SubscribeToken)
@@ -559,9 +567,6 @@ func (c *client) SubscribeMultiple(filters map[string]byte, callback MessageHand
 	return token
 }
 
-// Unsubscribe will end the subscription from each of the topics provided.
-// Messages published to those topics from other clients will no longer be
-// received.
 func (c *client) Unsubscribe(topics ...string) Token {
 	token := newToken(packets.Unsubscribe).(*UnsubscribeToken)
 	DEBUG.Println(CLI, "enter Unsubscribe")
