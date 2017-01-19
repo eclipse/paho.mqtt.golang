@@ -112,6 +112,9 @@ func NewClient(o *ClientOptions) Client {
 	}
 	return c
 }
+// 
+// GetClientID returns the client id
+// The Client id is defined via  ClientOptions and there's no way to access it given a client
 func (c *client) GetClientID() string {
 	return c.options.ClientID
 }
