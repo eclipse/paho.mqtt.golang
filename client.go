@@ -56,6 +56,7 @@ const (
 type Client interface {
 	IsConnected() bool
 	Connect() Token
+	GetClientID() string 
 	Disconnect(quiesce uint)
 	Publish(topic string, qos byte, retained bool, payload interface{}) Token
 	Subscribe(topic string, qos byte, callback MessageHandler) Token
@@ -111,7 +112,9 @@ func NewClient(o *ClientOptions) Client {
 	}
 	return c
 }
-
+func (c *Client) GetClientID() string {
+	return c.options.ClientID
+}
 // IsConnected returns a bool signifying whether
 // the client is connected or not.
 func (c *client) IsConnected() bool {
