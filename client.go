@@ -112,7 +112,7 @@ func NewClient(o *ClientOptions) Client {
 	}
 	return c
 }
-func (c *Client) GetClientID() string {
+func (c *client) GetClientID() string {
 	return c.options.ClientID
 }
 // IsConnected returns a bool signifying whether
