@@ -61,6 +61,7 @@ type Client interface {
 	Subscribe(topic string, qos byte, callback MessageHandler) Token
 	SubscribeMultiple(filters map[string]byte, callback MessageHandler) Token
 	Unsubscribe(topics ...string) Token
+	AddRoute(topic string, callback MessageHandler)
 }
 
 // client implements the Client interface
@@ -112,6 +113,11 @@ func NewClient(o *ClientOptions) Client {
 	return c
 }
 
+func (c *client) AddRoute(topic string, callback MessageHandler) {
+    if callback != nil {
+        c.msgRouter.addRoute(topic, callback)
+    }
+}
 // IsConnected returns a bool signifying whether
 // the client is connected or not.
 func (c *client) IsConnected() bool {
