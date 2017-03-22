@@ -87,7 +87,14 @@ func incoming(c *client) {
 			break
 		}
 		DEBUG.Println(NET, "Received Message")
-		c.ibound <- cp
+		select {
+		case c.ibound <- cp:
+		case <-c.stop:
+			// This avoids a deadlock should a message arrive while shutting down.
+			// In that case the "reader" of c.ibound might already be gone
+			WARN.Println(NET, "incoming dropped a received message during shutdown")
+			break
+		}
 	}
 	// We received an error on read.
 	// If disconnect is in progress, swallow error and return
