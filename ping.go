@@ -24,7 +24,9 @@ import (
 func keepalive(c *client) {
 	DEBUG.Println(PNG, "keepalive starting")
 
+	receiveInterval := c.options.KeepAlive + (1 * time.Second)
 	pingTimer := timer{Timer: time.NewTimer(c.options.KeepAlive)}
+	receiveTimer := timer{Timer: time.NewTimer(receiveInterval)}
 	pingRespTimer := timer{Timer: time.NewTimer(c.options.PingTimeout)}
 
 	pingRespTimer.Stop()
@@ -36,18 +38,21 @@ func keepalive(c *client) {
 			c.workers.Done()
 			return
 		case <-pingTimer.C:
-			pingTimer.SetRead(true)
-			DEBUG.Println(PNG, "keepalive sending ping")
-			ping := packets.NewControlPacket(packets.Pingreq).(*packets.PingreqPacket)
-			//We don't want to wait behind large messages being sent, the Write call
-			//will block until it it able to send the packet.
-			ping.Write(c.conn)
-
-			pingRespTimer.Reset(c.options.PingTimeout)
+			sendPing(&pingTimer, &pingRespTimer, c)
+		case <-c.keepaliveReset:
+			DEBUG.Println(NET, "resetting ping timer")
+			pingTimer.Reset(c.options.KeepAlive)
 		case <-c.pingResp:
-			DEBUG.Println(NET, "resetting ping timers")
+			DEBUG.Println(NET, "resetting ping timeout timer")
 			pingRespTimer.Stop()
 			pingTimer.Reset(c.options.KeepAlive)
+			receiveTimer.Reset(receiveInterval)
+		case <-c.packetResp:
+			DEBUG.Println(NET, "resetting receive timer")
+			receiveTimer.Reset(receiveInterval)
+		case <-receiveTimer.C:
+			receiveTimer.Reset(receiveInterval)
+			sendPing(&pingTimer, &pingRespTimer, c)
 		case <-pingRespTimer.C:
 			pingRespTimer.SetRead(true)
 			CRITICAL.Println(PNG, "pingresp not received, disconnecting")
@@ -82,4 +87,15 @@ func (t *timer) Reset(d time.Duration) bool {
 	defer t.SetRead(false)
 	t.Stop()
 	return t.Timer.Reset(d)
+}
+
+func sendPing(pt *timer, rt *timer, c *client) {
+	pt.SetRead(true)
+	DEBUG.Println(PNG, "keepalive sending ping")
+	ping := packets.NewControlPacket(packets.Pingreq).(*packets.PingreqPacket)
+	//We don't want to wait behind large messages being sent, the Write call
+	//will block until it it able to send the packet.
+	ping.Write(c.conn)
+
+	rt.Reset(c.options.PingTimeout)
 }
