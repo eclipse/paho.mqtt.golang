@@ -114,10 +114,11 @@ func NewClient(o *ClientOptions) Client {
 }
 
 func (c *client) AddRoute(topic string, callback MessageHandler) {
-    if callback != nil {
-        c.msgRouter.addRoute(topic, callback)
-    }
+	if callback != nil {
+		c.msgRouter.addRoute(topic, callback)
+	}
 }
+
 // IsConnected returns a bool signifying whether
 // the client is connected or not.
 func (c *client) IsConnected() bool {
@@ -587,6 +588,11 @@ func (c *client) Unsubscribe(topics ...string) Token {
 
 	DEBUG.Println(CLI, "exit Unsubscribe")
 	return token
+}
+
+func (c *client) OptionsReader() ClientOptionsReader {
+	r := ClientOptionsReader{options: &c.options}
+	return r
 }
 
 //DefaultConnectionLostHandler is a definition of a function that simply
