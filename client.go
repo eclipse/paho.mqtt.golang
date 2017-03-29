@@ -52,7 +52,6 @@ const (
 // information can be found in their respective documentation.
 // Numerous connection options may be specified by configuring a
 // and then supplying a ClientOptions type.
-
 type Client interface {
 	IsConnected() bool
 	Connect() Token
@@ -114,10 +113,11 @@ func NewClient(o *ClientOptions) Client {
 }
 
 func (c *client) AddRoute(topic string, callback MessageHandler) {
-    if callback != nil {
-        c.msgRouter.addRoute(topic, callback)
-    }
+	if callback != nil {
+		c.msgRouter.addRoute(topic, callback)
+	}
 }
+
 // IsConnected returns a bool signifying whether
 // the client is connected or not.
 func (c *client) IsConnected() bool {
