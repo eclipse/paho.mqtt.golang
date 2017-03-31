@@ -52,7 +52,6 @@ const (
 // information can be found in their respective documentation.
 // Numerous connection options may be specified by configuring a
 // and then supplying a ClientOptions type.
-
 type Client interface {
 	IsConnected() bool
 	Connect() Token
