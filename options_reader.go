@@ -20,8 +20,7 @@ import (
 	"time"
 )
 
-// ClientOptionsReader provides an interface for reading ClientOptions
-// after the client has been initialized
+// ClientOptionsReader provides an interface for reading ClientOptions after the client has been initialized.
 type ClientOptionsReader struct {
 	options *ClientOptions
 }
@@ -119,11 +118,6 @@ func (r *ClientOptionsReader) MaxReconnectInterval() time.Duration {
 
 func (r *ClientOptionsReader) AutoReconnect() bool {
 	s := r.options.AutoReconnect
-	return s
-}
-
-func (r *ClientOptionsReader) Store() Store {
-	s := r.options.Store
 	return s
 }
 
