@@ -593,6 +593,11 @@ func (c *client) Unsubscribe(topics ...string) Token {
 	return token
 }
 
+func (c *client) OptionsReader() ClientOptionsReader {
+	r := ClientOptionsReader{options: &c.options}
+	return r
+}
+
 //DefaultConnectionLostHandler is a definition of a function that simply
 //reports to the DEBUG log the reason for the client losing a connection.
 func DefaultConnectionLostHandler(client Client, reason error) {
