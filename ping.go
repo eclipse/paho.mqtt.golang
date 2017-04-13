@@ -51,6 +51,7 @@ func keepalive(c *client) {
 			DEBUG.Println(NET, "resetting receive timer")
 			receiveTimer.Reset(receiveInterval)
 		case <-receiveTimer.C:
+			receiveTimer.SetRead(true)
 			receiveTimer.Reset(receiveInterval)
 			sendPing(&pingTimer, &pingRespTimer, c)
 		case <-pingRespTimer.C:
