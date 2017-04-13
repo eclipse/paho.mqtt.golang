@@ -17,6 +17,7 @@ package mqtt
 import (
 	"crypto/tls"
 	"errors"
+	"fmt"
 	"net"
 	"net/url"
 	"reflect"
@@ -36,14 +37,14 @@ func signalError(c chan<- error, err error) {
 func openConnection(uri *url.URL, tlsc *tls.Config, timeout time.Duration) (net.Conn, error) {
 	switch uri.Scheme {
 	case "ws":
-		conn, err := websocket.Dial(uri.String(), "mqtt", "ws://localhost")
+		conn, err := websocket.Dial(uri.String(), "mqtt", fmt.Sprintf("http://%s", uri.Host))
 		if err != nil {
 			return nil, err
 		}
 		conn.PayloadType = websocket.BinaryFrame
 		return conn, err
 	case "wss":
-		config, _ := websocket.NewConfig(uri.String(), "ws://localhost")
+		config, _ := websocket.NewConfig(uri.String(), fmt.Sprintf("https://%s", uri.Host))
 		config.Protocol = []string{"mqtt"}
 		config.TlsConfig = tlsc
 		conn, err := websocket.DialConfig(config)
