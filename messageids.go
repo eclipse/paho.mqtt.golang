@@ -15,6 +15,7 @@
 package mqtt
 
 import (
+	"errors"
 	"sync"
 )
 
@@ -58,4 +59,17 @@ func (mids *messageIds) getToken(id uint16) Token {
 		return token
 	}
 	return nil
+}
+
+func (mids *messageIds) freeAll() {
+	for messageID, token := range mids.index {
+		mids.freeID(messageID)
+		if pt, ok := token.(*baseToken); ok {
+			pt.err = errors.New("Connection lost; freeing all tokens")
+		}
+		go func(token Token) {
+			defer func() { recover() }()
+			token.flowComplete()
+		}(token)
+	}
 }
