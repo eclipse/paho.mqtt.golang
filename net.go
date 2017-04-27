@@ -273,6 +273,7 @@ func alllogic(c *client) {
 			return
 		case err := <-c.errors:
 			ERROR.Println(NET, "logic received from error channel, other components have errored, stopping")
+			c.freeAll()
 			c.internalConnLost(err)
 			return
 		}
