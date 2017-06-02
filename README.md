@@ -37,7 +37,7 @@ Make use of the library by importing it in your Go client source code. For examp
 import "github.com/eclipse/paho.mqtt.golang"
 ```
 
-Samples are available in the `/samples` directory for reference.
+Samples are available in the `cmd` directory for reference.
 
 
 Runtime tracing
