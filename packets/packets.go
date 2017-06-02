@@ -106,7 +106,10 @@ func ReadPacket(r io.Reader) (cp ControlPacket, err error) {
 	if err != nil {
 		return nil, err
 	}
-	fh.unpack(b[0], r)
+	err = fh.unpack(b[0], r)
+	if err != nil {
+		return nil, err
+	}
 	cp = NewControlPacketWithHeader(fh)
 	if cp == nil {
 		return nil, errors.New("Bad data from client")
@@ -237,12 +240,16 @@ func (fh *FixedHeader) pack() bytes.Buffer {
 	return header
 }
 
-func (fh *FixedHeader) unpack(typeAndFlags byte, r io.Reader) {
+func (fh *FixedHeader) unpack(typeAndFlags byte, r io.Reader) (err error) {
 	fh.MessageType = typeAndFlags >> 4
 	fh.Dup = (typeAndFlags>>3)&0x01 > 0
 	fh.Qos = (typeAndFlags >> 1) & 0x03
 	fh.Retain = typeAndFlags&0x01 > 0
-	fh.RemainingLength = decodeLength(r)
+	fh.RemainingLength, err = decodeLength(r)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func decodeByte(b io.Reader) byte {
@@ -305,12 +312,16 @@ func encodeLength(length int) []byte {
 	return encLength
 }
 
-func decodeLength(r io.Reader) int {
+func decodeLength(r io.Reader) (int, error) {
 	var rLength uint32
 	var multiplier uint32
+	var err error
 	b := make([]byte, 1)
 	for {
-		io.ReadFull(r, b)
+		err = io.ReadFull(r, b)
+		if err != nil {
+			return 0, err
+		}
 		digit := b[0]
 		rLength |= uint32(digit&127) << multiplier
 		if (digit & 128) == 0 {
@@ -318,5 +329,5 @@ func decodeLength(r io.Reader) int {
 		}
 		multiplier += 7
 	}
-	return int(rLength)
+	return int(rLength), nil
 }
