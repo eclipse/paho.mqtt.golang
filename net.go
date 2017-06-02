@@ -196,81 +196,74 @@ func alllogic(c *client) {
 		case msg := <-c.ibound:
 			DEBUG.Println(NET, "logic got msg on ibound")
 			persistInbound(c.persist, msg)
-			switch msg.(type) {
+			switch m := msg.(type) {
 			case *packets.PingrespPacket:
 				DEBUG.Println(NET, "received pingresp")
 				c.pingResp <- struct{}{}
 			case *packets.SubackPacket:
-				sa := msg.(*packets.SubackPacket)
-				DEBUG.Println(NET, "received suback, id:", sa.MessageID)
-				token := c.getToken(sa.MessageID).(*SubscribeToken)
-				DEBUG.Println(NET, "granted qoss", sa.ReturnCodes)
-				for i, qos := range sa.ReturnCodes {
+				DEBUG.Println(NET, "received suback, id:", m.MessageID)
+				token := c.getToken(m.MessageID).(*SubscribeToken)
+				DEBUG.Println(NET, "granted qoss", m.ReturnCodes)
+				for i, qos := range m.ReturnCodes {
 					token.subResult[token.subs[i]] = qos
 				}
 				token.flowComplete()
-				go c.freeID(sa.MessageID)
+				c.freeID(m.MessageID)
 			case *packets.UnsubackPacket:
-				ua := msg.(*packets.UnsubackPacket)
-				DEBUG.Println(NET, "received unsuback, id:", ua.MessageID)
-				token := c.getToken(ua.MessageID).(*UnsubscribeToken)
+				DEBUG.Println(NET, "received unsuback, id:", m.MessageID)
+				token := c.getToken(m.MessageID).(*UnsubscribeToken)
 				token.flowComplete()
-				go c.freeID(ua.MessageID)
+				c.freeID(m.MessageID)
 			case *packets.PublishPacket:
-				pp := msg.(*packets.PublishPacket)
-				DEBUG.Println(NET, "received publish, msgId:", pp.MessageID)
+				DEBUG.Println(NET, "received publish, msgId:", m.MessageID)
 				DEBUG.Println(NET, "putting msg on onPubChan")
-				switch pp.Qos {
+				switch m.Qos {
 				case 2:
-					c.incomingPubChan <- pp
+					c.incomingPubChan <- m
 					DEBUG.Println(NET, "done putting msg on incomingPubChan")
 					pr := packets.NewControlPacket(packets.Pubrec).(*packets.PubrecPacket)
-					pr.MessageID = pp.MessageID
+					pr.MessageID = m.MessageID
 					DEBUG.Println(NET, "putting pubrec msg on obound")
 					c.oboundP <- &PacketAndToken{p: pr, t: nil}
 					DEBUG.Println(NET, "done putting pubrec msg on obound")
 				case 1:
-					c.incomingPubChan <- pp
+					c.incomingPubChan <- m
 					DEBUG.Println(NET, "done putting msg on incomingPubChan")
 					pa := packets.NewControlPacket(packets.Puback).(*packets.PubackPacket)
-					pa.MessageID = pp.MessageID
+					pa.MessageID = m.MessageID
 					DEBUG.Println(NET, "putting puback msg on obound")
 					c.oboundP <- &PacketAndToken{p: pa, t: nil}
 					DEBUG.Println(NET, "done putting puback msg on obound")
 				case 0:
-					c.incomingPubChan <- pp
+					c.incomingPubChan <- m
 					DEBUG.Println(NET, "done putting msg on incomingPubChan")
 				}
 			case *packets.PubackPacket:
-				pa := msg.(*packets.PubackPacket)
-				DEBUG.Println(NET, "received puback, id:", pa.MessageID)
+				DEBUG.Println(NET, "received puback, id:", m.MessageID)
 				// c.receipts.get(msg.MsgId()) <- Receipt{}
 				// c.receipts.end(msg.MsgId())
-				c.getToken(pa.MessageID).flowComplete()
-				c.freeID(pa.MessageID)
+				c.getToken(m.MessageID).flowComplete()
+				c.freeID(m.MessageID)
 			case *packets.PubrecPacket:
-				prec := msg.(*packets.PubrecPacket)
-				DEBUG.Println(NET, "received pubrec, id:", prec.MessageID)
+				DEBUG.Println(NET, "received pubrec, id:", m.MessageID)
 				prel := packets.NewControlPacket(packets.Pubrel).(*packets.PubrelPacket)
-				prel.MessageID = prec.MessageID
+				prel.MessageID = m.MessageID
 				select {
 				case c.oboundP <- &PacketAndToken{p: prel, t: nil}:
 				case <-time.After(time.Second):
 				}
 			case *packets.PubrelPacket:
-				pr := msg.(*packets.PubrelPacket)
-				DEBUG.Println(NET, "received pubrel, id:", pr.MessageID)
+				DEBUG.Println(NET, "received pubrel, id:", m.MessageID)
 				pc := packets.NewControlPacket(packets.Pubcomp).(*packets.PubcompPacket)
-				pc.MessageID = pr.MessageID
+				pc.MessageID = m.MessageID
 				select {
 				case c.oboundP <- &PacketAndToken{p: pc, t: nil}:
 				case <-time.After(time.Second):
 				}
 			case *packets.PubcompPacket:
-				pc := msg.(*packets.PubcompPacket)
-				DEBUG.Println(NET, "received pubcomp, id:", pc.MessageID)
-				c.getToken(pc.MessageID).flowComplete()
-				c.freeID(pc.MessageID)
+				DEBUG.Println(NET, "received pubcomp, id:", m.MessageID)
+				c.getToken(m.MessageID).flowComplete()
+				c.freeID(m.MessageID)
 			}
 		case <-c.stop:
 			WARN.Println(NET, "logic stopped")
