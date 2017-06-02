@@ -227,6 +227,11 @@ func (c *client) Connect() Token {
 			return
 		}
 
+		if c.options.KeepAlive != 0 {
+			c.workers.Add(1)
+			go keepalive(c)
+		}
+
 		c.obound = make(chan *PacketAndToken, c.options.MessageChannelDepth)
 		c.oboundP = make(chan *PacketAndToken, c.options.MessageChannelDepth)
 		c.ibound = make(chan packets.ControlPacket)
@@ -239,19 +244,10 @@ func (c *client) Connect() Token {
 		c.incomingPubChan = make(chan *packets.PublishPacket, c.options.MessageChannelDepth)
 		c.msgRouter.matchAndDispatch(c.incomingPubChan, c.options.Order, c)
 
-		c.workers.Add(1)
-		go outgoing(c)
-		go alllogic(c)
-
 		c.setConnected(connected)
 		DEBUG.Println(CLI, "client is connected")
 		if c.options.OnConnect != nil {
 			go c.options.OnConnect(c)
-		}
-
-		if c.options.KeepAlive != 0 {
-			c.workers.Add(1)
-			go keepalive(c)
 		}
 
 		// Take care of any messages in the store
@@ -262,8 +258,12 @@ func (c *client) Connect() Token {
 			c.persist.Reset()
 		}
 
+		go errorWatch(c)
+
 		// Do not start incoming until resume has completed
-		c.workers.Add(1)
+		c.workers.Add(3)
+		go alllogic(c)
+		go outgoing(c)
 		go incoming(c)
 
 		DEBUG.Println(CLI, "exit startClient")
@@ -344,11 +344,12 @@ func (c *client) reconnect() {
 		return
 	}
 
-	c.stop = make(chan struct{})
+	if c.options.KeepAlive != 0 {
+		c.workers.Add(1)
+		go keepalive(c)
+	}
 
-	c.workers.Add(1)
-	go outgoing(c)
-	go alllogic(c)
+	c.stop = make(chan struct{})
 
 	c.setConnected(connected)
 	DEBUG.Println(CLI, "client is reconnected")
@@ -356,11 +357,11 @@ func (c *client) reconnect() {
 		go c.options.OnConnect(c)
 	}
 
-	if c.options.KeepAlive != 0 {
-		c.workers.Add(1)
-		go keepalive(c)
-	}
-	c.workers.Add(1)
+	go errorWatch(c)
+
+	c.workers.Add(3)
+	go alllogic(c)
+	go outgoing(c)
 	go incoming(c)
 }
 

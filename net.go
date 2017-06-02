@@ -172,7 +172,11 @@ func outgoing(c *client) {
 		}
 		// Reset ping timer after sending control packet.
 		if c.options.KeepAlive != 0 {
-			c.keepaliveReset <- struct{}{}
+			select {
+			case c.keepaliveReset <- struct{}{}:
+			default:
+				DEBUG.Println(NET, "couldn't send keepalive signal in outbound as channel full")
+			}
 		}
 	}
 }
@@ -182,7 +186,7 @@ func outgoing(c *client) {
 // send replies on obound
 // delete messages from store if necessary
 func alllogic(c *client) {
-
+	defer c.workers.Done()
 	DEBUG.Println(NET, "logic started")
 
 	for {
@@ -271,10 +275,18 @@ func alllogic(c *client) {
 		case <-c.stop:
 			WARN.Println(NET, "logic stopped")
 			return
-		case err := <-c.errors:
-			ERROR.Println(NET, "logic received from error channel, other components have errored, stopping")
-			c.internalConnLost(err)
-			return
 		}
+	}
+}
+
+func errorWatch(c *client) {
+	select {
+	case <-c.stop:
+		WARN.Println(NET, "errorWatch stopped")
+		return
+	case err := <-c.errors:
+		ERROR.Println(NET, "error triggered, stopping")
+		c.internalConnLost(err)
+		return
 	}
 }
