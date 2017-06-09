@@ -37,7 +37,7 @@ func (d *DummyToken) Error() error {
 }
 
 func Test_getID(t *testing.T) {
-	mids := &messageIds{index: make(map[uint16]Token)}
+	mids := &messageIds{index: make(map[uint16]tokenCompletor)}
 
 	i1 := mids.getID(&DummyToken{})
 
@@ -60,7 +60,7 @@ func Test_getID(t *testing.T) {
 }
 
 func Test_freeID(t *testing.T) {
-	mids := &messageIds{index: make(map[uint16]Token)}
+	mids := &messageIds{index: make(map[uint16]tokenCompletor)}
 
 	i1 := mids.getID(&DummyToken{})
 	mids.freeID(i1)
@@ -74,7 +74,7 @@ func Test_freeID(t *testing.T) {
 }
 
 func Test_messageids_mix(t *testing.T) {
-	mids := &messageIds{index: make(map[uint16]Token)}
+	mids := &messageIds{index: make(map[uint16]tokenCompletor)}
 
 	done := make(chan bool)
 	a := make(chan uint16, 3)
