@@ -202,17 +202,19 @@ func alllogic(c *client) {
 				c.pingResp <- struct{}{}
 			case *packets.SubackPacket:
 				DEBUG.Println(NET, "received suback, id:", m.MessageID)
-				token := c.getToken(m.MessageID).(*SubscribeToken)
-				DEBUG.Println(NET, "granted qoss", m.ReturnCodes)
-				for i, qos := range m.ReturnCodes {
-					token.subResult[token.subs[i]] = qos
+				if token := c.getToken(m.MessageID).(*SubscribeToken); token != nil {
+					DEBUG.Println(NET, "granted qoss", m.ReturnCodes)
+					for i, qos := range m.ReturnCodes {
+						token.subResult[token.subs[i]] = qos
+					}
+					token.flowComplete()
 				}
-				token.flowComplete()
 				c.freeID(m.MessageID)
 			case *packets.UnsubackPacket:
 				DEBUG.Println(NET, "received unsuback, id:", m.MessageID)
-				token := c.getToken(m.MessageID).(*UnsubscribeToken)
-				token.flowComplete()
+				if token := c.getToken(m.MessageID).(*UnsubscribeToken); token != nil {
+					token.flowComplete()
+				}
 				c.freeID(m.MessageID)
 			case *packets.PublishPacket:
 				DEBUG.Println(NET, "received publish, msgId:", m.MessageID)
@@ -242,7 +244,9 @@ func alllogic(c *client) {
 				DEBUG.Println(NET, "received puback, id:", m.MessageID)
 				// c.receipts.get(msg.MsgId()) <- Receipt{}
 				// c.receipts.end(msg.MsgId())
-				c.getToken(m.MessageID).flowComplete()
+				if token := c.getToken(m.MessageID); token != nil {
+					token.flowComplete()
+				}
 				c.freeID(m.MessageID)
 			case *packets.PubrecPacket:
 				DEBUG.Println(NET, "received pubrec, id:", m.MessageID)
@@ -262,7 +266,9 @@ func alllogic(c *client) {
 				}
 			case *packets.PubcompPacket:
 				DEBUG.Println(NET, "received pubcomp, id:", m.MessageID)
-				c.getToken(m.MessageID).flowComplete()
+				if token := c.getToken(m.MessageID); token != nil {
+					token.flowComplete()
+				}
 				c.freeID(m.MessageID)
 			}
 		case <-c.stop:
