@@ -105,7 +105,7 @@ func NewClient(o *ClientOptions) Client {
 	}
 	c.persist = c.options.Store
 	c.status = disconnected
-	c.messageIds = messageIds{index: make(map[uint16]Token)}
+	c.messageIds = messageIds{index: [65535]Token{}}
 	c.msgRouter, c.stopRouter = newRouter()
 	c.msgRouter.setDefaultHandler(c.options.DefaultPublishHander)
 	if !c.options.AutoReconnect {
@@ -168,8 +168,10 @@ func (c *client) Connect() Token {
 		c.setConnected(connecting)
 		var rc byte
 		cm := newConnectMsgFromOptions(&c.options)
+		protocolVersion := c.options.ProtocolVersion
 
 		for _, broker := range c.options.Servers {
+			c.options.ProtocolVersion = protocolVersion
 		CONN:
 			DEBUG.Println(CLI, "about to write new connect msg")
 			c.conn, err = openConnection(broker, &c.options.TLSConfig, c.options.ConnectTimeout)
@@ -226,6 +228,8 @@ func (c *client) Connect() Token {
 			t.flowComplete()
 			return
 		}
+
+		c.options.protocolVersionExplicit = true
 
 		if c.options.KeepAlive != 0 {
 			c.workers.Add(1)
@@ -286,7 +290,6 @@ func (c *client) reconnect() {
 		cm := newConnectMsgFromOptions(&c.options)
 
 		for _, broker := range c.options.Servers {
-		CONN:
 			DEBUG.Println(CLI, "about to write new connect msg")
 			c.conn, err = openConnection(broker, &c.options.TLSConfig, c.options.ConnectTimeout)
 			if err == nil {
@@ -298,7 +301,6 @@ func (c *client) reconnect() {
 					cm.ProtocolVersion = 3
 				default:
 					DEBUG.Println(CLI, "Using MQTT 3.1.1 protocol")
-					c.options.ProtocolVersion = 4
 					cm.ProtocolName = "MQTT"
 					cm.ProtocolVersion = 4
 				}
@@ -312,11 +314,6 @@ func (c *client) reconnect() {
 					if c.options.protocolVersionExplicit {
 						ERROR.Println(CLI, "Connecting to", broker, "CONNACK was not Accepted, but rather", packets.ConnackReturnCodes[rc])
 						continue
-					}
-					if c.options.ProtocolVersion == 4 {
-						DEBUG.Println(CLI, "Trying reconnect using MQTT 3.1 protocol")
-						c.options.ProtocolVersion = 3
-						goto CONN
 					}
 				}
 				break
