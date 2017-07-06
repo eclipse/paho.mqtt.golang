@@ -231,11 +231,6 @@ func (c *client) Connect() Token {
 
 		c.options.protocolVersionExplicit = true
 
-		if c.options.KeepAlive != 0 {
-			c.workers.Add(1)
-			go keepalive(c)
-		}
-
 		c.obound = make(chan *PacketAndToken, c.options.MessageChannelDepth)
 		c.oboundP = make(chan *PacketAndToken, c.options.MessageChannelDepth)
 		c.ibound = make(chan packets.ControlPacket)
@@ -244,6 +239,11 @@ func (c *client) Connect() Token {
 		c.pingResp = make(chan struct{}, 1)
 		c.packetResp = make(chan struct{}, 1)
 		c.keepaliveReset = make(chan struct{}, 1)
+
+		if c.options.KeepAlive != 0 {
+			c.workers.Add(1)
+			go keepalive(c)
+		}
 
 		c.incomingPubChan = make(chan *packets.PublishPacket, c.options.MessageChannelDepth)
 		c.msgRouter.matchAndDispatch(c.incomingPubChan, c.options.Order, c)
