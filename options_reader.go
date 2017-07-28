@@ -25,6 +25,7 @@ type ClientOptionsReader struct {
 	options *ClientOptions
 }
 
+//Servers returns a slice of the servers defined in the clientoptions
 func (r *ClientOptionsReader) Servers() []*url.URL {
 	s := make([]*url.URL, len(r.options.Servers))
 
@@ -36,21 +37,25 @@ func (r *ClientOptionsReader) Servers() []*url.URL {
 	return s
 }
 
+//ClientID returns the set client id
 func (r *ClientOptionsReader) ClientID() string {
 	s := r.options.ClientID
 	return s
 }
 
+//Username returns the set username
 func (r *ClientOptionsReader) Username() string {
 	s := r.options.Username
 	return s
 }
 
+//Password returns the set password
 func (r *ClientOptionsReader) Password() string {
 	s := r.options.Password
 	return s
 }
 
+//CleanSession returns whether Cleansession is set
 func (r *ClientOptionsReader) CleanSession() bool {
 	s := r.options.CleanSession
 	return s

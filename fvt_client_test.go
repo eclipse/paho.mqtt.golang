@@ -866,6 +866,7 @@ func Test_PublishEmptyMessage(t *testing.T) {
 	wait(choke)
 
 	p.Disconnect(250)
+	s.Disconnect(250)
 }
 
 // func Test_Cleanstore(t *testing.T) {
@@ -962,14 +963,14 @@ func Test_ping1_idle5(t *testing.T) {
 	ops.SetConnectionLostHandler(func(c Client, err error) {
 		t.Fatalf("Connection-lost handler was called: %s", err)
 	})
-	ops.SetKeepAlive(2 * time.Second)
+	ops.SetKeepAlive(3 * time.Second)
 
 	c := NewClient(ops)
 
 	if token := c.Connect(); token.Wait() && token.Error() != nil {
 		t.Fatalf("Error on Client.Connect(): %v", token.Error())
 	}
-	time.Sleep(5 * time.Second)
+	time.Sleep(8 * time.Second)
 	c.Disconnect(250)
 }
 

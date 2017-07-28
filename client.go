@@ -20,15 +20,14 @@ import (
 	"fmt"
 	"net"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/eclipse/paho.mqtt.golang/packets"
 )
 
-type connStatus uint
-
 const (
-	disconnected connStatus = iota
+	disconnected uint32 = iota
 	connecting
 	reconnecting
 	connected
@@ -78,10 +77,10 @@ type client struct {
 	stop            chan struct{}
 	persist         Store
 	options         ClientOptions
-	pingResp        chan struct{}
-	packetResp      chan struct{}
-	keepaliveReset  chan struct{}
-	status          connStatus
+	pingResp        *sync.Cond
+	packetResp      *sync.Cond
+	keepaliveReset  *sync.Cond
+	status          uint32
 	workers         sync.WaitGroup
 }
 
@@ -125,26 +124,28 @@ func (c *client) AddRoute(topic string, callback MessageHandler) {
 func (c *client) IsConnected() bool {
 	c.RLock()
 	defer c.RUnlock()
+	status := atomic.LoadUint32(&c.status)
 	switch {
-	case c.status == connected:
+	case status == connected:
 		return true
-	case c.options.AutoReconnect && c.status > disconnected:
+	case c.options.AutoReconnect && status > disconnected:
 		return true
 	default:
 		return false
 	}
 }
 
-func (c *client) connectionStatus() connStatus {
+func (c *client) connectionStatus() uint32 {
 	c.RLock()
 	defer c.RUnlock()
-	return c.status
+	status := atomic.LoadUint32(&c.status)
+	return status
 }
 
-func (c *client) setConnected(status connStatus) {
+func (c *client) setConnected(status uint32) {
 	c.Lock()
 	defer c.Unlock()
-	c.status = status
+	atomic.StoreUint32(&c.status, uint32(status))
 }
 
 //ErrNotConnected is the error returned from function calls that are
@@ -236,9 +237,9 @@ func (c *client) Connect() Token {
 		c.ibound = make(chan packets.ControlPacket)
 		c.errors = make(chan error, 1)
 		c.stop = make(chan struct{})
-		c.pingResp = make(chan struct{}, 1)
-		c.packetResp = make(chan struct{}, 1)
-		c.keepaliveReset = make(chan struct{}, 1)
+		c.pingResp = sync.NewCond(&sync.Mutex{})
+		c.packetResp = sync.NewCond(&sync.Mutex{})
+		c.keepaliveReset = sync.NewCond(&sync.Mutex{})
 
 		if c.options.KeepAlive != 0 {
 			c.workers.Add(1)
@@ -336,7 +337,7 @@ func (c *client) reconnect() {
 		}
 	}
 	// Disconnect() must have been called while we were trying to reconnect.
-	if c.status == disconnected {
+	if c.connectionStatus() == disconnected {
 		DEBUG.Println(CLI, "Client moved to disconnected state while reconnecting, abandoning reconnect")
 		return
 	}
@@ -393,7 +394,8 @@ func (c *client) connect() byte {
 // the specified number of milliseconds to wait for existing work to be
 // completed.
 func (c *client) Disconnect(quiesce uint) {
-	if c.status == connected {
+	status := atomic.LoadUint32(&c.status)
+	if status == connected {
 		DEBUG.Println(CLI, "disconnecting")
 		c.setConnected(disconnected)
 
