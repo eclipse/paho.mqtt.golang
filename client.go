@@ -107,7 +107,7 @@ func NewClient(o *ClientOptions) Client {
 	c.status = disconnected
 	c.messageIds = messageIds{index: [65535]Token{}}
 	c.msgRouter, c.stopRouter = newRouter()
-	c.msgRouter.setDefaultHandler(c.options.DefaultPublishHander)
+	c.msgRouter.setDefaultHandler(c.options.DefaultPublishHandler)
 	if !c.options.AutoReconnect {
 		c.options.MessageChannelDepth = 0
 	}
