@@ -107,7 +107,6 @@ func keepalive(c *client) {
 		case <-pingRespTimer.C:
 			pingRespTimer.SetRead(true)
 			CRITICAL.Println(PNG, "pingresp not received, disconnecting")
-			c.workers.Done()
 			c.internalConnLost(errors.New("pingresp not received, disconnecting"))
 			pingTimer.Stop()
 			return
