@@ -319,7 +319,7 @@ func errorWatch(c *client) {
 		return
 	case err := <-c.errors:
 		ERROR.Println(NET, "error triggered, stopping")
-		c.internalConnLost(err)
+		go c.internalConnLost(err)
 		return
 	}
 }

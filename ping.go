@@ -26,8 +26,10 @@ func keepalive(c *client) {
 	DEBUG.Println(PNG, "keepalive starting")
 
 	var condWG sync.WaitGroup
+	pingStop := make(chan struct{})
 
 	defer func() {
+		close(pingStop)
 		c.keepaliveReset.Broadcast()
 		c.pingResp.Broadcast()
 		c.packetResp.Broadcast()
@@ -50,7 +52,7 @@ func keepalive(c *client) {
 			c.pingResp.Wait()
 			c.pingResp.L.Unlock()
 			select {
-			case <-c.stop:
+			case <-pingStop:
 				return
 			default:
 			}
@@ -68,7 +70,7 @@ func keepalive(c *client) {
 			c.packetResp.Wait()
 			c.packetResp.L.Unlock()
 			select {
-			case <-c.stop:
+			case <-pingStop:
 				return
 			default:
 			}
@@ -84,7 +86,7 @@ func keepalive(c *client) {
 			c.keepaliveReset.Wait()
 			c.keepaliveReset.L.Unlock()
 			select {
-			case <-c.stop:
+			case <-pingStop:
 				return
 			default:
 			}
@@ -107,7 +109,7 @@ func keepalive(c *client) {
 		case <-pingRespTimer.C:
 			pingRespTimer.SetRead(true)
 			CRITICAL.Println(PNG, "pingresp not received, disconnecting")
-			c.internalConnLost(errors.New("pingresp not received, disconnecting"))
+			c.errors <- errors.New("pingresp not received, disconnecting")
 			pingTimer.Stop()
 			return
 		}
