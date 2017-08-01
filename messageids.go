@@ -27,8 +27,13 @@ type MId uint16
 
 type messageIds struct {
 	sync.RWMutex
-	index [65535]Token
+	index map[uint16]Token
 }
+
+const (
+	midMin uint16 = 1
+	midMax uint16 = 65535
+)
 
 func (mids *messageIds) cleanUp() {
 	mids.Lock()
@@ -45,23 +50,23 @@ func (mids *messageIds) cleanUp() {
 		}
 		token.flowComplete()
 	}
-	mids.index = [65535]Token{}
+	mids.index = make(map[uint16]Token)
 	mids.Unlock()
 }
 
 func (mids *messageIds) freeID(id uint16) {
 	mids.Lock()
-	mids.index[id-1] = nil
+	delete(mids.index, id)
 	mids.Unlock()
 }
 
 func (mids *messageIds) getID(t Token) uint16 {
 	mids.Lock()
 	defer mids.Unlock()
-	for i, s := range mids.index {
-		if s == nil {
+	for i := midMin; i < midMax; i++ {
+		if _, ok := mids.index[i]; !ok {
 			mids.index[i] = t
-			return uint16(i + 1)
+			return i
 		}
 	}
 	return 0
@@ -70,11 +75,10 @@ func (mids *messageIds) getID(t Token) uint16 {
 func (mids *messageIds) getToken(id uint16) Token {
 	mids.RLock()
 	defer mids.RUnlock()
-	t := mids.index[id-1]
-	if t == nil {
-		t = &DummyToken{id: id}
+	if token, ok := mids.index[id]; ok {
+		return token
 	}
-	return t
+	return &DummyToken{id: id}
 }
 
 type DummyToken struct {

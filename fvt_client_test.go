@@ -1030,10 +1030,8 @@ func Test_cleanUpMids(t *testing.T) {
 		t.Fail()
 	}
 
-	for i, token := range c.(*client).messageIds.index {
-		if token != nil {
-			t.Fatalf("Should have cleaned up messageIDs, slot %d still has token", i)
-		}
+	if len(c.(*client).messageIds.index) > 0 {
+		t.Fatalf("Should have cleaned up messageIDs, have %d left", len(c.(*client).messageIds.index))
 	}
 	if token.Error() == nil {
 		t.Fatal("token should have received an error on connection loss")

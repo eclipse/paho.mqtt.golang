@@ -231,17 +231,19 @@ func alllogic(c *client) {
 				c.pingResp.Broadcast()
 			case *packets.SubackPacket:
 				DEBUG.Println(NET, "received suback, id:", m.MessageID)
-				token := c.getToken(m.MessageID).(*SubscribeToken)
-				DEBUG.Println(NET, "granted qoss", m.ReturnCodes)
-				for i, qos := range m.ReturnCodes {
-					token.subResult[token.subs[i]] = qos
+				token := c.getToken(m.MessageID)
+				switch t := token.(type) {
+				case *SubscribeToken:
+					DEBUG.Println(NET, "granted qoss", m.ReturnCodes)
+					for i, qos := range m.ReturnCodes {
+						t.subResult[t.subs[i]] = qos
+					}
 				}
 				token.flowComplete()
 				c.freeID(m.MessageID)
 			case *packets.UnsubackPacket:
 				DEBUG.Println(NET, "received unsuback, id:", m.MessageID)
-				token := c.getToken(m.MessageID).(*UnsubscribeToken)
-				token.flowComplete()
+				c.getToken(m.MessageID).flowComplete()
 				c.freeID(m.MessageID)
 			case *packets.PublishPacket:
 				DEBUG.Println(NET, "received publish, msgId:", m.MessageID)
