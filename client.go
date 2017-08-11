@@ -77,9 +77,9 @@ type client struct {
 	stop            chan struct{}
 	persist         Store
 	options         ClientOptions
-	pingResp        *sync.Cond
-	packetResp      *sync.Cond
-	keepaliveReset  *sync.Cond
+	lastSent        time.Time
+	lastReceived    time.Time
+	pingOutstanding bool
 	status          uint32
 	workers         sync.WaitGroup
 }
@@ -237,11 +237,10 @@ func (c *client) Connect() Token {
 		c.ibound = make(chan packets.ControlPacket)
 		c.errors = make(chan error, 1)
 		c.stop = make(chan struct{})
-		c.pingResp = sync.NewCond(&sync.Mutex{})
-		c.packetResp = sync.NewCond(&sync.Mutex{})
-		c.keepaliveReset = sync.NewCond(&sync.Mutex{})
 
 		if c.options.KeepAlive != 0 {
+			c.lastReceived = time.Now()
+			c.lastSent = time.Now()
 			c.workers.Add(1)
 			go keepalive(c)
 		}
@@ -343,6 +342,9 @@ func (c *client) reconnect() {
 	}
 
 	if c.options.KeepAlive != 0 {
+		c.pingOutstanding = false
+		c.lastReceived = time.Now()
+		c.lastSent = time.Now()
 		c.workers.Add(1)
 		go keepalive(c)
 	}

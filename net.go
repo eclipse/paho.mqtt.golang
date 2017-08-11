@@ -125,7 +125,7 @@ func incoming(c *client) {
 		case c.ibound <- cp:
 			// Notify keepalive logic that we recently received a packet
 			if c.options.KeepAlive != 0 {
-				c.packetResp.Broadcast()
+				c.lastReceived = time.Now()
 			}
 		case <-c.stop:
 			// This avoids a deadlock should a message arrive while shutting down.
@@ -205,7 +205,7 @@ func outgoing(c *client) {
 		}
 		// Reset ping timer after sending control packet.
 		if c.options.KeepAlive != 0 {
-			c.keepaliveReset.Broadcast()
+			c.lastSent = time.Now()
 		}
 	}
 }
@@ -228,7 +228,7 @@ func alllogic(c *client) {
 			switch m := msg.(type) {
 			case *packets.PingrespPacket:
 				DEBUG.Println(NET, "received pingresp")
-				c.pingResp.Broadcast()
+				c.pingOutstanding = false
 			case *packets.SubackPacket:
 				DEBUG.Println(NET, "received suback, id:", m.MessageID)
 				token := c.getToken(m.MessageID)
