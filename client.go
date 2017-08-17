@@ -77,9 +77,9 @@ type client struct {
 	stop            chan struct{}
 	persist         Store
 	options         ClientOptions
-	lastSent        time.Time
-	lastReceived    time.Time
-	pingOutstanding bool
+	lastSent        int64
+	lastReceived    int64
+	pingOutstanding int32
 	status          uint32
 	workers         sync.WaitGroup
 }
@@ -239,8 +239,8 @@ func (c *client) Connect() Token {
 		c.stop = make(chan struct{})
 
 		if c.options.KeepAlive != 0 {
-			c.lastReceived = time.Now()
-			c.lastSent = time.Now()
+			atomic.StoreInt64(&c.lastReceived, time.Now().Unix())
+			atomic.StoreInt64(&c.lastSent, time.Now().Unix())
 			c.workers.Add(1)
 			go keepalive(c)
 		}
@@ -342,9 +342,9 @@ func (c *client) reconnect() {
 	}
 
 	if c.options.KeepAlive != 0 {
-		c.pingOutstanding = false
-		c.lastReceived = time.Now()
-		c.lastSent = time.Now()
+		atomic.StoreInt32(&c.pingOutstanding, 0)
+		atomic.StoreInt64(&c.lastReceived, time.Now().Unix())
+		atomic.StoreInt64(&c.lastSent, time.Now().Unix())
 		c.workers.Add(1)
 		go keepalive(c)
 	}

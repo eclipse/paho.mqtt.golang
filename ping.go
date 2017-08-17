@@ -16,6 +16,7 @@ package mqtt
 
 import (
 	"errors"
+	"sync/atomic"
 	"time"
 
 	"github.com/eclipse/paho.mqtt.golang/packets"
@@ -24,16 +25,16 @@ import (
 func keepalive(c *client) {
 	defer c.workers.Done()
 	DEBUG.Println(PNG, "keepalive starting")
-	var checkInterval time.Duration
+	var checkInterval int64
 	var pingSent time.Time
 
-	if c.options.KeepAlive > 10*time.Second {
-		checkInterval = 5 * time.Second
+	if c.options.KeepAlive > 10 {
+		checkInterval = 5
 	} else {
 		checkInterval = c.options.KeepAlive / 2
 	}
 
-	intervalTicker := time.NewTicker(checkInterval)
+	intervalTicker := time.NewTicker(time.Duration(checkInterval * int64(time.Second)))
 	defer intervalTicker.Stop()
 
 	for {
@@ -42,19 +43,20 @@ func keepalive(c *client) {
 			DEBUG.Println(PNG, "keepalive stopped")
 			return
 		case <-intervalTicker.C:
-			if time.Now().Sub(c.lastSent) >= c.options.KeepAlive || time.Now().Sub(c.lastReceived) >= c.options.KeepAlive {
-				if !c.pingOutstanding {
+			DEBUG.Println(PNG, "ping check", time.Now().Unix()-atomic.LoadInt64(&c.lastSent))
+			if time.Now().Unix()-atomic.LoadInt64(&c.lastSent) >= c.options.KeepAlive || time.Now().Unix()-atomic.LoadInt64(&c.lastReceived) >= c.options.KeepAlive {
+				if atomic.LoadInt32(&c.pingOutstanding) == 0 {
 					DEBUG.Println(PNG, "keepalive sending ping")
 					ping := packets.NewControlPacket(packets.Pingreq).(*packets.PingreqPacket)
 					//We don't want to wait behind large messages being sent, the Write call
 					//will block until it it able to send the packet.
-					c.pingOutstanding = true
+					atomic.StoreInt32(&c.pingOutstanding, 1)
 					ping.Write(c.conn)
-					c.lastSent = time.Now()
+					atomic.StoreInt64(&c.lastSent, time.Now().Unix())
 					pingSent = time.Now()
 				}
 			}
-			if c.pingOutstanding && time.Now().Sub(pingSent) >= c.options.PingTimeout {
+			if atomic.LoadInt32(&c.pingOutstanding) > 0 && time.Now().Sub(pingSent) >= c.options.PingTimeout {
 				CRITICAL.Println(PNG, "pingresp not received, disconnecting")
 				c.errors <- errors.New("pingresp not received, disconnecting")
 				return

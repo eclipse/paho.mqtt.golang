@@ -36,7 +36,7 @@ func Test_NewClientOptions_default(t *testing.T) {
 		t.Fatalf("bad default password")
 	}
 
-	if o.KeepAlive != 30*time.Second {
+	if o.KeepAlive != 30 {
 		t.Fatalf("bad default timeout")
 	}
 }
@@ -69,7 +69,7 @@ func Test_NewClientOptions_mix(t *testing.T) {
 		t.Fatalf("bad set password")
 	}
 
-	if o.KeepAlive != 88000000000 {
+	if o.KeepAlive != 88 {
 		t.Fatalf("bad set timeout: %d", o.KeepAlive)
 	}
 }
