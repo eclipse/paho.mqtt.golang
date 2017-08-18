@@ -64,6 +64,10 @@ type Client interface {
 
 // client implements the Client interface
 type client struct {
+	lastSent        int64
+	lastReceived    int64
+	pingOutstanding int32
+	status          uint32
 	sync.RWMutex
 	messageIds
 	conn            net.Conn
@@ -77,10 +81,6 @@ type client struct {
 	stop            chan struct{}
 	persist         Store
 	options         ClientOptions
-	lastSent        int64
-	lastReceived    int64
-	pingOutstanding int32
-	status          uint32
 	workers         sync.WaitGroup
 }
 
