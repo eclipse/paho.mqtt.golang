@@ -163,6 +163,10 @@ func (c *client) Connect() Token {
 	t := newToken(packets.Connect).(*ConnectToken)
 	DEBUG.Println(CLI, "Connect()")
 
+	c.obound = make(chan *PacketAndToken, c.options.MessageChannelDepth)
+	c.oboundP = make(chan *PacketAndToken, c.options.MessageChannelDepth)
+	c.ibound = make(chan packets.ControlPacket)
+
 	go func() {
 		c.persist.Open()
 
@@ -232,9 +236,6 @@ func (c *client) Connect() Token {
 
 		c.options.protocolVersionExplicit = true
 
-		c.obound = make(chan *PacketAndToken, c.options.MessageChannelDepth)
-		c.oboundP = make(chan *PacketAndToken, c.options.MessageChannelDepth)
-		c.ibound = make(chan packets.ControlPacket)
 		c.errors = make(chan error, 1)
 		c.stop = make(chan struct{})
 
