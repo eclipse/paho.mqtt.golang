@@ -264,16 +264,12 @@ func encodeUint16(num uint16) []byte {
 }
 
 func encodeString(field string) []byte {
-	fieldLength := make([]byte, 2)
-	binary.BigEndian.PutUint16(fieldLength, uint16(len(field)))
-	return append(fieldLength, []byte(field)...)
+
+	return encodeBytes([]byte(field))
 }
 
 func decodeString(b io.Reader) string {
-	fieldLength := decodeUint16(b)
-	field := make([]byte, fieldLength)
-	b.Read(field)
-	return string(field)
+	return string(decodeBytes(b))
 }
 
 func decodeBytes(b io.Reader) []byte {
