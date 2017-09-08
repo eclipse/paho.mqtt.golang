@@ -52,13 +52,13 @@ type ClientOptions struct {
 	ProtocolVersion         uint
 	protocolVersionExplicit bool
 	TLSConfig               tls.Config
-	KeepAlive               time.Duration
+	KeepAlive               int64
 	PingTimeout             time.Duration
 	ConnectTimeout          time.Duration
 	MaxReconnectInterval    time.Duration
 	AutoReconnect           bool
 	Store                   Store
-	DefaultPublishHander    MessageHandler
+	DefaultPublishHandler   MessageHandler
 	OnConnect               OnConnectHandler
 	OnConnectionLost        ConnectionLostHandler
 	WriteTimeout            time.Duration
@@ -90,7 +90,7 @@ func NewClientOptions() *ClientOptions {
 		ProtocolVersion:         0,
 		protocolVersionExplicit: false,
 		TLSConfig:               tls.Config{},
-		KeepAlive:               30 * time.Second,
+		KeepAlive:               30,
 		PingTimeout:             10 * time.Second,
 		ConnectTimeout:          30 * time.Second,
 		MaxReconnectInterval:    10 * time.Minute,
@@ -182,7 +182,7 @@ func (o *ClientOptions) SetStore(s Store) *ClientOptions {
 // allow the client to know that a connection has not been lost with the
 // server.
 func (o *ClientOptions) SetKeepAlive(k time.Duration) *ClientOptions {
-	o.KeepAlive = k
+	o.KeepAlive = int64(k / time.Second)
 	return o
 }
 
@@ -235,7 +235,7 @@ func (o *ClientOptions) SetBinaryWill(topic string, payload []byte, qos byte, re
 // SetDefaultPublishHandler sets the MessageHandler that will be called when a message
 // is received that does not match any known subscriptions.
 func (o *ClientOptions) SetDefaultPublishHandler(defaultHandler MessageHandler) *ClientOptions {
-	o.DefaultPublishHander = defaultHandler
+	o.DefaultPublishHandler = defaultHandler
 	return o
 }
 

@@ -17,6 +17,7 @@ package mqtt
 import (
 	"fmt"
 	"sync"
+	"time"
 )
 
 // MId is 16 bit message id as specified by the MQTT spec.
@@ -44,6 +45,8 @@ func (mids *messageIds) cleanUp() {
 			t.err = fmt.Errorf("Connection lost before Subscribe completed")
 		case *UnsubscribeToken:
 			t.err = fmt.Errorf("Connection lost before Unsubscribe completed")
+		case nil:
+			continue
 		}
 		token.flowComplete()
 	}
@@ -75,5 +78,25 @@ func (mids *messageIds) getToken(id uint16) tokenCompletor {
 	if token, ok := mids.index[id]; ok {
 		return token
 	}
+	return &DummyToken{id: id}
+}
+
+type DummyToken struct {
+	id uint16
+}
+
+func (d *DummyToken) Wait() bool {
+	return true
+}
+
+func (d *DummyToken) WaitTimeout(t time.Duration) bool {
+	return true
+}
+
+func (d *DummyToken) flowComplete() {
+	ERROR.Printf("A lookup for token %d returned nil\n", d.id)
+}
+
+func (d *DummyToken) Error() error {
 	return nil
 }

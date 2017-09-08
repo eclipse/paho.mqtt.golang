@@ -98,7 +98,7 @@ func newConnectMsgFromOptions(options *ClientOptions) *packets.ConnectPacket {
 		}
 	}
 
-	m.Keepalive = uint16(options.KeepAlive.Seconds())
+	m.Keepalive = uint16(options.KeepAlive)
 
 	return m
 }
