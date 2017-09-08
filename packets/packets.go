@@ -112,10 +112,14 @@ func ReadPacket(r io.Reader) (cp ControlPacket, err error) {
 		return nil, errors.New("Bad data from client")
 	}
 	packetBytes := make([]byte, fh.RemainingLength)
-	_, err = io.ReadFull(r, packetBytes)
+	n, err := io.ReadFull(r, packetBytes)
 	if err != nil {
 		return nil, err
 	}
+	if n != fh.RemainingLength {
+		return nil, errors.New("Failed to read expected data")
+	}
+
 	err = cp.Unpack(bytes.NewBuffer(packetBytes))
 	return cp, err
 }
