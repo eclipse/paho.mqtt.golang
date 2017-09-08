@@ -20,7 +20,7 @@ import (
 )
 
 func Test_getID(t *testing.T) {
-	mids := &messageIds{index: make(map[uint16]Token)}
+	mids := &messageIds{index: make(map[uint16]tokenCompletor)}
 
 	i1 := mids.getID(&DummyToken{})
 
@@ -43,7 +43,7 @@ func Test_getID(t *testing.T) {
 }
 
 func Test_freeID(t *testing.T) {
-	mids := &messageIds{index: make(map[uint16]Token)}
+	mids := &messageIds{index: make(map[uint16]tokenCompletor)}
 
 	i1 := mids.getID(&DummyToken{})
 	mids.freeID(i1)
