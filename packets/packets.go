@@ -5,13 +5,17 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"net"
 )
 
-type packetType byte
-type packetID uint16
+// PacketType is a type alias to byte representing the different
+// MQTT control packet types
+type PacketType byte
 
+// The following consts are the packet type number for each of the
+// different control packets in MQTT
 const (
-	_ packetType = iota
+	_ PacketType = iota
 	CONNECT
 	CONNACK
 	PUBLISH
@@ -29,67 +33,81 @@ const (
 	AUTH
 )
 
-type packet interface {
-	Unpack(bufio.Reader) (int, error)
-	Pack(bytes.Buffer)
+// Packet is the interface defining the unique parts of a controlpacket
+type Packet interface {
+	Unpack(*bytes.Buffer) (int, error)
+	Buffers() net.Buffers
 }
 
 // FixedHeader is the definition of a control packet fixed header
 type FixedHeader struct {
-	cpType          packetType
-	flags           byte
+	Flags           byte
+	cpType          PacketType
 	remainingLength int
+}
+
+// Pack operates on a FixedHeader and takes the option values and produces
+// the wire format byte that represents these.
+func (f *FixedHeader) Pack() []byte {
+	var b bytes.Buffer
+
+	b.WriteByte(byte(f.cpType)<<4 | f.Flags)
+	b.Write(encodeVBI(f.remainingLength))
+
+	return b.Bytes()
 }
 
 // ControlPacket is the definition of a control packet
 type ControlPacket struct {
 	FixedHeader
-	VariableHeader packet
-	Payload        []byte
+	Content Packet
+	Payload []byte
 }
 
 // NewControlPacket takes a packetType and returns a pointer to a
 // ControlPacket where the VariableHeader field is a pointer to an
 // instance of a VariableHeader definition for that packetType
-func NewControlPacket(t packetType) *ControlPacket {
+func NewControlPacket(t PacketType) *ControlPacket {
 	cp := &ControlPacket{FixedHeader: FixedHeader{cpType: t}}
 	switch t {
 	case CONNECT:
-		cp.VariableHeader = &Connect{
-			ProtocolName:    []byte{0x00, 0x04, 'M', 'Q', 'T', 'T'},
+		cp.Content = &Connect{
+			ProtocolName:    "MQTT",
 			ProtocolVersion: 5}
 	case CONNACK:
-		cp.VariableHeader = &Connack{}
+		cp.Content = &Connack{}
 	case PUBLISH:
-		cp.VariableHeader = &Publish{}
+		cp.Content = &Publish{}
 	case PUBACK:
-		cp.VariableHeader = &Puback{}
+		cp.Content = &Puback{}
 	case PUBREC:
-		cp.VariableHeader = &Pubrec{}
+		cp.Content = &Pubrec{}
 	case PUBREL:
-		cp.flags = 2
-		cp.VariableHeader = &Pubrel{}
+		cp.Flags = 2
+		cp.Content = &Pubrel{}
 	case PUBCOMP:
-		cp.VariableHeader = &Pubcomp{}
+		cp.Content = &Pubcomp{}
 	case SUBSCRIBE:
-		cp.flags = 2
-		cp.VariableHeader = &Subscribe{}
+		cp.Flags = 2
+		cp.Content = &Subscribe{
+			Subscriptions: make(map[string]byte),
+		}
 	case SUBACK:
-		cp.VariableHeader = &Suback{}
+		cp.Content = &Suback{}
 	case UNSUBSCRIBE:
-		cp.flags = 2
-		cp.VariableHeader = &Unsubscribe{}
+		cp.Flags = 2
+		cp.Content = &Unsubscribe{}
 	case UNSUBACK:
-		cp.VariableHeader = &Unsuback{}
+		cp.Content = &Unsuback{}
 	case PINGREQ:
-		cp.VariableHeader = &Pingreq{}
+		cp.Content = &Pingreq{}
 	case PINGRESP:
-		cp.VariableHeader = &Pingresp{}
+		cp.Content = &Pingresp{}
 	case DISCONNECT:
-		cp.VariableHeader = &Disconnect{}
+		cp.Content = &Disconnect{}
 	case AUTH:
-		cp.flags = 1
-		cp.VariableHeader = &Auth{}
+		cp.Flags = 1
+		cp.Content = &Auth{}
 	default:
 		return nil
 	}
@@ -99,34 +117,39 @@ func NewControlPacket(t packetType) *ControlPacket {
 
 // ReadPacket reads a control packet from a bufio.Reader and returns a completed
 // struct with the appropriate data
-func ReadPacket(r bufio.Reader) (*ControlPacket, error) {
+func ReadPacket(r *bufio.Reader) (*ControlPacket, error) {
 	t, err := r.ReadByte()
 	if err != nil {
 		return nil, err
 	}
-	cp := NewControlPacket(packetType(t >> 4))
+	cp := NewControlPacket(PacketType(t >> 4))
 	if cp == nil {
-		return nil, fmt.Errorf("Invalid packet type requested, %d", t)
+		return nil, fmt.Errorf("Invalid packet type requested, %d", t>>4)
 	}
-	cp.flags = t & 0xF
-	cp.remainingLength, err = decodeVBI(r)
+	cp.Flags = t & 0xF
+	vbi, err := getVBI(r)
 	if err != nil {
 		return nil, err
 	}
-	length, err := cp.VariableHeader.Unpack(r)
+	cp.remainingLength, err = decodeVBI(vbi)
+	if err != nil {
+		return nil, err
+	}
+	content := make([]byte, cp.remainingLength)
+	n, err := io.ReadFull(r, content)
+	if err != nil {
+		return nil, err
+	}
+	if n != cp.remainingLength {
+		return nil, fmt.Errorf("Failed to read packet, expected %d bytes, read %d", cp.remainingLength, n)
+	}
+	length, err := cp.Content.Unpack(bytes.NewBuffer(content))
 	if err != nil {
 		return nil, err
 	}
 	payloadLength := cp.remainingLength - length
 	if payloadLength > 0 {
-		cp.Payload = make([]byte, payloadLength)
-		n, err := r.Read(cp.Payload)
-		if err != nil {
-			return nil, err
-		}
-		if n != payloadLength {
-			return nil, fmt.Errorf("Failed to read payload, expected %d bytes, read %d", payloadLength, n)
-		}
+		cp.Payload = content[length:]
 	}
 
 	return cp, nil
@@ -135,14 +158,19 @@ func ReadPacket(r bufio.Reader) (*ControlPacket, error) {
 // Send writes a packet to an io.Writer, handling packing all the parts of
 // a control packet.
 func (c *ControlPacket) Send(w io.Writer) error {
-	var b bytes.Buffer
+	var packet net.Buffers
 
-	b.WriteByte(byte(c.cpType)<<4 | c.flags)
-	encodeVBI(c.remainingLength, b)
-	c.VariableHeader.Pack(b)
-	b.Write(c.Payload)
+	buffers := c.Content.Buffers()
+	for _, b := range buffers {
+		c.remainingLength += len(b)
+	}
+	c.remainingLength += len(c.Payload)
 
-	_, err := b.WriteTo(w)
+	packet = append(packet, c.FixedHeader.Pack())
+	packet = append(packet, buffers...)
+	packet = append(packet, c.Payload)
+
+	_, err := packet.WriteTo(w)
 	if err != nil {
 		return err
 	}
@@ -150,26 +178,44 @@ func (c *ControlPacket) Send(w io.Writer) error {
 	return nil
 }
 
-func encodeVBI(length int, b bytes.Buffer) {
+func encodeVBI(length int) []byte {
+	var x int
+	b := make([]byte, 4)
 	for {
 		digit := byte(length % 128)
 		length /= 128
 		if length > 0 {
 			digit |= 0x80
 		}
-		b.WriteByte(digit)
+		b[x] = digit
+		x++
 		if length == 0 {
-			break
+			return b[:x]
 		}
 	}
 }
 
-func decodeVBI(r bufio.Reader) (int, error) {
+func getVBI(r io.Reader) (*bytes.Buffer, error) {
+	var ret bytes.Buffer
+	digit := make([]byte, 1)
+	for {
+		_, err := r.Read(digit)
+		if err != nil {
+			return nil, err
+		}
+		ret.WriteByte(digit[0])
+		if digit[0] <= 0x7f {
+			return &ret, nil
+		}
+	}
+}
+
+func decodeVBI(r *bytes.Buffer) (int, error) {
 	var vbi uint32
 	var multiplier uint32
 	for {
 		digit, err := r.ReadByte()
-		if err != nil {
+		if err != nil && err != io.EOF {
 			return 0, err
 		}
 		vbi |= uint32(digit&127) << multiplier
@@ -181,24 +227,90 @@ func decodeVBI(r bufio.Reader) (int, error) {
 	return int(vbi), nil
 }
 
-func writeUint16(u uint16, b bytes.Buffer) {
-	b.WriteByte(byte(u >> 8))
-	b.WriteByte(byte(u))
+func writeUint16(u uint16, b *bytes.Buffer) error {
+	if err := b.WriteByte(byte(u >> 8)); err != nil {
+		return err
+	}
+	if err := b.WriteByte(byte(u)); err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func writeUint32(u uint32, b bytes.Buffer) {
-	b.WriteByte(byte(u >> 24))
-	b.WriteByte(byte(u >> 16))
-	b.WriteByte(byte(u >> 8))
-	b.WriteByte(byte(u))
+func writeUint32(u uint32, b *bytes.Buffer) error {
+	if err := b.WriteByte(byte(u >> 24)); err != nil {
+		return err
+	}
+	if err := b.WriteByte(byte(u >> 16)); err != nil {
+		return err
+	}
+	if err := b.WriteByte(byte(u >> 8)); err != nil {
+		return err
+	}
+	if err := b.WriteByte(byte(u)); err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func writeString(s string, b bytes.Buffer) {
+func writeString(s string, b *bytes.Buffer) {
 	writeUint16(uint16(len(s)), b)
 	b.WriteString(s)
 }
 
-func writeBinary(d []byte, b bytes.Buffer) {
+func writeBinary(d []byte, b *bytes.Buffer) {
 	writeUint16(uint16(len(d)), b)
 	b.Write(d)
+}
+
+func readUint16(b *bytes.Buffer) (uint16, error) {
+	b1, err := b.ReadByte()
+	if err != nil {
+		return 0, err
+	}
+	b2, err := b.ReadByte()
+	if err != nil {
+		return 0, err
+	}
+	return (uint16(b1) << 8) | uint16(b2), nil
+}
+
+func readUint32(b *bytes.Buffer) (uint32, error) {
+	b1, err := b.ReadByte()
+	if err != nil {
+		return 0, err
+	}
+	b2, err := b.ReadByte()
+	if err != nil {
+		return 0, err
+	}
+	b3, err := b.ReadByte()
+	if err != nil {
+		return 0, err
+	}
+	b4, err := b.ReadByte()
+	if err != nil {
+		return 0, err
+	}
+	return (uint32(b1) << 24) | (uint32(b2) << 16) | (uint32(b3) << 8) | uint32(b4), nil
+}
+
+func readBinary(b *bytes.Buffer) ([]byte, error) {
+	size, err := readUint16(b)
+	if err != nil {
+		return nil, err
+	}
+	s := make([]byte, size)
+	if _, err := b.Read(s); err != nil {
+		return nil, err
+	}
+
+	return s, nil
+}
+
+func readString(b *bytes.Buffer) (string, error) {
+	s, err := readBinary(b)
+	return string(s), err
 }

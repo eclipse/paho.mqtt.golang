@@ -1,21 +1,35 @@
 package packets
 
 import (
-	"bufio"
 	"bytes"
+	"net"
 )
 
 // Auth is the Variable Header definition for a Auth control packet
 type Auth struct {
-	AuthMethod authMethod
-	AuthData   authData
+	AuthReasonCode byte
+	IDVP           IDValuePair
 }
 
 // Unpack is the implementation of the interface required function for a packet
-func (a *Auth) Unpack(r bufio.Reader) (int, error) {
-	return 0, nil
+func (a *Auth) Unpack(r *bytes.Buffer) (int, error) {
+	var err error
+	a.AuthReasonCode, err = r.ReadByte()
+	if err != nil {
+		return 0, err
+	}
+
+	idvpLen, err := a.IDVP.Unpack(r, AUTH)
+	if err != nil {
+		return 0, err
+	}
+
+	return idvpLen + 1, nil
 }
 
-// Pack is the implementation of the interface required function for a packet
-func (a *Auth) Pack(b bytes.Buffer) {
+// Buffers is the implementation of the interface required function for a packet
+func (a *Auth) Buffers() net.Buffers {
+	idvp := a.IDVP.Pack(AUTH)
+	idvpLen := encodeVBI(len(idvp))
+	return net.Buffers{[]byte{a.AuthReasonCode}, idvpLen, idvp}
 }

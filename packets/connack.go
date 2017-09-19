@@ -1,29 +1,39 @@
 package packets
 
 import (
-	"bufio"
 	"bytes"
+	"net"
 )
 
 // Connack is the Variable Header definition for a connack control packet
 type Connack struct {
-	AssignedClientID  assignedClientID
-	ServerKeepAlive   serverKeepAlive
-	AuthMethod        authMethod
-	AuthData          authData
-	ReplyInfo         replyInfo
-	ServerReference   serverReference
-	ReasonString      reasonString
-	ReceiveMaximum    receiveMaximum
-	TopicAliasMaximum topicAliasMaximum
-	MaximumQOS        maximumQOS
+	SessionPresent bool
+	ReasonCode     byte
+	IDVP           IDValuePair
 }
 
 //Unpack is the implementation of the interface required function for a packet
-func (c *Connack) Unpack(r bufio.Reader) (int, error) {
-	return 0, nil
+func (c *Connack) Unpack(r *bytes.Buffer) (int, error) {
+	connackFlags, err := r.ReadByte()
+	if err != nil {
+		return 0, err
+	}
+	c.SessionPresent = connackFlags&0x01 > 0
+
+	c.ReasonCode, err = r.ReadByte()
+	if err != nil {
+		return 0, err
+	}
+
+	idvpLen, err := c.IDVP.Unpack(r, CONNECT)
+	if err != nil {
+		return 0, err
+	}
+
+	return idvpLen + 2, nil
 }
 
-// Pack is the implementation of the interface required function for a packet
-func (c *Connack) Pack(b bytes.Buffer) {
+// Buffers is the implementation of the interface required function for a packet
+func (c *Connack) Buffers() net.Buffers {
+	return nil
 }

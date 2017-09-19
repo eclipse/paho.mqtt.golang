@@ -1,20 +1,37 @@
 package packets
 
 import (
-	"bufio"
 	"bytes"
+	"net"
 )
 
 // Unsuback is the Variable Header definition for a Unsuback control packet
 type Unsuback struct {
-	packetID packetID
+	PacketID uint16
+	IDVP     IDValuePair
 }
 
 //Unpack is the implementation of the interface required function for a packet
-func (u *Unsuback) Unpack(r bufio.Reader) (int, error) {
-	return 0, nil
+func (u *Unsuback) Unpack(r *bytes.Buffer) (int, error) {
+	var err error
+	u.PacketID, err = readUint16(r)
+	if err != nil {
+		return 0, err
+	}
+
+	idvpLen, err := u.IDVP.Unpack(r, UNSUBACK)
+	if err != nil {
+		return 0, err
+	}
+
+	return idvpLen + 2, nil
 }
 
-// Pack is the implementation of the interface required function for a packet
-func (u *Unsuback) Pack(b bytes.Buffer) {
+// Buffers is the implementation of the interface required function for a packet
+func (u *Unsuback) Buffers() net.Buffers {
+	var b bytes.Buffer
+	writeUint16(u.PacketID, &b)
+	idvp := u.IDVP.Pack(UNSUBACK)
+	idvpLen := encodeVBI(len(idvp))
+	return net.Buffers{b.Bytes(), idvpLen, idvp}
 }

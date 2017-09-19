@@ -3,10 +3,6 @@ Eclipse Paho MQTT Go client
 
 This repository contains the source code for the [Eclipse Paho](http://eclipse.org/paho) v5 MQTT Go client library.
 
-This code builds a library which enable applications to connect to a v5 [MQTT](http://mqtt.org) broker to publish messages, and to subscribe to topics and receive published messages.
-
-This library supports a fully asynchronous mode of operation.
-
 Installation and Build
 ----------------------
 
@@ -15,25 +11,6 @@ This client is designed to work with the standard Go tools, so installation is a
 ```golang
 go get github.com/eclipse/paho.mqtt.golang
 ```
-
-Usage and API
--------------
-
-Detailed API documentation is available by using to godoc tool, or can be browsed online
-using the [godoc.org](http://godoc.org/github.com/eclipse/paho.mqtt.golang) service.
-
-Make use of the library by importing it in your Go client source code. For example;
-
-```golang
-import "github.com/eclipse/paho.mqtt.golang"
-```
-
-Samples are available in the `/samples` directory for reference.
-
-Runtime tracing
----------------
-
-Tracing is enabled by assigning logs (from the Go log package) to the logging endpoints, ERROR, CRITICAL, WARN and DEBUG
 
 Reporting bugs
 --------------
