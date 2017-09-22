@@ -108,6 +108,8 @@ func NewClientOptions() *ClientOptions {
 // scheme://host:port
 // Where "scheme" is one of "tcp", "ssl", or "ws", "host" is the ip-address (or hostname)
 // and "port" is the port on which the broker is accepting connections.
+//
+// An example broker URI would look like: tcp://foobar.com:1883
 func (o *ClientOptions) AddBroker(server string) *ClientOptions {
 	brokerURI, err := url.Parse(server)
 	if err == nil {
