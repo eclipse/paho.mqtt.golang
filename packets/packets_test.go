@@ -106,7 +106,7 @@ func TestNewControlPacketConnect(t *testing.T) {
 	var b bytes.Buffer
 	x := NewControlPacket(CONNECT)
 
-	require.Equal(t, CONNECT, x.cpType)
+	require.Equal(t, CONNECT, x.Type)
 
 	x.Content.(*Connect).KeepAlive = 30
 	x.Content.(*Connect).ClientID = "testClient"

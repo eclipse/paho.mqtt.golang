@@ -13,7 +13,7 @@ import (
 func TestLiveConnection(t *testing.T) {
 	x := NewControlPacket(CONNECT)
 
-	require.Equal(t, CONNECT, x.cpType)
+	require.Equal(t, CONNECT, x.Type)
 
 	x.Content.(*Connect).KeepAlive = 30
 	x.Content.(*Connect).ClientID = "testClient"
@@ -30,7 +30,7 @@ func TestLiveConnection(t *testing.T) {
 
 	p, err := ReadPacket(bufio.NewReader(conn))
 	require.Nil(t, err)
-	assert.Equal(t, CONNACK, p.cpType)
+	assert.Equal(t, CONNACK, p.Type)
 
 	s := NewControlPacket(SUBSCRIBE)
 	s.Content.(*Subscribe).PacketID = 1
@@ -41,7 +41,7 @@ func TestLiveConnection(t *testing.T) {
 
 	sa, err := ReadPacket(bufio.NewReader(conn))
 	require.Nil(t, err)
-	assert.Equal(t, SUBACK, sa.cpType)
+	assert.Equal(t, SUBACK, sa.Type)
 
 	pb := NewControlPacket(PUBLISH)
 	pb.Payload = []byte("Test message")
@@ -53,7 +53,7 @@ func TestLiveConnection(t *testing.T) {
 
 	p, err = ReadPacket(bufio.NewReader(conn))
 	require.Nil(t, err)
-	assert.Equal(t, PUBLISH, p.cpType)
+	assert.Equal(t, PUBLISH, p.Type)
 	fmt.Println(string(p.Payload))
 
 	pb = NewControlPacket(PUBLISH)
@@ -67,7 +67,7 @@ func TestLiveConnection(t *testing.T) {
 
 	p, err = ReadPacket(bufio.NewReader(conn))
 	require.Nil(t, err)
-	assert.Equal(t, PUBACK, p.cpType)
+	assert.Equal(t, PUBACK, p.Type)
 
 	pb = NewControlPacket(PUBLISH)
 	pb.Payload = []byte("Test message")
@@ -80,7 +80,7 @@ func TestLiveConnection(t *testing.T) {
 
 	p, err = ReadPacket(bufio.NewReader(conn))
 	require.Nil(t, err)
-	assert.Equal(t, PUBREC, p.cpType)
+	assert.Equal(t, PUBREC, p.Type)
 
 	pb = NewControlPacket(PUBREL)
 	pb.Content.(*Pubrel).PacketID = 4
@@ -90,5 +90,5 @@ func TestLiveConnection(t *testing.T) {
 
 	p, err = ReadPacket(bufio.NewReader(conn))
 	require.Nil(t, err)
-	assert.Equal(t, PUBCOMP, p.cpType)
+	assert.Equal(t, PUBCOMP, p.Type)
 }

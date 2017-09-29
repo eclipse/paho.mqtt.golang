@@ -1,7 +1,6 @@
 package packets
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"io"
@@ -42,7 +41,7 @@ type Packet interface {
 // FixedHeader is the definition of a control packet fixed header
 type FixedHeader struct {
 	Flags           byte
-	cpType          PacketType
+	Type            PacketType
 	remainingLength int
 }
 
@@ -51,7 +50,7 @@ type FixedHeader struct {
 func (f *FixedHeader) Pack() []byte {
 	var b bytes.Buffer
 
-	b.WriteByte(byte(f.cpType)<<4 | f.Flags)
+	b.WriteByte(byte(f.Type)<<4 | f.Flags)
 	b.Write(encodeVBI(f.remainingLength))
 
 	return b.Bytes()
@@ -68,7 +67,7 @@ type ControlPacket struct {
 // ControlPacket where the VariableHeader field is a pointer to an
 // instance of a VariableHeader definition for that packetType
 func NewControlPacket(t PacketType) *ControlPacket {
-	cp := &ControlPacket{FixedHeader: FixedHeader{cpType: t}}
+	cp := &ControlPacket{FixedHeader: FixedHeader{Type: t}}
 	switch t {
 	case CONNECT:
 		cp.Content = &Connect{
@@ -117,16 +116,17 @@ func NewControlPacket(t PacketType) *ControlPacket {
 
 // ReadPacket reads a control packet from a bufio.Reader and returns a completed
 // struct with the appropriate data
-func ReadPacket(r *bufio.Reader) (*ControlPacket, error) {
-	t, err := r.ReadByte()
+func ReadPacket(r io.Reader) (*ControlPacket, error) {
+	t := make([]byte, 1)
+	_, err := io.ReadFull(r, t)
 	if err != nil {
 		return nil, err
 	}
-	cp := NewControlPacket(PacketType(t >> 4))
+	cp := NewControlPacket(PacketType(t[0] >> 4))
 	if cp == nil {
-		return nil, fmt.Errorf("Invalid packet type requested, %d", t>>4)
+		return nil, fmt.Errorf("Invalid packet type requested, %d", t[0]>>4)
 	}
-	cp.Flags = t & 0xF
+	cp.Flags = t[0] & 0xF
 	vbi, err := getVBI(r)
 	if err != nil {
 		return nil, err
@@ -199,7 +199,7 @@ func getVBI(r io.Reader) (*bytes.Buffer, error) {
 	var ret bytes.Buffer
 	digit := make([]byte, 1)
 	for {
-		_, err := r.Read(digit)
+		_, err := io.ReadFull(r, digit)
 		if err != nil {
 			return nil, err
 		}

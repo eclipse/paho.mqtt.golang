@@ -12,6 +12,13 @@ type Subscribe struct {
 	Subscriptions map[string]byte
 }
 
+func NewSubscribe(subs map[string]byte) *ControlPacket {
+	s := NewControlPacket(SUBSCRIBE)
+	s.Content.(*Subscribe).Subscriptions = subs
+
+	return s
+}
+
 //Unpack is the implementation of the interface required function for a packet
 func (s *Subscribe) Unpack(r *bytes.Buffer) (int, error) {
 	var err error
