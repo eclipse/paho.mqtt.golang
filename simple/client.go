@@ -12,7 +12,6 @@ import (
 type Client struct {
 	sync.Mutex
 	conn            net.Conn
-	ReceiveTimeout  time.Duration
 	PingTimeout     time.Duration
 	LastPing        time.Time
 	PingOutstanding bool
@@ -20,8 +19,7 @@ type Client struct {
 
 func NewClient(conn net.Conn) *Client {
 	c := &Client{
-		conn:           conn,
-		ReceiveTimeout: 10 * time.Second,
+		conn: conn,
 	}
 
 	return c
@@ -62,28 +60,6 @@ func (c *Client) Ping() error {
 	}
 
 	return p.NewControlPacket(p.PINGREQ).Send(c.conn)
-
-	// prChan := make(chan error)
-	// go func() {
-	// 	pr, err := p.ReadPacket(c.conn)
-	// 	if err != nil {
-	// 		log.Println(err)
-	// 		prChan <- err
-	// 	} else {
-	// 		if pr.Type == p.PINGRESP {
-	// 			prChan <- nil
-	// 		} else {
-	// 			prChan <- fmt.Errorf("Received %d instead of PingResp", pr.Type)
-	// 		}
-	// 	}
-	// }()
-
-	// select {
-	// case <-time.After(c.PingTimeout):
-	// 	return fmt.Errorf("Failed to receive a PingReponse")
-	// case err := <-prChan:
-	// 	return err
-	// }
 }
 
 func (c *Client) Subscribe(s *p.ControlPacket) (*p.ControlPacket, error) {
