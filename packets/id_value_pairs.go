@@ -88,12 +88,12 @@ func (i *IDValuePair) Pack(p PacketType) []byte {
 
 		if i.ContentType != "" {
 			b.WriteByte(idvpContentType)
-			b.WriteString(i.ContentType)
+			writeString(i.ContentType, &b)
 		}
 
 		if i.ReplyTopic != "" {
 			b.WriteByte(idvpReplyTopic)
-			b.WriteString(i.ReplyTopic)
+			writeString(i.ReplyTopic, &b)
 		}
 
 		if i.CorrelationData != nil && len(i.CorrelationData) > 0 {
@@ -139,7 +139,7 @@ func (i *IDValuePair) Pack(p PacketType) []byte {
 	if p == CONNACK {
 		if i.AssignedClientID != "" {
 			b.WriteByte(idvpAssignedClientID)
-			b.WriteString(i.AssignedClientID)
+			writeString(i.AssignedClientID, &b)
 		}
 
 		if i.ServerKeepAlive != nil {
@@ -169,7 +169,7 @@ func (i *IDValuePair) Pack(p PacketType) []byte {
 
 		if i.ResponseInfo != "" {
 			b.WriteByte(idvpResponseInfo)
-			b.WriteString(i.ResponseInfo)
+			writeString(i.ResponseInfo, &b)
 		}
 	}
 
@@ -200,7 +200,7 @@ func (i *IDValuePair) Pack(p PacketType) []byte {
 	if p == CONNECT || p == CONNACK || p == AUTH {
 		if i.AuthMethod != "" {
 			b.WriteByte(idvpAuthMethod)
-			b.WriteString(i.AuthMethod)
+			writeString(i.AuthMethod, &b)
 		}
 
 		if i.AuthData != nil && len(i.AuthData) > 0 {
@@ -212,14 +212,14 @@ func (i *IDValuePair) Pack(p PacketType) []byte {
 	if p == CONNACK || p == DISCONNECT {
 		if i.ServerReference != "" {
 			b.WriteByte(idvpServerReference)
-			b.WriteString(i.ServerReference)
+			writeString(i.ServerReference, &b)
 		}
 	}
 
 	if p != CONNECT {
 		if i.ReasonString != "" {
 			b.WriteByte(idvpReasonString)
-			b.WriteString(i.ReasonString)
+			writeString(i.ReasonString, &b)
 		}
 	}
 

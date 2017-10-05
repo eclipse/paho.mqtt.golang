@@ -25,7 +25,7 @@ func (c *Connack) Unpack(r *bytes.Buffer) (int, error) {
 		return 0, err
 	}
 
-	idvpLen, err := c.IDVP.Unpack(r, CONNECT)
+	idvpLen, err := c.IDVP.Unpack(r, CONNACK)
 	if err != nil {
 		return 0, err
 	}

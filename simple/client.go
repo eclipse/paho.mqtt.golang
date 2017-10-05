@@ -2,7 +2,7 @@ package simple
 
 import (
 	"fmt"
-	"io"
+	"net"
 	"sync"
 	"time"
 
@@ -11,12 +11,14 @@ import (
 
 type Client struct {
 	sync.Mutex
-	conn           io.ReadWriteCloser
-	ReceiveTimeout time.Duration
-	PingTimeout    time.Duration
+	conn            net.Conn
+	ReceiveTimeout  time.Duration
+	PingTimeout     time.Duration
+	LastPing        time.Time
+	PingOutstanding bool
 }
 
-func NewClient(conn io.ReadWriteCloser) *Client {
+func NewClient(conn net.Conn) *Client {
 	c := &Client{
 		conn:           conn,
 		ReceiveTimeout: 10 * time.Second,
@@ -55,33 +57,33 @@ func (c *Client) Ping() error {
 	c.Lock()
 	defer c.Unlock()
 
-	if err := p.NewControlPacket(p.PINGREQ).Send(c.conn); err != nil {
-		return err
-	}
-
-	prChan := func() chan error {
-		r := make(chan error)
-		go func() {
-			if pr, err := p.ReadPacket(c.conn); err != nil {
-				r <- err
-			} else {
-				if pr.Type == p.PINGRESP {
-					r <- nil
-				} else {
-					r <- fmt.Errorf("Received %d instead of PingResp", pr.Type)
-				}
-			}
-		}()
-		return r
-	}()
-
-	select {
-	case <-time.After(c.PingTimeout):
-		c.conn.Close()
+	if c.PingOutstanding && time.Now().Sub(c.LastPing) > (c.PingTimeout+c.PingTimeout/2) {
 		return fmt.Errorf("Failed to receive a PingReponse")
-	case err := <-prChan:
-		return err
 	}
+
+	return p.NewControlPacket(p.PINGREQ).Send(c.conn)
+
+	// prChan := make(chan error)
+	// go func() {
+	// 	pr, err := p.ReadPacket(c.conn)
+	// 	if err != nil {
+	// 		log.Println(err)
+	// 		prChan <- err
+	// 	} else {
+	// 		if pr.Type == p.PINGRESP {
+	// 			prChan <- nil
+	// 		} else {
+	// 			prChan <- fmt.Errorf("Received %d instead of PingResp", pr.Type)
+	// 		}
+	// 	}
+	// }()
+
+	// select {
+	// case <-time.After(c.PingTimeout):
+	// 	return fmt.Errorf("Failed to receive a PingReponse")
+	// case err := <-prChan:
+	// 	return err
+	// }
 }
 
 func (c *Client) Subscribe(s *p.ControlPacket) (*p.ControlPacket, error) {
@@ -188,4 +190,61 @@ func (c *Client) Publish(pb *p.ControlPacket) (*p.ControlPacket, error) {
 	}
 
 	return nil, fmt.Errorf("oops")
+}
+
+func (c *Client) SendMessage(topic string, qos byte, retain bool, idvp *p.IDValuePair, payload []byte) (*p.ControlPacket, error) {
+	pb := p.NewControlPacket(p.PUBLISH)
+	ct := pb.Content.(*p.Publish)
+	ct.Topic = topic
+	ct.QoS = qos
+	ct.Retain = retain
+	if qos > 0 {
+		ct.PacketID = 1
+	}
+	if idvp != nil {
+		ct.IDVP = *idvp
+	}
+	pb.Payload = payload
+
+	return c.Publish(pb)
+}
+
+func (c *Client) Disconnect(d *p.ControlPacket) error {
+	c.Lock()
+	defer c.Unlock()
+
+	if d.Type != p.DISCONNECT {
+		return fmt.Errorf("Unsubscribe requires a Unsubscribe packet")
+	}
+
+	return d.Send(c.conn)
+}
+
+func (c *Client) Receive() (*Message, error) {
+	c.Lock()
+	defer c.Unlock()
+
+	var m Message
+
+	c.conn.SetReadDeadline(time.Now().Add(1 * time.Second))
+	cp, err := p.ReadPacket(c.conn)
+	if err, ok := err.(net.Error); ok && err.Timeout() {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	switch cp.Type {
+	case p.PINGRESP:
+		c.PingOutstanding = false
+		return nil, nil
+	case p.PUBLISH:
+		m.Topic = cp.Content.(*p.Publish).Topic
+		m.QoS = cp.Content.(*p.Publish).QoS
+		m.Retain = cp.Content.(*p.Publish).Retain
+		m.IDVP = cp.Content.(*p.Publish).IDVP
+		m.Payload = cp.Payload
+	}
+
+	return &m, nil
 }

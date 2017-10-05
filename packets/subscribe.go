@@ -9,10 +9,31 @@ import (
 type Subscribe struct {
 	PacketID      uint16
 	IDVP          IDValuePair
-	Subscriptions map[string]byte
+	Subscriptions map[string]SubOptions
 }
 
-func NewSubscribe(subs map[string]byte) *ControlPacket {
+type SubOptions struct {
+	QoS               byte
+	NoLocal           bool
+	RetainAsPublished bool
+	RetainHandling    byte
+}
+
+func (s *SubOptions) Pack() byte {
+	var ret byte
+	ret |= s.QoS & 0x03
+	if s.NoLocal {
+		ret |= 1 << 2
+	}
+	if s.RetainAsPublished {
+		ret |= 1 << 3
+	}
+	ret |= s.RetainHandling & 0x30
+
+	return ret
+}
+
+func NewSubscribe(subs map[string]SubOptions) *ControlPacket {
 	s := NewControlPacket(SUBSCRIBE)
 	s.Content.(*Subscribe).Subscriptions = subs
 
@@ -42,7 +63,7 @@ func (s *Subscribe) Buffers() net.Buffers {
 	var subs bytes.Buffer
 	for t, o := range s.Subscriptions {
 		writeString(t, &subs)
-		subs.WriteByte(o)
+		subs.WriteByte(o.Pack())
 	}
 	idvp := s.IDVP.Pack(SUBSCRIBE)
 	idvpLen := encodeVBI(len(idvp))
