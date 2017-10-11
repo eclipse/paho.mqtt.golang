@@ -2,6 +2,7 @@ package paho
 
 import (
 	"fmt"
+	"log"
 	"net"
 	"sync/atomic"
 	"time"
@@ -24,7 +25,11 @@ type PingHandler struct {
 	pingFailHandler func(error)
 }
 
-func NewPingHander(c net.Conn, pt time.Duration, pfh func(error)) Pinger {
+func PFH(err error) {
+	log.Fatalln(err)
+}
+
+func NewPingHandler(c net.Conn, pt time.Duration, pfh func(error)) Pinger {
 	return &PingHandler{
 		conn:            c,
 		pingTimer:       pt,
