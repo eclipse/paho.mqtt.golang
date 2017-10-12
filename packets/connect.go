@@ -7,10 +7,10 @@ import (
 
 // Connect is the Variable Header definition for a connect control packet
 type Connect struct {
+	passwordFlag    bool
+	usernameFlag    bool
 	ProtocolName    string
 	ProtocolVersion byte
-	UsernameFlag    bool
-	PasswordFlag    bool
 	WillTopic       string
 	WillRetain      bool
 	WillQOS         byte
@@ -27,10 +27,10 @@ type Connect struct {
 // PackFlags takes the Connect flags and packs them into the single byte
 // representation used on the wire by MQTT
 func (c *Connect) PackFlags() (f byte) {
-	if c.UsernameFlag {
+	if c.Username != "" {
 		f |= 0x01 << 7
 	}
-	if c.PasswordFlag {
+	if c.Password != nil {
 		f |= 0x01 << 6
 	}
 	if c.WillFlag {
@@ -53,8 +53,8 @@ func (c *Connect) UnpackFlags(b byte) {
 	c.WillFlag = 1&(b>>2) > 0
 	c.WillQOS = 3 & (b >> 3)
 	c.WillRetain = 1&(b>>5) > 0
-	c.PasswordFlag = 1&(b>>6) > 0
-	c.UsernameFlag = 1&(b>>7) > 0
+	c.passwordFlag = 1&(b>>6) > 0
+	c.usernameFlag = 1&(b>>7) > 0
 }
 
 //Unpack is the implementation of the interface required function for a packet
@@ -107,7 +107,7 @@ func (c *Connect) Unpack(r *bytes.Buffer) (int, error) {
 		}
 	}
 
-	if c.UsernameFlag {
+	if c.usernameFlag {
 		c.Username, err = readString(r)
 		length += len(c.Username) + 2
 		if err != nil {
@@ -115,7 +115,7 @@ func (c *Connect) Unpack(r *bytes.Buffer) (int, error) {
 		}
 	}
 
-	if c.PasswordFlag {
+	if c.passwordFlag {
 		c.Password, err = readBinary(r)
 		length += len(c.Password) + 2
 		if err != nil {
@@ -142,10 +142,10 @@ func (c *Connect) Buffers() net.Buffers {
 		writeString(c.WillTopic, &body)
 		writeBinary(c.WillMessage, &body)
 	}
-	if c.UsernameFlag {
+	if c.Username != "" {
 		writeString(c.Username, &body)
 	}
-	if c.PasswordFlag {
+	if c.Password != nil {
 		writeBinary(c.Password, &body)
 	}
 

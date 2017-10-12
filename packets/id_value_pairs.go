@@ -7,33 +7,33 @@ import (
 )
 
 const (
-	idvpPayloadFormat          byte = 1
-	idvpPubExpiry                   = 2
-	idvpContentType                 = 3
-	idvpReplyTopic                  = 8
-	idvpCorrelationData             = 9
-	idvpSubscriptionIdentifier      = 11
-	idvpSessionExpiryInterval       = 17
-	idvpAssignedClientID            = 18
-	idvpServerKeepAlive             = 19
-	idvpAuthMethod                  = 21
-	idvpAuthData                    = 22
-	idvpRequestProblemInfo          = 23
-	idvpWillDelayInterval           = 24
-	idvpRequestResponseInfo         = 25
-	idvpResponseInfo                = 26
-	idvpServerReference             = 28
-	idvpReasonString                = 31
-	idvpReceiveMaximum              = 33
-	idvpTopicAliasMaximum           = 34
-	idvpTopicAlias                  = 35
-	idvpMaximumQOS                  = 36
-	idvpRetainAvailable             = 37
-	idvpUserProperty                = 38
-	idvpMaximumPacketSize           = 39
-	idvpWildcardSubAvailable        = 40
-	idvpSubIDAvailable              = 41
-	idvpSharedSubAvailable          = 42
+	IDVPPayloadFormat          byte = 1
+	IDVPPubExpiry                   = 2
+	IDVPContentType                 = 3
+	IDVPReplyTopic                  = 8
+	IDVPCorrelationData             = 9
+	IDVPSubscriptionIdentifier      = 11
+	IDVPSessionExpiryInterval       = 17
+	IDVPAssignedClientID            = 18
+	IDVPServerKeepAlive             = 19
+	IDVPAuthMethod                  = 21
+	IDVPAuthData                    = 22
+	IDVPRequestProblemInfo          = 23
+	IDVPWillDelayInterval           = 24
+	IDVPRequestResponseInfo         = 25
+	IDVPResponseInfo                = 26
+	IDVPServerReference             = 28
+	IDVPReasonString                = 31
+	IDVPReceiveMaximum              = 33
+	IDVPTopicAliasMaximum           = 34
+	IDVPTopicAlias                  = 35
+	IDVPMaximumQOS                  = 36
+	IDVPRetainAvailable             = 37
+	IDVPUserProperty                = 38
+	IDVPMaximumPacketSize           = 39
+	IDVPWildcardSubAvailable        = 40
+	IDVPSubIDAvailable              = 41
+	IDVPSharedSubAvailable          = 42
 )
 
 // IDValuePair is a struct representing the all the described properties
@@ -77,154 +77,154 @@ func (i *IDValuePair) Pack(p PacketType) []byte {
 
 	if p == PUBLISH {
 		if i.PayloadFormat != nil {
-			b.WriteByte(idvpPayloadFormat)
+			b.WriteByte(IDVPPayloadFormat)
 			b.WriteByte(*i.PayloadFormat)
 		}
 
 		if i.PubExpiry != nil {
-			b.WriteByte(idvpPubExpiry)
+			b.WriteByte(IDVPPubExpiry)
 			writeUint32(*i.PubExpiry, &b)
 		}
 
 		if i.ContentType != "" {
-			b.WriteByte(idvpContentType)
+			b.WriteByte(IDVPContentType)
 			writeString(i.ContentType, &b)
 		}
 
 		if i.ReplyTopic != "" {
-			b.WriteByte(idvpReplyTopic)
+			b.WriteByte(IDVPReplyTopic)
 			writeString(i.ReplyTopic, &b)
 		}
 
 		if i.CorrelationData != nil && len(i.CorrelationData) > 0 {
-			b.WriteByte(idvpCorrelationData)
+			b.WriteByte(IDVPCorrelationData)
 			b.Write(i.CorrelationData)
 		}
 
 		if i.TopicAlias != nil {
-			b.WriteByte(idvpTopicAlias)
+			b.WriteByte(IDVPTopicAlias)
 			writeUint16(*i.TopicAlias, &b)
 		}
 	}
 
 	if p == PUBLISH || p == SUBSCRIBE {
 		if i.SubscriptionIdentifier != nil {
-			b.WriteByte(idvpSubscriptionIdentifier)
+			b.WriteByte(IDVPSubscriptionIdentifier)
 			writeUint32(*i.SubscriptionIdentifier, &b)
 		}
 	}
 
 	if p == CONNECT || p == CONNACK {
 		if i.ReceiveMaximum != nil {
-			b.WriteByte(idvpReceiveMaximum)
+			b.WriteByte(IDVPReceiveMaximum)
 			writeUint16(*i.ReceiveMaximum, &b)
 		}
 
 		if i.TopicAliasMaximum != nil {
-			b.WriteByte(idvpTopicAliasMaximum)
+			b.WriteByte(IDVPTopicAliasMaximum)
 			writeUint16(*i.TopicAliasMaximum, &b)
 		}
 
 		if i.MaximumQOS != nil {
-			b.WriteByte(idvpMaximumQOS)
+			b.WriteByte(IDVPMaximumQOS)
 			b.WriteByte(*i.MaximumQOS)
 		}
 
 		if i.MaximumPacketSize != nil {
-			b.WriteByte(idvpMaximumPacketSize)
+			b.WriteByte(IDVPMaximumPacketSize)
 			writeUint32(*i.MaximumPacketSize, &b)
 		}
 	}
 
 	if p == CONNACK {
 		if i.AssignedClientID != "" {
-			b.WriteByte(idvpAssignedClientID)
+			b.WriteByte(IDVPAssignedClientID)
 			writeString(i.AssignedClientID, &b)
 		}
 
 		if i.ServerKeepAlive != nil {
-			b.WriteByte(idvpServerKeepAlive)
+			b.WriteByte(IDVPServerKeepAlive)
 			writeUint16(*i.ServerKeepAlive, &b)
 		}
 
 		if i.WildcardSubAvailable != nil {
-			b.WriteByte(idvpWildcardSubAvailable)
+			b.WriteByte(IDVPWildcardSubAvailable)
 			b.WriteByte(*i.WildcardSubAvailable)
 		}
 
 		if i.SubIDAvailable != nil {
-			b.WriteByte(idvpSubIDAvailable)
+			b.WriteByte(IDVPSubIDAvailable)
 			b.WriteByte(*i.SubIDAvailable)
 		}
 
 		if i.SharedSubAvailable != nil {
-			b.WriteByte(idvpSharedSubAvailable)
+			b.WriteByte(IDVPSharedSubAvailable)
 			b.WriteByte(*i.SharedSubAvailable)
 		}
 
 		if i.RetainAvailable != nil {
-			b.WriteByte(idvpRetainAvailable)
+			b.WriteByte(IDVPRetainAvailable)
 			b.WriteByte(*i.RetainAvailable)
 		}
 
 		if i.ResponseInfo != "" {
-			b.WriteByte(idvpResponseInfo)
+			b.WriteByte(IDVPResponseInfo)
 			writeString(i.ResponseInfo, &b)
 		}
 	}
 
 	if p == CONNECT {
 		if i.RequestProblemInfo != nil {
-			b.WriteByte(idvpRequestProblemInfo)
+			b.WriteByte(IDVPRequestProblemInfo)
 			b.WriteByte(*i.RequestProblemInfo)
 		}
 
 		if i.WillDelayInterval != nil {
-			b.WriteByte(idvpWillDelayInterval)
+			b.WriteByte(IDVPWillDelayInterval)
 			writeUint32(*i.WillDelayInterval, &b)
 		}
 
 		if i.RequestResponseInfo != nil {
-			b.WriteByte(idvpRequestResponseInfo)
+			b.WriteByte(IDVPRequestResponseInfo)
 			b.WriteByte(*i.RequestResponseInfo)
 		}
 	}
 
 	if p == CONNECT || p == DISCONNECT {
 		if i.SessionExpiryInterval != nil {
-			b.WriteByte(idvpSessionExpiryInterval)
+			b.WriteByte(IDVPSessionExpiryInterval)
 			writeUint32(*i.SessionExpiryInterval, &b)
 		}
 	}
 
 	if p == CONNECT || p == CONNACK || p == AUTH {
 		if i.AuthMethod != "" {
-			b.WriteByte(idvpAuthMethod)
+			b.WriteByte(IDVPAuthMethod)
 			writeString(i.AuthMethod, &b)
 		}
 
 		if i.AuthData != nil && len(i.AuthData) > 0 {
-			b.WriteByte(idvpAuthData)
+			b.WriteByte(IDVPAuthData)
 			b.Write(i.AuthData)
 		}
 	}
 
 	if p == CONNACK || p == DISCONNECT {
 		if i.ServerReference != "" {
-			b.WriteByte(idvpServerReference)
+			b.WriteByte(IDVPServerReference)
 			writeString(i.ServerReference, &b)
 		}
 	}
 
 	if p != CONNECT {
 		if i.ReasonString != "" {
-			b.WriteByte(idvpReasonString)
+			b.WriteByte(IDVPReasonString)
 			writeString(i.ReasonString, &b)
 		}
 	}
 
 	for k, v := range i.UserProperty {
-		b.WriteByte(idvpUserProperty)
+		b.WriteByte(IDVPUserProperty)
 		writeString(k, &b)
 		writeString(v, &b)
 	}
@@ -251,150 +251,150 @@ func (i *IDValuePair) Unpack(r *bytes.Buffer, p PacketType) (int, error) {
 
 	buf := bytes.NewBuffer(r.Next(size))
 	for {
-		idvpType, err := buf.ReadByte()
+		IDVPType, err := buf.ReadByte()
 		if err != nil && err != io.EOF {
 			return 0, err
 		}
 		if err == io.EOF {
 			break
 		}
-		if !ValidateID(p, idvpType) {
-			return 0, fmt.Errorf("Invalid IDVP type %d for packet %d", idvpType, p)
+		if !ValidateID(p, IDVPType) {
+			return 0, fmt.Errorf("Invalid IDVP type %d for packet %d", IDVPType, p)
 		}
-		switch idvpType {
-		case idvpPayloadFormat:
+		switch IDVPType {
+		case IDVPPayloadFormat:
 			pf, err := buf.ReadByte()
 			if err != nil {
 				return 0, err
 			}
 			i.PayloadFormat = &pf
-		case idvpPubExpiry:
+		case IDVPPubExpiry:
 			pe, err := readUint32(buf)
 			if err != nil {
 				return 0, err
 			}
 			i.PubExpiry = &pe
-		case idvpContentType:
+		case IDVPContentType:
 			ct, err := readString(buf)
 			if err != nil {
 				return 0, err
 			}
 			i.ContentType = ct
-		case idvpReplyTopic:
+		case IDVPReplyTopic:
 			tr, err := readString(buf)
 			if err != nil {
 				return 0, err
 			}
 			i.ReplyTopic = tr
-		case idvpCorrelationData:
+		case IDVPCorrelationData:
 			cd, err := readBinary(buf)
 			if err != nil {
 				return 0, err
 			}
 			i.CorrelationData = cd
-		case idvpSubscriptionIdentifier:
+		case IDVPSubscriptionIdentifier:
 			si, err := readUint32(buf)
 			if err != nil {
 				return 0, err
 			}
 			i.SubscriptionIdentifier = &si
-		case idvpSessionExpiryInterval:
+		case IDVPSessionExpiryInterval:
 			se, err := readUint32(buf)
 			if err != nil {
 				return 0, err
 			}
 			i.SessionExpiryInterval = &se
-		case idvpAssignedClientID:
+		case IDVPAssignedClientID:
 			ac, err := readString(buf)
 			if err != nil {
 				return 0, err
 			}
 			i.AssignedClientID = ac
-		case idvpServerKeepAlive:
+		case IDVPServerKeepAlive:
 			sk, err := readUint16(buf)
 			if err != nil {
 				return 0, err
 			}
 			i.ServerKeepAlive = &sk
-		case idvpAuthMethod:
+		case IDVPAuthMethod:
 			am, err := readString(buf)
 			if err != nil {
 				return 0, err
 			}
 			i.AuthMethod = am
-		case idvpAuthData:
+		case IDVPAuthData:
 			ad, err := readBinary(buf)
 			if err != nil {
 				return 0, err
 			}
 			i.AuthData = ad
-		case idvpRequestProblemInfo:
+		case IDVPRequestProblemInfo:
 			rp, err := buf.ReadByte()
 			if err != nil {
 				return 0, err
 			}
 			i.RequestProblemInfo = &rp
-		case idvpWillDelayInterval:
+		case IDVPWillDelayInterval:
 			wd, err := readUint32(buf)
 			if err != nil {
 				return 0, err
 			}
 			i.WillDelayInterval = &wd
-		case idvpRequestResponseInfo:
+		case IDVPRequestResponseInfo:
 			rp, err := buf.ReadByte()
 			if err != nil {
 				return 0, err
 			}
 			i.RequestResponseInfo = &rp
-		case idvpResponseInfo:
+		case IDVPResponseInfo:
 			ri, err := readString(buf)
 			if err != nil {
 				return 0, err
 			}
 			i.ResponseInfo = ri
-		case idvpServerReference:
+		case IDVPServerReference:
 			sr, err := readString(buf)
 			if err != nil {
 				return 0, err
 			}
 			i.ServerReference = sr
-		case idvpReasonString:
+		case IDVPReasonString:
 			rs, err := readString(buf)
 			if err != nil {
 				return 0, err
 			}
 			i.ReasonString = rs
-		case idvpReceiveMaximum:
+		case IDVPReceiveMaximum:
 			rm, err := readUint16(buf)
 			if err != nil {
 				return 0, err
 			}
 			i.ReceiveMaximum = &rm
-		case idvpTopicAliasMaximum:
+		case IDVPTopicAliasMaximum:
 			ta, err := readUint16(buf)
 			if err != nil {
 				return 0, err
 			}
 			i.TopicAliasMaximum = &ta
-		case idvpTopicAlias:
+		case IDVPTopicAlias:
 			ta, err := readUint16(buf)
 			if err != nil {
 				return 0, err
 			}
 			i.TopicAlias = &ta
-		case idvpMaximumQOS:
+		case IDVPMaximumQOS:
 			mq, err := buf.ReadByte()
 			if err != nil {
 				return 0, err
 			}
 			i.MaximumQOS = &mq
-		case idvpRetainAvailable:
+		case IDVPRetainAvailable:
 			ra, err := buf.ReadByte()
 			if err != nil {
 				return 0, err
 			}
 			i.RetainAvailable = &ra
-		case idvpUserProperty:
+		case IDVPUserProperty:
 			k, err := readString(buf)
 			if err != nil {
 				return 0, err
@@ -404,32 +404,32 @@ func (i *IDValuePair) Unpack(r *bytes.Buffer, p PacketType) (int, error) {
 				return 0, err
 			}
 			i.UserProperty[k] = v
-		case idvpMaximumPacketSize:
+		case IDVPMaximumPacketSize:
 			mp, err := readUint32(buf)
 			if err != nil {
 				return 0, err
 			}
 			i.MaximumPacketSize = &mp
-		case idvpWildcardSubAvailable:
+		case IDVPWildcardSubAvailable:
 			ws, err := buf.ReadByte()
 			if err != nil {
 				return 0, err
 			}
 			i.WildcardSubAvailable = &ws
-		case idvpSubIDAvailable:
+		case IDVPSubIDAvailable:
 			si, err := buf.ReadByte()
 			if err != nil {
 				return 0, err
 			}
 			i.SubIDAvailable = &si
-		case idvpSharedSubAvailable:
+		case IDVPSharedSubAvailable:
 			ss, err := buf.ReadByte()
 			if err != nil {
 				return 0, err
 			}
 			i.SharedSubAvailable = &ss
 		default:
-			return 0, fmt.Errorf("Unknown IDVP type %d", idvpType)
+			return 0, fmt.Errorf("Unknown IDVP type %d", IDVPType)
 		}
 	}
 
@@ -439,33 +439,33 @@ func (i *IDValuePair) Unpack(r *bytes.Buffer, p PacketType) (int, error) {
 // ValidIDValuePairs is a map of the various properties and the
 // PacketTypes that property is valid for.
 var ValidIDValuePairs = map[byte]map[PacketType]struct{}{
-	idvpPayloadFormat:          {PUBLISH: {}},
-	idvpPubExpiry:              {PUBLISH: {}},
-	idvpContentType:            {PUBLISH: {}},
-	idvpReplyTopic:             {PUBLISH: {}},
-	idvpCorrelationData:        {PUBLISH: {}},
-	idvpTopicAlias:             {PUBLISH: {}},
-	idvpSubscriptionIdentifier: {PUBLISH: {}, SUBSCRIBE: {}},
-	idvpSessionExpiryInterval:  {CONNECT: {}, DISCONNECT: {}},
-	idvpAssignedClientID:       {CONNACK: {}},
-	idvpServerKeepAlive:        {CONNACK: {}},
-	idvpWildcardSubAvailable:   {CONNACK: {}},
-	idvpSubIDAvailable:         {CONNACK: {}},
-	idvpSharedSubAvailable:     {CONNACK: {}},
-	idvpRetainAvailable:        {CONNACK: {}},
-	idvpResponseInfo:           {CONNACK: {}},
-	idvpAuthMethod:             {CONNECT: {}, CONNACK: {}, AUTH: {}},
-	idvpAuthData:               {CONNECT: {}, CONNACK: {}, AUTH: {}},
-	idvpRequestProblemInfo:     {CONNECT: {}},
-	idvpWillDelayInterval:      {CONNECT: {}},
-	idvpRequestResponseInfo:    {CONNECT: {}},
-	idvpServerReference:        {CONNACK: {}, DISCONNECT: {}},
-	idvpReasonString:           {CONNACK: {}, PUBACK: {}, PUBREC: {}, PUBREL: {}, PUBCOMP: {}, SUBACK: {}, UNSUBACK: {}, DISCONNECT: {}, AUTH: {}},
-	idvpReceiveMaximum:         {CONNECT: {}, CONNACK: {}},
-	idvpTopicAliasMaximum:      {CONNECT: {}, CONNACK: {}},
-	idvpMaximumQOS:             {CONNECT: {}, CONNACK: {}},
-	idvpMaximumPacketSize:      {CONNECT: {}, CONNACK: {}},
-	idvpUserProperty:           {CONNECT: {}, CONNACK: {}, PUBLISH: {}, PUBACK: {}, PUBREC: {}, PUBREL: {}, PUBCOMP: {}, SUBACK: {}, UNSUBACK: {}, DISCONNECT: {}, AUTH: {}},
+	IDVPPayloadFormat:          {PUBLISH: {}},
+	IDVPPubExpiry:              {PUBLISH: {}},
+	IDVPContentType:            {PUBLISH: {}},
+	IDVPReplyTopic:             {PUBLISH: {}},
+	IDVPCorrelationData:        {PUBLISH: {}},
+	IDVPTopicAlias:             {PUBLISH: {}},
+	IDVPSubscriptionIdentifier: {PUBLISH: {}, SUBSCRIBE: {}},
+	IDVPSessionExpiryInterval:  {CONNECT: {}, DISCONNECT: {}},
+	IDVPAssignedClientID:       {CONNACK: {}},
+	IDVPServerKeepAlive:        {CONNACK: {}},
+	IDVPWildcardSubAvailable:   {CONNACK: {}},
+	IDVPSubIDAvailable:         {CONNACK: {}},
+	IDVPSharedSubAvailable:     {CONNACK: {}},
+	IDVPRetainAvailable:        {CONNACK: {}},
+	IDVPResponseInfo:           {CONNACK: {}},
+	IDVPAuthMethod:             {CONNECT: {}, CONNACK: {}, AUTH: {}},
+	IDVPAuthData:               {CONNECT: {}, CONNACK: {}, AUTH: {}},
+	IDVPRequestProblemInfo:     {CONNECT: {}},
+	IDVPWillDelayInterval:      {CONNECT: {}},
+	IDVPRequestResponseInfo:    {CONNECT: {}},
+	IDVPServerReference:        {CONNACK: {}, DISCONNECT: {}},
+	IDVPReasonString:           {CONNACK: {}, PUBACK: {}, PUBREC: {}, PUBREL: {}, PUBCOMP: {}, SUBACK: {}, UNSUBACK: {}, DISCONNECT: {}, AUTH: {}},
+	IDVPReceiveMaximum:         {CONNECT: {}, CONNACK: {}},
+	IDVPTopicAliasMaximum:      {CONNECT: {}, CONNACK: {}},
+	IDVPMaximumQOS:             {CONNECT: {}, CONNACK: {}},
+	IDVPMaximumPacketSize:      {CONNECT: {}, CONNACK: {}},
+	IDVPUserProperty:           {CONNECT: {}, CONNACK: {}, PUBLISH: {}, PUBACK: {}, PUBREC: {}, PUBREL: {}, PUBCOMP: {}, SUBACK: {}, UNSUBACK: {}, DISCONNECT: {}, AUTH: {}},
 }
 
 // ValidateID takes a PacketType and a property name and returns
