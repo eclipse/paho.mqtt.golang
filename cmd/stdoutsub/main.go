@@ -62,7 +62,7 @@ func main() {
 		Username:             *username,
 		Password:             *password,
 		MaxReconnectInterval: 1 * time.Second,
-		KeepAlive:            30 * time.Second,
+		KeepAlive:            int64(30 * time.Second),
 		TLSConfig:            tls.Config{InsecureSkipVerify: true, ClientAuth: tls.NoClientCert},
 	}
 	connOpts.AddBroker(*server)
