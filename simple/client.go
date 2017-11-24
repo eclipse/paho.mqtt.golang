@@ -11,35 +11,38 @@ import (
 
 type Client struct {
 	sync.Mutex
-	conn            net.Conn
+	Conn            net.Conn
 	PingTimeout     time.Duration
 	LastPing        time.Time
 	PingOutstanding bool
 }
 
-func NewClient(conn net.Conn) *Client {
+func NewClient(opts ...func(*Client) error) (*Client, error) {
 	c := &Client{
-		conn: conn,
+		PingOutstanding: false,
+		PingTimeout:     30 * time.Second,
 	}
 
-	return c
+	for _, opt := range opts {
+		if err := opt(c); err != nil {
+			return nil, err
+		}
+	}
+
+	return c, nil
 }
 
-func (c *Client) Connect(cp *p.ControlPacket) (*p.ControlPacket, error) {
+func (c *Client) Connect(cp *p.Connect) (*p.Connack, error) {
 	c.Lock()
 	defer c.Unlock()
 
-	if cp.Type != p.CONNECT {
-		return nil, fmt.Errorf("Connect requires a Connect packet")
-	}
+	c.PingTimeout = time.Duration(cp.KeepAlive) * time.Second
 
-	c.PingTimeout = time.Duration(cp.Content.(*p.Connect).KeepAlive) * time.Second
-
-	if err := cp.Send(c.conn); err != nil {
+	if err := cp.Send(c.Conn); err != nil {
 		return nil, err
 	}
 
-	ca, err := p.ReadPacket(c.conn)
+	ca, err := p.ReadPacket(c.Conn)
 	if err != nil {
 		return nil, err
 	}
@@ -48,7 +51,7 @@ func (c *Client) Connect(cp *p.ControlPacket) (*p.ControlPacket, error) {
 		return nil, fmt.Errorf("Received %d instead of Connack", ca.Type)
 	}
 
-	return ca, nil
+	return ca.Content.(*p.Connack), nil
 }
 
 func (c *Client) Ping() error {
@@ -59,22 +62,18 @@ func (c *Client) Ping() error {
 		return fmt.Errorf("Failed to receive a PingReponse")
 	}
 
-	return p.NewControlPacket(p.PINGREQ).Send(c.conn)
+	return p.NewControlPacket(p.PINGREQ).Send(c.Conn)
 }
 
-func (c *Client) Subscribe(s *p.ControlPacket) (*p.ControlPacket, error) {
+func (c *Client) Subscribe(s *p.Subscribe) (*p.Suback, error) {
 	c.Lock()
 	defer c.Unlock()
 
-	if s.Type != p.SUBSCRIBE {
-		return nil, fmt.Errorf("Subscribe requires a Subscribe packet")
-	}
-
-	if err := s.Send(c.conn); err != nil {
+	if err := s.Send(c.Conn); err != nil {
 		return nil, err
 	}
 
-	sa, err := p.ReadPacket(c.conn)
+	sa, err := p.ReadPacket(c.Conn)
 	if err != nil {
 		return nil, err
 	}
@@ -83,22 +82,18 @@ func (c *Client) Subscribe(s *p.ControlPacket) (*p.ControlPacket, error) {
 		return nil, fmt.Errorf("Received %d instead of Suback", sa.Type)
 	}
 
-	return sa, nil
+	return sa.Content.(*p.Suback), nil
 }
 
-func (c *Client) Unsubscribe(u *p.ControlPacket) (*p.ControlPacket, error) {
+func (c *Client) Unsubscribe(u *p.Unsubscribe) (*p.Unsuback, error) {
 	c.Lock()
 	defer c.Unlock()
 
-	if u.Type != p.UNSUBSCRIBE {
-		return nil, fmt.Errorf("Unsubscribe requires a Unsubscribe packet")
-	}
-
-	if err := u.Send(c.conn); err != nil {
+	if err := u.Send(c.Conn); err != nil {
 		return nil, err
 	}
 
-	ua, err := p.ReadPacket(c.conn)
+	ua, err := p.ReadPacket(c.Conn)
 	if err != nil {
 		return nil, err
 	}
@@ -107,26 +102,22 @@ func (c *Client) Unsubscribe(u *p.ControlPacket) (*p.ControlPacket, error) {
 		return nil, fmt.Errorf("Received %d instead of Unsuback", ua.Type)
 	}
 
-	return ua, nil
+	return ua.Content.(*p.Unsuback), nil
 }
 
-func (c *Client) Publish(pb *p.ControlPacket) (*p.ControlPacket, error) {
+func (c *Client) Publish(pb *p.Publish) (p.Packet, error) {
 	c.Lock()
 	defer c.Unlock()
 
-	if pb.Type != p.PUBLISH {
-		return nil, fmt.Errorf("Unsubscribe requires a Unsubscribe packet")
-	}
-
-	if err := pb.Send(c.conn); err != nil {
+	if err := pb.Send(c.Conn); err != nil {
 		return nil, err
 	}
 
-	switch pb.Content.(*p.Publish).QoS {
+	switch pb.QoS {
 	case 0:
 		return nil, nil
 	case 1:
-		pa, err := p.ReadPacket(c.conn)
+		pa, err := p.ReadPacket(c.Conn)
 		if err != nil {
 			return nil, err
 		}
@@ -135,9 +126,9 @@ func (c *Client) Publish(pb *p.ControlPacket) (*p.ControlPacket, error) {
 			return nil, fmt.Errorf("Received %d instead of Puback", pa.Type)
 		}
 
-		return pa, nil
+		return pa.Content.(*p.Puback), nil
 	case 2:
-		prec, err := p.ReadPacket(c.conn)
+		prec, err := p.ReadPacket(c.Conn)
 		if err != nil {
 			return nil, err
 		}
@@ -147,13 +138,13 @@ func (c *Client) Publish(pb *p.ControlPacket) (*p.ControlPacket, error) {
 		}
 
 		prel := p.NewControlPacket(p.PUBREL)
-		prel.Content.(*p.Publish).PacketID = pb.Content.(*p.Publish).PacketID
+		prel.Content.(*p.Pubrel).PacketID = pb.PacketID
 
-		if err := prel.Send(c.conn); err != nil {
+		if err := prel.Send(c.Conn); err != nil {
 			return nil, err
 		}
 
-		pcomp, err := p.ReadPacket(c.conn)
+		pcomp, err := p.ReadPacket(c.Conn)
 		if err != nil {
 			return nil, err
 		}
@@ -162,38 +153,18 @@ func (c *Client) Publish(pb *p.ControlPacket) (*p.ControlPacket, error) {
 			return nil, fmt.Errorf("Received %d instead of Pubcomp", pcomp.Type)
 		}
 
-		return pcomp, nil
+		return pcomp.Content.(*p.Pubcomp), nil
 	}
 
 	return nil, fmt.Errorf("oops")
 }
 
-func (c *Client) SendMessage(topic string, qos byte, retain bool, idvp *p.IDValuePair, payload []byte) (*p.ControlPacket, error) {
-	pb := p.NewControlPacket(p.PUBLISH)
-	ct := pb.Content.(*p.Publish)
-	ct.Topic = topic
-	ct.QoS = qos
-	ct.Retain = retain
-	if qos > 0 {
-		ct.PacketID = 1
-	}
-	if idvp != nil {
-		ct.IDVP = *idvp
-	}
-	pb.Payload = payload
-
-	return c.Publish(pb)
-}
-
-func (c *Client) Disconnect(d *p.ControlPacket) error {
+func (c *Client) Disconnect(d *p.Disconnect) error {
 	c.Lock()
 	defer c.Unlock()
+	defer c.Conn.Close()
 
-	if d.Type != p.DISCONNECT {
-		return fmt.Errorf("Unsubscribe requires a Unsubscribe packet")
-	}
-
-	return d.Send(c.conn)
+	return d.Send(c.Conn)
 }
 
 func (c *Client) Receive() (*Message, error) {
@@ -202,8 +173,8 @@ func (c *Client) Receive() (*Message, error) {
 
 	var m Message
 
-	c.conn.SetReadDeadline(time.Now().Add(1 * time.Second))
-	cp, err := p.ReadPacket(c.conn)
+	c.Conn.SetReadDeadline(time.Now().Add(1 * time.Second))
+	cp, err := p.ReadPacket(c.Conn)
 	if err, ok := err.(net.Error); ok && err.Timeout() {
 		return nil, nil
 	}
@@ -218,8 +189,8 @@ func (c *Client) Receive() (*Message, error) {
 		m.Topic = cp.Content.(*p.Publish).Topic
 		m.QoS = cp.Content.(*p.Publish).QoS
 		m.Retain = cp.Content.(*p.Publish).Retain
-		m.IDVP = cp.Content.(*p.Publish).IDVP
-		m.Payload = cp.Payload
+		m.Properties = cp.Content.(*p.Publish).Properties
+		m.Payload = cp.Content.(*p.Publish).Payload
 	}
 
 	return &m, nil

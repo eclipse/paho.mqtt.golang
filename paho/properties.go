@@ -2,7 +2,7 @@ package paho
 
 import "github.com/eclipse/paho.mqtt.golang/packets"
 
-type Properties packets.IDValuePair
+type Properties packets.Properties
 
 func NewProperties() *Properties {
 	return &Properties{}
@@ -149,111 +149,111 @@ func (p *Properties) Validate(pt packets.PacketType) (bool, []string) {
 	}
 	valid := true
 	var invalid []string
-	if p.PayloadFormat != nil && !packets.ValidateID(pt, packets.IDVPPayloadFormat) {
+	if p.PayloadFormat != nil && !packets.ValidateID(pt, packets.PropertiesPayloadFormat) {
 		invalid = append(invalid, "PayloadFormat")
 		valid = false
 	}
-	if p.PubExpiry != nil && !packets.ValidateID(pt, packets.IDVPPubExpiry) {
+	if p.PubExpiry != nil && !packets.ValidateID(pt, packets.PropertiesPubExpiry) {
 		invalid = append(invalid, "PubExpiry")
 		valid = false
 	}
-	if p.ContentType != "" && !packets.ValidateID(pt, packets.IDVPContentType) {
+	if p.ContentType != "" && !packets.ValidateID(pt, packets.PropertiesContentType) {
 		invalid = append(invalid, "ContentType")
 		valid = false
 	}
-	if p.ReplyTopic != "" && !packets.ValidateID(pt, packets.IDVPReplyTopic) {
+	if p.ReplyTopic != "" && !packets.ValidateID(pt, packets.PropertiesReplyTopic) {
 		invalid = append(invalid, "ReplyTopic")
 		valid = false
 	}
-	if p.CorrelationData != nil && !packets.ValidateID(pt, packets.IDVPCorrelationData) {
+	if p.CorrelationData != nil && !packets.ValidateID(pt, packets.PropertiesCorrelationData) {
 		invalid = append(invalid, "CorrelationData")
 		valid = false
 	}
-	if p.SubscriptionIdentifier != nil && !packets.ValidateID(pt, packets.IDVPSubscriptionIdentifier) {
+	if p.SubscriptionIdentifier != nil && !packets.ValidateID(pt, packets.PropertiesSubscriptionIdentifier) {
 		invalid = append(invalid, "SubscriptionIdentifier")
 		valid = false
 	}
-	if p.SessionExpiryInterval != nil && !packets.ValidateID(pt, packets.IDVPSessionExpiryInterval) {
+	if p.SessionExpiryInterval != nil && !packets.ValidateID(pt, packets.PropertiesSessionExpiryInterval) {
 		invalid = append(invalid, "SessionExpiryInterval")
 		valid = false
 	}
-	if p.AssignedClientID != "" && !packets.ValidateID(pt, packets.IDVPAssignedClientID) {
+	if p.AssignedClientID != "" && !packets.ValidateID(pt, packets.PropertiesAssignedClientID) {
 		invalid = append(invalid, "AssignedClientID")
 		valid = false
 	}
-	if p.ServerKeepAlive != nil && !packets.ValidateID(pt, packets.IDVPServerKeepAlive) {
+	if p.ServerKeepAlive != nil && !packets.ValidateID(pt, packets.PropertiesServerKeepAlive) {
 		invalid = append(invalid, "ServerKeepAlive")
 		valid = false
 	}
-	if p.AuthMethod != "" && !packets.ValidateID(pt, packets.IDVPAuthMethod) {
+	if p.AuthMethod != "" && !packets.ValidateID(pt, packets.PropertiesAuthMethod) {
 		invalid = append(invalid, "AuthMethod")
 		valid = false
 	}
-	if p.AuthData != nil && !packets.ValidateID(pt, packets.IDVPAuthData) {
+	if p.AuthData != nil && !packets.ValidateID(pt, packets.PropertiesAuthData) {
 		invalid = append(invalid, "AuthData")
 		valid = false
 	}
-	if p.RequestProblemInfo != nil && !packets.ValidateID(pt, packets.IDVPRequestProblemInfo) {
+	if p.RequestProblemInfo != nil && !packets.ValidateID(pt, packets.PropertiesRequestProblemInfo) {
 		invalid = append(invalid, "RequestProblemInfo")
 		valid = false
 	}
-	if p.WillDelayInterval != nil && !packets.ValidateID(pt, packets.IDVPWillDelayInterval) {
+	if p.WillDelayInterval != nil && !packets.ValidateID(pt, packets.PropertiesWillDelayInterval) {
 		invalid = append(invalid, "WillDelayInterval")
 		valid = false
 	}
-	if p.RequestResponseInfo != nil && !packets.ValidateID(pt, packets.IDVPRequestResponseInfo) {
+	if p.RequestResponseInfo != nil && !packets.ValidateID(pt, packets.PropertiesRequestResponseInfo) {
 		invalid = append(invalid, "RequestResponseInfo")
 		valid = false
 	}
-	if p.ResponseInfo != "" && !packets.ValidateID(pt, packets.IDVPResponseInfo) {
+	if p.ResponseInfo != "" && !packets.ValidateID(pt, packets.PropertiesResponseInfo) {
 		invalid = append(invalid, "ResponseInfo")
 		valid = false
 	}
-	if p.ServerReference != "" && !packets.ValidateID(pt, packets.IDVPServerReference) {
+	if p.ServerReference != "" && !packets.ValidateID(pt, packets.PropertiesServerReference) {
 		invalid = append(invalid, "ServerReference")
 		valid = false
 	}
-	if p.ReasonString != "" && !packets.ValidateID(pt, packets.IDVPReasonString) {
+	if p.ReasonString != "" && !packets.ValidateID(pt, packets.PropertiesReasonString) {
 		invalid = append(invalid, "ReasonString")
 		valid = false
 	}
-	if p.ReceiveMaximum != nil && !packets.ValidateID(pt, packets.IDVPReceiveMaximum) {
+	if p.ReceiveMaximum != nil && !packets.ValidateID(pt, packets.PropertiesReceiveMaximum) {
 		invalid = append(invalid, "ReceiveMaximum")
 		valid = false
 	}
-	if p.TopicAliasMaximum != nil && !packets.ValidateID(pt, packets.IDVPTopicAliasMaximum) {
+	if p.TopicAliasMaximum != nil && !packets.ValidateID(pt, packets.PropertiesTopicAliasMaximum) {
 		invalid = append(invalid, "TopicAliasMaximum")
 		valid = false
 	}
-	if p.TopicAlias != nil && !packets.ValidateID(pt, packets.IDVPTopicAlias) {
+	if p.TopicAlias != nil && !packets.ValidateID(pt, packets.PropertiesTopicAlias) {
 		invalid = append(invalid, "TopicAlias")
 		valid = false
 	}
-	if p.MaximumQOS != nil && !packets.ValidateID(pt, packets.IDVPMaximumQOS) {
+	if p.MaximumQOS != nil && !packets.ValidateID(pt, packets.PropertiesMaximumQOS) {
 		invalid = append(invalid, "MaximumQOS")
 		valid = false
 	}
-	if p.RetainAvailable != nil && !packets.ValidateID(pt, packets.IDVPRetainAvailable) {
+	if p.RetainAvailable != nil && !packets.ValidateID(pt, packets.PropertiesRetainAvailable) {
 		invalid = append(invalid, "RetainAvailable")
 		valid = false
 	}
-	if p.UserProperty != nil && !packets.ValidateID(pt, packets.IDVPUserProperty) {
+	if p.UserProperty != nil && !packets.ValidateID(pt, packets.PropertiesUserProperty) {
 		invalid = append(invalid, "UserProperty")
 		valid = false
 	}
-	if p.MaximumPacketSize != nil && !packets.ValidateID(pt, packets.IDVPMaximumPacketSize) {
+	if p.MaximumPacketSize != nil && !packets.ValidateID(pt, packets.PropertiesMaximumPacketSize) {
 		invalid = append(invalid, "MaximumPacketSize")
 		valid = false
 	}
-	if p.WildcardSubAvailable != nil && !packets.ValidateID(pt, packets.IDVPWildcardSubAvailable) {
+	if p.WildcardSubAvailable != nil && !packets.ValidateID(pt, packets.PropertiesWildcardSubAvailable) {
 		invalid = append(invalid, "WildcardSubAvailable")
 		valid = false
 	}
-	if p.SubIDAvailable != nil && !packets.ValidateID(pt, packets.IDVPSubIDAvailable) {
+	if p.SubIDAvailable != nil && !packets.ValidateID(pt, packets.PropertiesSubIDAvailable) {
 		invalid = append(invalid, "SubIDAvailable")
 		valid = false
 	}
-	if p.SharedSubAvailable != nil && !packets.ValidateID(pt, packets.IDVPSharedSubAvailable) {
+	if p.SharedSubAvailable != nil && !packets.ValidateID(pt, packets.PropertiesSharedSubAvailable) {
 		invalid = append(invalid, "SharedSubAvailable")
 		valid = false
 	}

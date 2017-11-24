@@ -2,6 +2,7 @@ package packets
 
 import (
 	"bytes"
+	"io"
 	"net"
 )
 
@@ -9,33 +10,40 @@ import (
 type Connack struct {
 	SessionPresent bool
 	ReasonCode     byte
-	IDVP           IDValuePair
+	Properties     Properties
 }
 
 //Unpack is the implementation of the interface required function for a packet
-func (c *Connack) Unpack(r *bytes.Buffer) (int, error) {
+func (c *Connack) Unpack(r *bytes.Buffer) error {
 	connackFlags, err := r.ReadByte()
 	if err != nil {
-		return 0, err
+		return err
 	}
 	c.SessionPresent = connackFlags&0x01 > 0
 
 	c.ReasonCode, err = r.ReadByte()
 	if err != nil {
-		return 0, err
+		return err
 	}
 
-	idvpLen, err := c.IDVP.Unpack(r, CONNACK)
+	err = c.Properties.Unpack(r, CONNACK)
 	if err != nil {
-		return 0, err
+		return err
 	}
 
-	return idvpLen + 2, nil
+	return nil
 }
 
 // Buffers is the implementation of the interface required function for a packet
 func (c *Connack) Buffers() net.Buffers {
 	return nil
+}
+
+func (c *Connack) Send(w io.Writer) error {
+	cp := &ControlPacket{FixedHeader: FixedHeader{Type: CONNACK}}
+	cp.Content = c
+
+	return cp.Send(w)
 }
 
 func (c *Connack) Reason() string {

@@ -2,6 +2,7 @@ package packets
 
 import (
 	"bytes"
+	"io"
 	"net"
 )
 
@@ -9,31 +10,29 @@ import (
 type Pubcomp struct {
 	PacketID   uint16
 	ReasonCode byte
-	IDVP       IDValuePair
+	Properties Properties
 }
 
 //Unpack is the implementation of the interface required function for a packet
-func (p *Pubcomp) Unpack(r *bytes.Buffer) (int, error) {
+func (p *Pubcomp) Unpack(r *bytes.Buffer) error {
 	var err error
 	success := r.Len() == 2
 	p.PacketID, err = readUint16(r)
 	if err != nil {
-		return 0, err
+		return err
 	}
 	if !success {
 		p.ReasonCode, err = r.ReadByte()
 		if err != nil {
-			return 0, err
+			return err
 		}
 
-		idvpLen, err := p.IDVP.Unpack(r, PUBACK)
+		err = p.Properties.Unpack(r, PUBACK)
 		if err != nil {
-			return 0, err
+			return err
 		}
-
-		return idvpLen + 3, nil
 	}
-	return 2, nil
+	return nil
 }
 
 // Buffers is the implementation of the interface required function for a packet
@@ -41,7 +40,14 @@ func (p *Pubcomp) Buffers() net.Buffers {
 	var b bytes.Buffer
 	writeUint16(p.PacketID, &b)
 	b.WriteByte(p.ReasonCode)
-	idvp := p.IDVP.Pack(PUBCOMP)
-	idvpLen := encodeVBI(len(idvp))
-	return net.Buffers{b.Bytes(), idvpLen, idvp}
+	idvp := p.Properties.Pack(PUBCOMP)
+	propLen := encodeVBI(len(idvp))
+	return net.Buffers{b.Bytes(), propLen, idvp}
+}
+
+func (p *Pubcomp) Send(w io.Writer) error {
+	cp := &ControlPacket{FixedHeader: FixedHeader{Type: PUBCOMP}}
+	cp.Content = p
+
+	return cp.Send(w)
 }

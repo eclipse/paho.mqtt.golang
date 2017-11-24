@@ -34,8 +34,9 @@ const (
 
 // Packet is the interface defining the unique parts of a controlpacket
 type Packet interface {
-	Unpack(*bytes.Buffer) (int, error)
+	Unpack(*bytes.Buffer) error
 	Buffers() net.Buffers
+	Send(io.Writer) error
 }
 
 // FixedHeader is the definition of a control packet fixed header
@@ -60,7 +61,6 @@ func (f *FixedHeader) Pack() []byte {
 type ControlPacket struct {
 	FixedHeader
 	Content Packet
-	Payload []byte
 }
 
 // NewControlPacket takes a packetType and returns a pointer to a
@@ -73,25 +73,26 @@ func NewControlPacket(t PacketType) *ControlPacket {
 		cp.Content = &Connect{
 			ProtocolName:    "MQTT",
 			ProtocolVersion: 5}
+		cp.Content.(*Connect).Properties.User = make(map[string]string)
 	case CONNACK:
 		cp.Content = &Connack{}
-		cp.Content.(*Connack).IDVP.UserProperty = make(map[string]string)
+		cp.Content.(*Connack).Properties.User = make(map[string]string)
 	case PUBLISH:
 		cp.Content = &Publish{}
-		cp.Content.(*Publish).IDVP.UserProperty = make(map[string]string)
+		cp.Content.(*Publish).Properties.User = make(map[string]string)
 	case PUBACK:
 		cp.Content = &Puback{}
-		cp.Content.(*Puback).IDVP.UserProperty = make(map[string]string)
+		cp.Content.(*Puback).Properties.User = make(map[string]string)
 	case PUBREC:
 		cp.Content = &Pubrec{}
-		cp.Content.(*Pubrec).IDVP.UserProperty = make(map[string]string)
+		cp.Content.(*Pubrec).Properties.User = make(map[string]string)
 	case PUBREL:
 		cp.Flags = 2
 		cp.Content = &Pubrel{}
-		cp.Content.(*Pubrel).IDVP.UserProperty = make(map[string]string)
+		cp.Content.(*Pubrel).Properties.User = make(map[string]string)
 	case PUBCOMP:
 		cp.Content = &Pubcomp{}
-		cp.Content.(*Pubcomp).IDVP.UserProperty = make(map[string]string)
+		cp.Content.(*Pubcomp).Properties.User = make(map[string]string)
 	case SUBSCRIBE:
 		cp.Flags = 2
 		cp.Content = &Subscribe{
@@ -99,24 +100,24 @@ func NewControlPacket(t PacketType) *ControlPacket {
 		}
 	case SUBACK:
 		cp.Content = &Suback{}
-		cp.Content.(*Suback).IDVP.UserProperty = make(map[string]string)
+		cp.Content.(*Suback).Properties.User = make(map[string]string)
 	case UNSUBSCRIBE:
 		cp.Flags = 2
 		cp.Content = &Unsubscribe{}
 	case UNSUBACK:
 		cp.Content = &Unsuback{}
-		cp.Content.(*Unsuback).IDVP.UserProperty = make(map[string]string)
+		cp.Content.(*Unsuback).Properties.User = make(map[string]string)
 	case PINGREQ:
 		cp.Content = &Pingreq{}
 	case PINGRESP:
 		cp.Content = &Pingresp{}
 	case DISCONNECT:
 		cp.Content = &Disconnect{}
-		cp.Content.(*Disconnect).IDVP.UserProperty = make(map[string]string)
+		cp.Content.(*Disconnect).Properties.User = make(map[string]string)
 	case AUTH:
 		cp.Flags = 1
 		cp.Content = &Auth{}
-		cp.Content.(*Auth).IDVP.UserProperty = make(map[string]string)
+		cp.Content.(*Auth).Properties.User = make(map[string]string)
 	default:
 		return nil
 	}
@@ -153,14 +154,14 @@ func ReadPacket(r io.Reader) (*ControlPacket, error) {
 	if n != cp.remainingLength {
 		return nil, fmt.Errorf("Failed to read packet, expected %d bytes, read %d", cp.remainingLength, n)
 	}
-	length, err := cp.Content.Unpack(bytes.NewBuffer(content))
+	err = cp.Content.Unpack(bytes.NewBuffer(content))
 	if err != nil {
 		return nil, err
 	}
-	payloadLength := cp.remainingLength - length
-	if payloadLength > 0 {
-		cp.Payload = content[length:]
-	}
+	// payloadLength := cp.remainingLength - length
+	// if payloadLength > 0 {
+	// 	cp.Payload = content[length:]
+	// }
 	return cp, nil
 }
 
@@ -173,11 +174,11 @@ func (c *ControlPacket) Send(w io.Writer) error {
 	for _, b := range buffers {
 		c.remainingLength += len(b)
 	}
-	c.remainingLength += len(c.Payload)
+	//c.remainingLength += len(c.Payload)
 
 	packet = append(packet, c.FixedHeader.Pack())
 	packet = append(packet, buffers...)
-	packet = append(packet, c.Payload)
+	//packet = append(packet, c.Payload)
 
 	_, err := packet.WriteTo(w)
 	if err != nil {

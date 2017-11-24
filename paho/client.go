@@ -44,7 +44,7 @@ func (c *Client) Connect(pt Properties, cn p.Connect) (*p.Connack, error) {
 		return nil, fmt.Errorf("Invalid properties for a Connect packet: %s", strings.Join(iv, ", "))
 	}
 
-	cn.IDVP = p.IDValuePair(pt)
+	cn.Properties = p.Properties(pt)
 	cn.ProtocolName = "MQTT"
 	cn.ProtocolVersion = 5
 	connectCP := p.NewControlPacket(p.CONNECT)
@@ -65,8 +65,8 @@ func (c *Client) Connect(pt Properties, cn p.Connect) (*p.Connack, error) {
 	if ca.ReasonCode != 0 {
 		return ca, fmt.Errorf("%s", ca.Reason())
 	}
-	if ca.IDVP.TopicAliasMaximum != nil {
-		c.settings.TopicAliasMaximum = ca.IDVP.TopicAliasMaximum
+	if ca.Properties.TopicAliasMaximum != nil {
+		c.settings.TopicAliasMaximum = ca.Properties.TopicAliasMaximum
 	}
 
 	return ca, nil

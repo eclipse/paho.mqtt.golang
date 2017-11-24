@@ -2,13 +2,14 @@ package packets
 
 import (
 	"bytes"
+	"io"
 	"net"
 )
 
 // Subscribe is the Variable Header definition for a Subscribe control packet
 type Subscribe struct {
 	PacketID      uint16
-	IDVP          IDValuePair
+	Properties    Properties
 	Subscriptions map[string]SubOptions
 }
 
@@ -33,27 +34,55 @@ func (s *SubOptions) Pack() byte {
 	return ret
 }
 
-func NewSubscribe(subs map[string]SubOptions) *ControlPacket {
-	s := NewControlPacket(SUBSCRIBE)
-	s.Content.(*Subscribe).Subscriptions = subs
+func NewSubscribe(opts ...func(c *Subscribe)) *Subscribe {
+	s := &Subscribe{
+		Subscriptions: make(map[string]SubOptions),
+		Properties: Properties{
+			User: make(map[string]string),
+		},
+	}
+
+	for _, opt := range opts {
+		opt(s)
+	}
 
 	return s
 }
 
+func Sub(topic string, subOpts SubOptions) func(*Subscribe) {
+	return func(s *Subscribe) {
+		s.Subscriptions[topic] = subOpts
+	}
+}
+
+func MultiSub(subs map[string]SubOptions) func(*Subscribe) {
+	return func(s *Subscribe) {
+		for k, v := range subs {
+			s.Subscriptions[k] = v
+		}
+	}
+}
+
+func SubscribeProperties(p *Properties) func(*Subscribe) {
+	return func(s *Subscribe) {
+		s.Properties = *p
+	}
+}
+
 //Unpack is the implementation of the interface required function for a packet
-func (s *Subscribe) Unpack(r *bytes.Buffer) (int, error) {
+func (s *Subscribe) Unpack(r *bytes.Buffer) error {
 	var err error
 	s.PacketID, err = readUint16(r)
 	if err != nil {
-		return 0, err
+		return err
 	}
 
-	idvpLen, err := s.IDVP.Unpack(r, SUBSCRIBE)
+	err = s.Properties.Unpack(r, SUBSCRIBE)
 	if err != nil {
-		return 0, err
+		return err
 	}
 
-	return idvpLen + 2, nil
+	return nil
 }
 
 // Buffers is the implementation of the interface required function for a packet
@@ -65,7 +94,14 @@ func (s *Subscribe) Buffers() net.Buffers {
 		writeString(t, &subs)
 		subs.WriteByte(o.Pack())
 	}
-	idvp := s.IDVP.Pack(SUBSCRIBE)
-	idvpLen := encodeVBI(len(idvp))
-	return net.Buffers{b.Bytes(), idvpLen, idvp, subs.Bytes()}
+	idvp := s.Properties.Pack(SUBSCRIBE)
+	propLen := encodeVBI(len(idvp))
+	return net.Buffers{b.Bytes(), propLen, idvp, subs.Bytes()}
+}
+
+func (s *Subscribe) Send(w io.Writer) error {
+	cp := &ControlPacket{FixedHeader: FixedHeader{Type: SUBSCRIBE, Flags: 2}}
+	cp.Content = s
+
+	return cp.Send(w)
 }

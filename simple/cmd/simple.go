@@ -2,36 +2,33 @@ package main
 
 import (
 	"log"
-	"net"
 
-	"github.com/eclipse/paho.mqtt.golang/packets"
+	pk "github.com/eclipse/paho.mqtt.golang/packets"
 	"github.com/eclipse/paho.mqtt.golang/simple"
 )
 
 func main() {
-	conn, err := net.Dial("tcp", "127.0.0.1:1883")
-	if err != nil {
-		log.Fatalln(err)
-	}
-	c := simple.NewClient(conn)
+	c, err := simple.NewClient(simple.OpenConn("tcp", "127.0.0.1:1883"))
 
-	cp := packets.NewControlPacket(packets.CONNECT)
-	connect := cp.Content.(*packets.Connect)
-	connect.KeepAlive = 30
-	connect.ClientID = "testGo"
+	cp := pk.NewConnect(
+		pk.KeepAlive(30),
+		pk.ClientID("testGo"),
+	)
 
 	ca, err := c.Connect(cp)
 	if err != nil {
 		log.Fatalln(err)
 	}
 
-	log.Println(ca.Content.(*packets.Connack).Reason())
+	log.Println(ca.Reason())
 
-	s := packets.NewSubscribe(map[string]byte{"test/1": 2})
-	s.Content.(*packets.Subscribe).PacketID = 1
+	s := pk.NewSubscribe(
+		pk.Sub("test/1", pk.SubOptions{QoS: 2}),
+	)
+	s.PacketID = 1
 	sa, err := c.Subscribe(s)
 	if err != nil {
 		log.Fatalln(err)
 	}
-	log.Println(sa.Content.(*packets.Suback).Reason(0))
+	log.Println(sa.Reason(0))
 }

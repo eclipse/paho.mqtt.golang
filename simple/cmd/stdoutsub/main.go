@@ -4,13 +4,12 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"net"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
-	"github.com/eclipse/paho.mqtt.golang/packets"
+	pk "github.com/eclipse/paho.mqtt.golang/packets"
 	"github.com/eclipse/paho.mqtt.golang/simple"
 )
 
@@ -23,30 +22,27 @@ func main() {
 	password := flag.String("password", "", "Password to match username")
 	flag.Parse()
 
-	conn, err := net.Dial("tcp", *server)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	c := simple.NewClient(conn)
+	c, err := simple.NewClient(simple.OpenConn("tcp", *server))
 
-	cp := packets.NewControlPacket(packets.CONNECT)
-	connect := cp.Content.(*packets.Connect)
-	connect.KeepAlive = 30
-	connect.ClientID = *clientid
-	connect.CleanStart = true
+	cp := pk.NewConnect(
+		pk.KeepAlive(30),
+		pk.ClientID(*clientid),
+		pk.CleanStart(true),
+	)
+
 	if *username != "" {
-		connect.UsernameFlag = true
-		connect.Username = *username
-		connect.PasswordFlag = true
-		connect.Password = []byte(*password)
+		pk.Username(*username)(cp)
+	}
+	if *password != "" {
+		pk.Password([]byte(*password))(cp)
 	}
 
 	ca, err := c.Connect(cp)
 	if err != nil {
 		log.Fatalln(err)
 	}
-	if ca.Content.(*packets.Connack).ReasonCode != 0 {
-		log.Fatalf("Failed to connect to %s : %d - %s", *server, ca.Content.(*packets.Connack).ReasonCode, ca.Content.(*packets.Connack).Reason())
+	if ca.ReasonCode != 0 {
+		log.Fatalf("Failed to connect to %s : %d - %s", *server, ca.ReasonCode, ca.Reason())
 	}
 
 	fmt.Printf("Connected to %s\n", *server)
@@ -63,27 +59,25 @@ func main() {
 			case <-ic:
 				fmt.Println("signal received, exiting")
 				if c != nil {
-					d := packets.NewControlPacket(packets.DISCONNECT)
-					d.Content.(*packets.Disconnect).DisconnectReasonCode = 0
-
+					d := pk.NewDisconnect(pk.DisconnectReason(0))
 					c.Disconnect(d)
-					if conn != nil {
-						conn.Close()
-					}
 				}
 				os.Exit(0)
 			}
 		}
 	}()
 
-	s := packets.NewSubscribe(map[string]packets.SubOptions{*topic: packets.SubOptions{QoS: byte(*qos)}})
-	s.Content.(*packets.Subscribe).PacketID = 1
+	s := pk.NewSubscribe(
+		pk.Sub(*topic, pk.SubOptions{QoS: byte(*qos)}),
+	)
+	s.PacketID = 1
+
 	sa, err := c.Subscribe(s)
 	if err != nil {
 		log.Fatalln(err)
 	}
-	if sa.Content.(*packets.Suback).Reasons[0] != 0 {
-		log.Fatalf("Failed to subscribe to %s : %s", *topic, sa.Content.(*packets.Suback).Reason(0))
+	if sa.Reasons[0] != 0 {
+		log.Fatalf("Failed to subscribe to %s : %s", *topic, sa.Reason(0))
 	}
 	log.Printf("Subscribed to %s", *topic)
 

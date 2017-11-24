@@ -7,94 +7,94 @@ import (
 )
 
 type Message struct {
-	Topic   string
-	QoS     byte
-	Retain  bool
-	IDVP    p.IDValuePair
-	Payload []byte
+	Topic      string
+	QoS        byte
+	Retain     bool
+	Properties p.Properties
+	Payload    []byte
 }
 
 func (m *Message) String() string {
 	ret := fmt.Sprintf("topic: %s  qos: %d  retain: %t\n", m.Topic, m.QoS, m.Retain)
-	if m.IDVP.PayloadFormat != nil {
-		ret += fmt.Sprintf("PayloadFormat: %v\n", m.IDVP.PayloadFormat)
+	if m.Properties.PayloadFormat != nil {
+		ret += fmt.Sprintf("PayloadFormat: %v\n", m.Properties.PayloadFormat)
 	}
-	if m.IDVP.PubExpiry != nil {
-		ret += fmt.Sprintf("PubExpiry: %v\n", m.IDVP.PubExpiry)
+	if m.Properties.PubExpiry != nil {
+		ret += fmt.Sprintf("PubExpiry: %v\n", m.Properties.PubExpiry)
 	}
-	if m.IDVP.ContentType != "" {
-		ret += fmt.Sprintf("ContentType: %v\n", m.IDVP.ContentType)
+	if m.Properties.ContentType != "" {
+		ret += fmt.Sprintf("ContentType: %v\n", m.Properties.ContentType)
 	}
-	if m.IDVP.ReplyTopic != "" {
-		ret += fmt.Sprintf("ReplyTopic: %v\n", m.IDVP.ReplyTopic)
+	if m.Properties.ReplyTopic != "" {
+		ret += fmt.Sprintf("ReplyTopic: %v\n", m.Properties.ReplyTopic)
 	}
-	if m.IDVP.CorrelationData != nil {
-		ret += fmt.Sprintf("CorrelationData: %v\n", m.IDVP.CorrelationData)
+	if m.Properties.CorrelationData != nil {
+		ret += fmt.Sprintf("CorrelationData: %v\n", m.Properties.CorrelationData)
 	}
-	if m.IDVP.SubscriptionIdentifier != nil {
-		ret += fmt.Sprintf("SubscriptionIdentifier: %v\n", m.IDVP.SubscriptionIdentifier)
+	if m.Properties.SubscriptionIdentifier != nil {
+		ret += fmt.Sprintf("SubscriptionIdentifier: %v\n", m.Properties.SubscriptionIdentifier)
 	}
-	if m.IDVP.SessionExpiryInterval != nil {
-		ret += fmt.Sprintf("SessionExpiryInterval: %v\n", m.IDVP.SessionExpiryInterval)
+	if m.Properties.SessionExpiryInterval != nil {
+		ret += fmt.Sprintf("SessionExpiryInterval: %v\n", m.Properties.SessionExpiryInterval)
 	}
-	if m.IDVP.AssignedClientID != "" {
-		ret += fmt.Sprintf("AssignedClientID: %v\n", m.IDVP.AssignedClientID)
+	if m.Properties.AssignedClientID != "" {
+		ret += fmt.Sprintf("AssignedClientID: %v\n", m.Properties.AssignedClientID)
 	}
-	if m.IDVP.ServerKeepAlive != nil {
-		ret += fmt.Sprintf("ServerKeepAlive: %v\n", m.IDVP.ServerKeepAlive)
+	if m.Properties.ServerKeepAlive != nil {
+		ret += fmt.Sprintf("ServerKeepAlive: %v\n", m.Properties.ServerKeepAlive)
 	}
-	if m.IDVP.AuthMethod != "" {
-		ret += fmt.Sprintf("AuthMethod: %v\n", m.IDVP.AuthMethod)
+	if m.Properties.AuthMethod != "" {
+		ret += fmt.Sprintf("AuthMethod: %v\n", m.Properties.AuthMethod)
 	}
-	if m.IDVP.AuthData != nil {
-		ret += fmt.Sprintf("AuthData: %v\n", m.IDVP.AuthData)
+	if m.Properties.AuthData != nil {
+		ret += fmt.Sprintf("AuthData: %v\n", m.Properties.AuthData)
 	}
-	if m.IDVP.RequestProblemInfo != nil {
-		ret += fmt.Sprintf("RequestProblemInfo: %v\n", m.IDVP.RequestProblemInfo)
+	if m.Properties.RequestProblemInfo != nil {
+		ret += fmt.Sprintf("RequestProblemInfo: %v\n", m.Properties.RequestProblemInfo)
 	}
-	if m.IDVP.WillDelayInterval != nil {
-		ret += fmt.Sprintf("WillDelayInterval: %v\n", m.IDVP.WillDelayInterval)
+	if m.Properties.WillDelayInterval != nil {
+		ret += fmt.Sprintf("WillDelayInterval: %v\n", m.Properties.WillDelayInterval)
 	}
-	if m.IDVP.RequestResponseInfo != nil {
-		ret += fmt.Sprintf("RequestResponseInfo: %v\n", m.IDVP.RequestResponseInfo)
+	if m.Properties.RequestResponseInfo != nil {
+		ret += fmt.Sprintf("RequestResponseInfo: %v\n", m.Properties.RequestResponseInfo)
 	}
-	if m.IDVP.ResponseInfo != "" {
-		ret += fmt.Sprintf("ResponseInfo: %v\n", m.IDVP.ResponseInfo)
+	if m.Properties.ResponseInfo != "" {
+		ret += fmt.Sprintf("ResponseInfo: %v\n", m.Properties.ResponseInfo)
 	}
-	if m.IDVP.ServerReference != "" {
-		ret += fmt.Sprintf("ServerReference: %v\n", m.IDVP.ServerReference)
+	if m.Properties.ServerReference != "" {
+		ret += fmt.Sprintf("ServerReference: %v\n", m.Properties.ServerReference)
 	}
-	if m.IDVP.ReasonString != "" {
-		ret += fmt.Sprintf("ReasonString: %v\n", m.IDVP.ReasonString)
+	if m.Properties.ReasonString != "" {
+		ret += fmt.Sprintf("ReasonString: %v\n", m.Properties.ReasonString)
 	}
-	if m.IDVP.ReceiveMaximum != nil {
-		ret += fmt.Sprintf("ReceiveMaximum: %v\n", m.IDVP.ReceiveMaximum)
+	if m.Properties.ReceiveMaximum != nil {
+		ret += fmt.Sprintf("ReceiveMaximum: %v\n", m.Properties.ReceiveMaximum)
 	}
-	if m.IDVP.TopicAliasMaximum != nil {
-		ret += fmt.Sprintf("TopicAliasMaximum: %v\n", m.IDVP.TopicAliasMaximum)
+	if m.Properties.TopicAliasMaximum != nil {
+		ret += fmt.Sprintf("TopicAliasMaximum: %v\n", m.Properties.TopicAliasMaximum)
 	}
-	if m.IDVP.TopicAlias != nil {
-		ret += fmt.Sprintf("TopicAlias: %v\n", m.IDVP.TopicAlias)
+	if m.Properties.TopicAlias != nil {
+		ret += fmt.Sprintf("TopicAlias: %v\n", m.Properties.TopicAlias)
 	}
-	if m.IDVP.MaximumQOS != nil {
-		ret += fmt.Sprintf("MaximumQOS: %v\n", m.IDVP.MaximumQOS)
+	if m.Properties.MaximumQOS != nil {
+		ret += fmt.Sprintf("MaximumQOS: %v\n", m.Properties.MaximumQOS)
 	}
-	if m.IDVP.RetainAvailable != nil {
-		ret += fmt.Sprintf("RetainAvailable: %v\n", m.IDVP.RetainAvailable)
+	if m.Properties.RetainAvailable != nil {
+		ret += fmt.Sprintf("RetainAvailable: %v\n", m.Properties.RetainAvailable)
 	}
-	if m.IDVP.MaximumPacketSize != nil {
-		ret += fmt.Sprintf("MaximumPacketSize: %v\n", m.IDVP.MaximumPacketSize)
+	if m.Properties.MaximumPacketSize != nil {
+		ret += fmt.Sprintf("MaximumPacketSize: %v\n", m.Properties.MaximumPacketSize)
 	}
-	if m.IDVP.WildcardSubAvailable != nil {
-		ret += fmt.Sprintf("WildcardSubAvailable: %v\n", m.IDVP.WildcardSubAvailable)
+	if m.Properties.WildcardSubAvailable != nil {
+		ret += fmt.Sprintf("WildcardSubAvailable: %v\n", m.Properties.WildcardSubAvailable)
 	}
-	if m.IDVP.SubIDAvailable != nil {
-		ret += fmt.Sprintf("SubIDAvailable: %v\n", m.IDVP.SubIDAvailable)
+	if m.Properties.SubIDAvailable != nil {
+		ret += fmt.Sprintf("SubIDAvailable: %v\n", m.Properties.SubIDAvailable)
 	}
-	if m.IDVP.SharedSubAvailable != nil {
-		ret += fmt.Sprintf("SharedSubAvailable: %v\n", m.IDVP.SharedSubAvailable)
+	if m.Properties.SharedSubAvailable != nil {
+		ret += fmt.Sprintf("SharedSubAvailable: %v\n", m.Properties.SharedSubAvailable)
 	}
-	for k, v := range m.IDVP.UserProperty {
+	for k, v := range m.Properties.UserProperty {
 		ret += fmt.Sprintf("UserProperty: %s : %s\n", k, v)
 	}
 	ret += string(m.Payload)

@@ -6,13 +6,12 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"net"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
-	"github.com/eclipse/paho.mqtt.golang/packets"
+	pk "github.com/eclipse/paho.mqtt.golang/packets"
 	"github.com/eclipse/paho.mqtt.golang/simple"
 )
 
@@ -29,30 +28,27 @@ func main() {
 	password := flag.String("password", "", "Password to match username")
 	flag.Parse()
 
-	conn, err := net.Dial("tcp", *server)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	c := simple.NewClient(conn)
+	c, err := simple.NewClient(simple.OpenConn("tcp", *server))
 
-	cp := packets.NewControlPacket(packets.CONNECT)
-	connect := cp.Content.(*packets.Connect)
-	connect.KeepAlive = 30
-	connect.ClientID = *clientid
-	connect.CleanStart = true
+	cp := pk.NewConnect(
+		pk.KeepAlive(30),
+		pk.ClientID(*clientid),
+		pk.CleanStart(true),
+	)
+
 	if *username != "" {
-		connect.UsernameFlag = true
-		connect.Username = *username
-		connect.PasswordFlag = true
-		connect.Password = []byte(*password)
+		pk.Username(*username)(cp)
+	}
+	if *password != "" {
+		pk.Password([]byte(*password))(cp)
 	}
 
 	ca, err := c.Connect(cp)
 	if err != nil {
 		log.Fatalln(err)
 	}
-	if ca.Content.(*packets.Connack).ReasonCode != 0 {
-		log.Fatalf("Failed to connect to %s : %d - %s", *server, ca.Content.(*packets.Connack).ReasonCode, ca.Content.(*packets.Connack).Reason())
+	if ca.ReasonCode != 0 {
+		log.Fatalf("Failed to connect to %s : %d - %s", *server, ca.ReasonCode, ca.Reason())
 	}
 
 	fmt.Printf("Connected to %s\n", *server)
@@ -69,13 +65,8 @@ func main() {
 			case <-ic:
 				fmt.Println("signal received, exiting")
 				if c != nil {
-					d := packets.NewControlPacket(packets.DISCONNECT)
-					d.Content.(*packets.Disconnect).DisconnectReasonCode = 0
-
+					d := pk.NewDisconnect(pk.DisconnectReason(0))
 					c.Disconnect(d)
-					if conn != nil {
-						conn.Close()
-					}
 				}
 				os.Exit(0)
 			}
@@ -88,7 +79,11 @@ func main() {
 			os.Exit(0)
 		}
 
-		if _, err = c.SendMessage(*topic, byte(*qos), *retained, nil, []byte(message)); err != nil {
+		pb := pk.NewPublish(
+			pk.Message(*topic, byte(*qos), *retained, []byte(message)),
+		)
+
+		if _, err = c.Publish(pb); err != nil {
 			log.Println(err)
 		}
 	}

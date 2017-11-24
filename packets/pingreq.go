@@ -2,6 +2,7 @@ package packets
 
 import (
 	"bytes"
+	"io"
 	"net"
 )
 
@@ -10,11 +11,18 @@ type Pingreq struct {
 }
 
 //Unpack is the implementation of the interface required function for a packet
-func (p *Pingreq) Unpack(r *bytes.Buffer) (int, error) {
-	return 0, nil
+func (p *Pingreq) Unpack(r *bytes.Buffer) error {
+	return nil
 }
 
 // Buffers is the implementation of the interface required function for a packet
 func (p *Pingreq) Buffers() net.Buffers {
 	return nil
+}
+
+func (p *Pingreq) Send(w io.Writer) error {
+	cp := &ControlPacket{FixedHeader: FixedHeader{Type: PINGREQ}}
+	cp.Content = p
+
+	return cp.Send(w)
 }
