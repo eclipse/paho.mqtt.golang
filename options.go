@@ -56,6 +56,7 @@ type ClientOptions struct {
 	PingTimeout             time.Duration
 	ConnectTimeout          time.Duration
 	MaxReconnectInterval    time.Duration
+	PublishTimeout          time.Duration
 	AutoReconnect           bool
 	Store                   Store
 	DefaultPublishHandler   MessageHandler
@@ -99,6 +100,7 @@ func NewClientOptions() *ClientOptions {
 		OnConnect:               nil,
 		OnConnectionLost:        DefaultConnectionLostHandler,
 		WriteTimeout:            0, // 0 represents timeout disabled
+		PublishTimeout:          5000,
 		MessageChannelDepth:     100,
 	}
 	return o
@@ -272,6 +274,13 @@ func (o *ClientOptions) SetConnectTimeout(t time.Duration) *ClientOptions {
 // when connection is lost
 func (o *ClientOptions) SetMaxReconnectInterval(t time.Duration) *ClientOptions {
 	o.MaxReconnectInterval = t
+	return o
+}
+
+// SetPublishTimeout limits how long the client will wait until message will be
+// sent to outgoing goroutine.
+func (o *ClientOptions) SetPublishTimeout(t time.Duration) *ClientOptions {
+	o.PublishTimeout = t
 	return o
 }
 

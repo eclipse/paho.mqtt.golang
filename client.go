@@ -510,13 +510,17 @@ func (c *client) Publish(topic string, qos byte, retained bool, payload interfac
 		return token
 	}
 
-	DEBUG.Println(CLI, "sending publish message, topic:", topic)
 	if pub.Qos != 0 && pub.MessageID == 0 {
 		pub.MessageID = c.getID(token)
 		token.messageID = pub.MessageID
 	}
 	persistOutbound(c.persist, pub)
-	c.obound <- &PacketAndToken{p: pub, t: token}
+	select {
+	case c.obound <- &PacketAndToken{p: pub, t: token}:
+		DEBUG.Println(CLI, "sending publish message, topic:", topic)
+	case <-time.After(c.options.PublishTimeout * time.Millisecond):
+		ERROR.Println(CLI, "timeout of sending publish message, topic:", topic)
+	}
 	return token
 }
 

@@ -135,3 +135,8 @@ func (r *ClientOptionsReader) MessageChannelDepth() uint {
 	s := r.options.MessageChannelDepth
 	return s
 }
+
+func (r *ClientOptionsReader) PublishTimeout() time.Duration {
+	s := r.options.PublishTimeout * time.Millisecond
+	return s
+}
