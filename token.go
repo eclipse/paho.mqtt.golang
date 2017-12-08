@@ -60,7 +60,7 @@ func (b *baseToken) Wait() bool {
 	return b.ready
 }
 
-// WaitTimeout takes a time in ms to wait for the flow associated with the
+// WaitTimeout takes a time.Duration to wait for the flow associated with the
 // Token to complete, returns true if it returned before the timeout or
 // returns false if the timeout occurred. In the case of a timeout the Token
 // does not have an error set in case the caller wishes to wait again
