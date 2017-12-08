@@ -64,21 +64,20 @@ func openConnection(uri *url.URL, tlsc *tls.Config, timeout time.Duration) (net.
 				return nil, err
 			}
 			return conn, nil
-		} else {
-			proxyDialer := proxy.FromEnvironment()
-
-			conn, err := proxyDialer.Dial("tcp", uri.Host)
-			if err != nil {
-				return nil, err
-			}
-			return conn, nil
 		}
-	case "unix":
-		conn, err := net.DialTimeout("unix", uri.Host, timeout)
+		proxyDialer := proxy.FromEnvironment()
+
+		conn, err := proxyDialer.Dial("tcp", uri.Host)
 		if err != nil {
 			return nil, err
 		}
 		return conn, nil
+  case "unix":
+		conn, err := net.DialTimeout("unix", uri.Host, timeout)
+		if err != nil {
+			return nil, err
+		}
+    return conn, nil
 	case "ssl":
 		fallthrough
 	case "tls":
@@ -91,24 +90,23 @@ func openConnection(uri *url.URL, tlsc *tls.Config, timeout time.Duration) (net.
 				return nil, err
 			}
 			return conn, nil
-		} else {
-			proxyDialer := proxy.FromEnvironment()
-
-			conn, err := proxyDialer.Dial("tcp", uri.Host)
-			if err != nil {
-				return nil, err
-			}
-
-			tlsConn := tls.Client(conn, tlsc)
-
-			err = tlsConn.Handshake()
-			if err != nil {
-				conn.Close()
-				return nil, err
-			}
-
-			return tlsConn, nil
 		}
+		proxyDialer := proxy.FromEnvironment()
+
+		conn, err := proxyDialer.Dial("tcp", uri.Host)
+		if err != nil {
+			return nil, err
+		}
+
+		tlsConn := tls.Client(conn, tlsc)
+
+		err = tlsConn.Handshake()
+		if err != nil {
+			conn.Close()
+			return nil, err
+		}
+
+		return tlsConn, nil
 	}
 	return nil, errors.New("Unknown protocol")
 }
@@ -273,6 +271,7 @@ func alllogic(c *client) {
 					pa := packets.NewControlPacket(packets.Puback).(*packets.PubackPacket)
 					pa.MessageID = m.MessageID
 					DEBUG.Println(NET, "putting puback msg on obound")
+					persistOutbound(c.persist, pa)
 					select {
 					case c.oboundP <- &PacketAndToken{p: pa, t: nil}:
 					case <-c.stop:
@@ -303,6 +302,7 @@ func alllogic(c *client) {
 				DEBUG.Println(NET, "received pubrel, id:", m.MessageID)
 				pc := packets.NewControlPacket(packets.Pubcomp).(*packets.PubcompPacket)
 				pc.MessageID = m.MessageID
+				persistOutbound(c.persist, pc)
 				select {
 				case c.oboundP <- &PacketAndToken{p: pc, t: nil}:
 				case <-c.stop:

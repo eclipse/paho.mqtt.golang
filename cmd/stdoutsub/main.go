@@ -38,13 +38,7 @@ func main() {
 	//MQTT.DEBUG = log.New(os.Stdout, "", 0)
 	//MQTT.ERROR = log.New(os.Stdout, "", 0)
 	c := make(chan os.Signal, 1)
-	i = 0
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-	go func() {
-		<-c
-		fmt.Println("signal received, exiting")
-		os.Exit(0)
-	}()
 
 	hostname, _ := os.Hostname()
 
@@ -56,16 +50,16 @@ func main() {
 	password := flag.String("password", "", "Password to match username")
 	flag.Parse()
 
-	connOpts := &MQTT.ClientOptions{
-		ClientID:             *clientid,
-		CleanSession:         true,
-		Username:             *username,
-		Password:             *password,
-		MaxReconnectInterval: 1 * time.Second,
-		KeepAlive:            30 * time.Second,
-		TLSConfig:            tls.Config{InsecureSkipVerify: true, ClientAuth: tls.NoClientCert},
+	connOpts := MQTT.NewClientOptions().AddBroker(*server).SetClientID(*clientid).SetCleanSession(true)
+	if *username != "" {
+		connOpts.SetUsername(*username)
+		if *password != "" {
+			connOpts.SetPassword(*password)
+		}
 	}
-	connOpts.AddBroker(*server)
+	tlsConfig := &tls.Config{InsecureSkipVerify: true, ClientAuth: tls.NoClientCert}
+	connOpts.SetTLSConfig(tlsConfig)
+
 	connOpts.OnConnect = func(c MQTT.Client) {
 		if token := c.Subscribe(*topic, byte(*qos), onMessageReceived); token.Wait() && token.Error() != nil {
 			panic(token.Error())
@@ -79,7 +73,5 @@ func main() {
 		fmt.Printf("Connected to %s\n", *server)
 	}
 
-	for {
-		time.Sleep(1 * time.Second)
-	}
+	<-c
 }

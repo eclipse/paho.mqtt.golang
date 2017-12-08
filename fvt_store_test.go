@@ -538,7 +538,7 @@ func Test_MemoryStore_Del(t *testing.T) {
 
 	m.Del(key)
 
-	if len(m.messages) != 1 {
+	if len(m.messages) != 0 {
 		t.Fatalf("message still exists after deletion")
 	}
 }
