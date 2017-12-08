@@ -64,15 +64,14 @@ func openConnection(uri *url.URL, tlsc *tls.Config, timeout time.Duration) (net.
 				return nil, err
 			}
 			return conn, nil
-		} else {
-			proxyDialer := proxy.FromEnvironment()
-
-			conn, err := proxyDialer.Dial("tcp", uri.Host)
-			if err != nil {
-				return nil, err
-			}
-			return conn, nil
 		}
+		proxyDialer := proxy.FromEnvironment()
+
+		conn, err := proxyDialer.Dial("tcp", uri.Host)
+		if err != nil {
+			return nil, err
+		}
+		return conn, nil
 	case "ssl":
 		fallthrough
 	case "tls":
@@ -85,24 +84,23 @@ func openConnection(uri *url.URL, tlsc *tls.Config, timeout time.Duration) (net.
 				return nil, err
 			}
 			return conn, nil
-		} else {
-			proxyDialer := proxy.FromEnvironment()
-
-			conn, err := proxyDialer.Dial("tcp", uri.Host)
-			if err != nil {
-				return nil, err
-			}
-
-			tlsConn := tls.Client(conn, tlsc)
-
-			err = tlsConn.Handshake()
-			if err != nil {
-				conn.Close()
-				return nil, err
-			}
-
-			return tlsConn, nil
 		}
+		proxyDialer := proxy.FromEnvironment()
+
+		conn, err := proxyDialer.Dial("tcp", uri.Host)
+		if err != nil {
+			return nil, err
+		}
+
+		tlsConn := tls.Client(conn, tlsc)
+
+		err = tlsConn.Handshake()
+		if err != nil {
+			conn.Close()
+			return nil, err
+		}
+
+		return tlsConn, nil
 	}
 	return nil, errors.New("Unknown protocol")
 }
