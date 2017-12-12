@@ -30,6 +30,40 @@ type route struct {
 	callback MessageHandler
 }
 
+// routedPacket is a type sent to the router by the network layer
+type routedPacket struct {
+	message *packets.PublishPacket
+	callback responseCallback
+}
+
+type routedCtx struct {
+	errors []error
+	m sync.Mutex
+	rc responseCallback
+	msg Message
+}
+
+func (rc *routedCtx) runCallback(c *client, handler MessageHandler) {
+	if err := handler(c, rc.msg); err != nil {
+		rc.m.Lock()
+		rc.errors = append(rc.errors, err)
+		rc.m.Unlock()
+	}
+}
+
+func (rc *routedCtx) finish() {
+	if len(rc.errors) != 0 {
+		for _, err := range(rc.errors) {
+			ERROR.Println(ROU, "error on message handler", err)
+		}
+		return
+	}
+
+	if rc.rc != nil {
+		rc.rc()
+	}
+}
+
 // match takes a slice of strings which represent the route being tested having been split on '/'
 // separators, and a slice of strings representing the topic string in the published message, similarly
 // split.
@@ -128,20 +162,29 @@ func (r *router) setDefaultHandler(handler MessageHandler) {
 // takes messages off the channel, matches them against the internal route list and calls the
 // associated callback (or the defaultHandler, if one exists and no other route matched). If
 // anything is sent down the stop channel the function will end.
-func (r *router) matchAndDispatch(messages <-chan *packets.PublishPacket, order bool, client *client) {
+func (r *router) matchAndDispatch(messages <-chan routedPacket, order bool, cl *client) {
 	go func() {
 		for {
 			select {
-			case message := <-messages:
+			case rp := <-messages:
 				sent := false
 				r.RLock()
 				handlers := []MessageHandler{}
+				var asyncHandlers sync.WaitGroup
+				rc := routedCtx{
+					rc: rp.callback,
+					msg: messageFromPublish(rp.message),
+				}
 				for e := r.routes.Front(); e != nil; e = e.Next() {
-					if e.Value.(*route).match(message.TopicName) {
+					if e.Value.(*route).match(rp.message.TopicName) {
 						if order {
 							handlers = append(handlers, e.Value.(*route).callback)
 						} else {
-							go e.Value.(*route).callback(client, messageFromPublish(message))
+							asyncHandlers.Add(1)
+							go func(c *client, h MessageHandler) {
+								rc.runCallback(c, h)
+								asyncHandlers.Done()
+							} (cl, e.Value.(*route).callback)
 						}
 						sent = true
 					}
@@ -150,13 +193,19 @@ func (r *router) matchAndDispatch(messages <-chan *packets.PublishPacket, order 
 					if order {
 						handlers = append(handlers, r.defaultHandler)
 					} else {
-						go r.defaultHandler(client, messageFromPublish(message))
+						asyncHandlers.Add(1)
+						go func(c *client, h MessageHandler) {
+							rc.runCallback(c, h)
+							asyncHandlers.Done()
+						} (cl, r.defaultHandler)
 					}
 				}
 				r.RUnlock()
 				for _, handler := range handlers {
-					handler(client, messageFromPublish(message))
+					rc.runCallback(cl, handler)
 				}
+				asyncHandlers.Wait()
+				rc.finish()
 			case <-r.stop:
 				return
 			}

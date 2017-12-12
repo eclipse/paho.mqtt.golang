@@ -76,7 +76,7 @@ type client struct {
 	oboundP         chan *PacketAndToken
 	msgRouter       *router
 	stopRouter      chan bool
-	incomingPubChan chan *packets.PublishPacket
+	incomingPubChan chan routedPacket
 	errors          chan error
 	stop            chan struct{}
 	persist         Store
@@ -247,7 +247,7 @@ func (c *client) Connect() Token {
 			go keepalive(c)
 		}
 
-		c.incomingPubChan = make(chan *packets.PublishPacket, c.options.MessageChannelDepth)
+		c.incomingPubChan = make(chan routedPacket, c.options.MessageChannelDepth)
 		c.msgRouter.matchAndDispatch(c.incomingPubChan, c.options.Order, c)
 
 		c.setConnected(connected)

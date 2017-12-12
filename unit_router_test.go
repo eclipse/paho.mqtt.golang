@@ -18,6 +18,8 @@ import (
 	"testing"
 
 	"github.com/eclipse/paho.mqtt.golang/packets"
+	"errors"
+	"time"
 )
 
 func Test_newRouter(t *testing.T) {
@@ -36,8 +38,9 @@ func Test_newRouter(t *testing.T) {
 func Test_AddRoute(t *testing.T) {
 	router, _ := newRouter()
 	calledback := false
-	cb := func(client Client, msg Message) {
+	cb := func(client Client, msg Message) error {
 		calledback = true
+		return nil
 	}
 	router.addRoute("/alpha", cb)
 
@@ -256,9 +259,15 @@ func Test_match(t *testing.T) {
 
 func Test_MatchAndDispatch(t *testing.T) {
 	calledback := make(chan bool)
+	responseCalledBack := make(chan bool)
 
-	cb := func(c Client, m Message) {
+	cb := func(c Client, m Message) error {
 		calledback <- true
+		return nil
+	}
+
+	rcb := func() {
+		responseCalledBack <- true
 	}
 
 	pub := packets.NewControlPacket(packets.Publish).(*packets.PublishPacket)
@@ -266,21 +275,77 @@ func Test_MatchAndDispatch(t *testing.T) {
 	pub.TopicName = "a"
 	pub.Payload = []byte("foo")
 
-	msgs := make(chan *packets.PublishPacket)
+	rpub := routedPacket{
+		message: pub,
+		callback: rcb,
+	}
+
+	msgs := make(chan routedPacket)
 
 	router, stopper := newRouter()
 	router.addRoute("a", cb)
 
 	router.matchAndDispatch(msgs, true, nil)
 
-	msgs <- pub
+	msgs <- rpub
 
 	<-calledback
+	<-responseCalledBack
 
 	stopper <- true
 
 	select {
-	case msgs <- pub:
+	case msgs <- rpub:
+		t.Errorf("msgs should not have a listener")
+	default:
+	}
+
+}
+
+func Test_MatchAndDispatchHandlerError(t *testing.T) {
+	calledback := make(chan bool)
+	responseCalledBack := make(chan bool)
+
+	cb := func(c Client, m Message) error {
+		calledback <- true
+		return errors.New("Error on handler")
+	}
+
+	rcb := func() {
+		responseCalledBack <- true
+	}
+
+	pub := packets.NewControlPacket(packets.Publish).(*packets.PublishPacket)
+	pub.Qos = 2
+	pub.TopicName = "a"
+	pub.Payload = []byte("foo")
+
+	rpub := routedPacket{
+		message: pub,
+		callback: rcb,
+	}
+
+	msgs := make(chan routedPacket)
+
+	router, stopper := newRouter()
+	router.addRoute("a", cb)
+
+	router.matchAndDispatch(msgs, true, nil)
+
+	msgs <- rpub
+
+	tm := time.NewTimer(1 * time.Second)
+	<-calledback
+	select {
+	case <-tm.C:
+	case <-responseCalledBack:
+		t.Error("Response Callback shouldn't be called")
+	}
+
+	stopper <- true
+
+	select {
+	case msgs <- rpub:
 		t.Errorf("msgs should not have a listener")
 	default:
 	}

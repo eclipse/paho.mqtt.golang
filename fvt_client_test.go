@@ -151,9 +151,10 @@ func Test_Subscribe(t *testing.T) {
 	sops := NewClientOptions()
 	sops.AddBroker(FVTTCP)
 	sops.SetClientID("Subscribe_rx")
-	var f MessageHandler = func(client Client, msg Message) {
+	var f MessageHandler = func(client Client, msg Message) error {
 		fmt.Printf("TOPIC: %s\n", msg.Topic())
 		fmt.Printf("MSG: %s\n", msg.Payload())
+		return nil
 	}
 	sops.SetDefaultPublishHandler(f)
 	s := NewClient(sops)
@@ -191,10 +192,11 @@ func Test_Will(t *testing.T) {
 	wops := NewClientOptions()
 	wops.AddBroker(FVTTCP)
 	wops.SetClientID("will-subscriber")
-	wops.SetDefaultPublishHandler(func(client Client, msg Message) {
+	wops.SetDefaultPublishHandler(func(client Client, msg Message) error {
 		fmt.Printf("TOPIC: %s\n", msg.Topic())
 		fmt.Printf("MSG: %s\n", msg.Payload())
 		willmsgc <- string(msg.Payload())
+		return nil
 	})
 	wops.SetAutoReconnect(false)
 	wsub := NewClient(wops)
@@ -235,10 +237,11 @@ func Test_CleanSession(t *testing.T) {
 	wops.AddBroker(FVTTCP)
 	wops.SetClientID("clsn-tester")
 	wops.SetCleanSession(false)
-	wops.SetDefaultPublishHandler(func(client Client, msg Message) {
+	wops.SetDefaultPublishHandler(func(client Client, msg Message) error {
 		fmt.Printf("TOPIC: %s\n", msg.Topic())
 		fmt.Printf("MSG: %s\n", msg.Payload())
 		clsnc <- string(msg.Payload())
+		return nil
 	})
 	wops.SetAutoReconnect(false)
 	wsub := NewClient(wops)
@@ -309,10 +312,11 @@ func Test_Binary_Will(t *testing.T) {
 
 	wops := NewClientOptions().AddBroker(FVTTCP)
 	wops.SetClientID("will-subscriber")
-	wops.SetDefaultPublishHandler(func(client Client, msg Message) {
+	wops.SetDefaultPublishHandler(func(client Client, msg Message) error {
 		fmt.Printf("TOPIC: %s\n", msg.Topic())
 		fmt.Printf("MSG: %v\n", msg.Payload())
 		willmsgc <- msg.Payload()
+		return nil
 	})
 	wops.SetAutoReconnect(false)
 	wsub := NewClient(wops)
@@ -368,10 +372,11 @@ func Test_p0s0(t *testing.T) {
 	sops := NewClientOptions()
 	sops.AddBroker(FVTTCP)
 	sops.SetClientID("p0s0-sub")
-	var f MessageHandler = func(client Client, msg Message) {
+	var f MessageHandler = func(client Client, msg Message) error {
 		fmt.Printf("TOPIC: %s\n", msg.Topic())
 		fmt.Printf("MSG: %s\n", msg.Payload())
 		choke <- true
+		return nil
 	}
 	sops.SetDefaultPublishHandler(f)
 
@@ -415,10 +420,11 @@ func Test_p0s1(t *testing.T) {
 	sops := NewClientOptions()
 	sops.AddBroker(FVTTCP)
 	sops.SetClientID("p0s1-sub")
-	var f MessageHandler = func(client Client, msg Message) {
+	var f MessageHandler = func(client Client, msg Message) error {
 		fmt.Printf("TOPIC: %s\n", msg.Topic())
 		fmt.Printf("MSG: %s\n", msg.Payload())
 		choke <- true
+		return nil
 	}
 	sops.SetDefaultPublishHandler(f)
 
@@ -461,10 +467,11 @@ func Test_p0s2(t *testing.T) {
 	sops := NewClientOptions()
 	sops.AddBroker(FVTTCP)
 	sops.SetClientID("p0s2-sub")
-	var f MessageHandler = func(client Client, msg Message) {
+	var f MessageHandler = func(client Client, msg Message) error {
 		fmt.Printf("TOPIC: %s\n", msg.Topic())
 		fmt.Printf("MSG: %s\n", msg.Payload())
 		choke <- true
+		return nil
 	}
 	sops.SetDefaultPublishHandler(f)
 
@@ -508,10 +515,11 @@ func Test_p1s0(t *testing.T) {
 	sops := NewClientOptions()
 	sops.AddBroker(FVTTCP)
 	sops.SetClientID("p1s0-sub")
-	var f MessageHandler = func(client Client, msg Message) {
+	var f MessageHandler = func(client Client, msg Message) error {
 		fmt.Printf("TOPIC: %s\n", msg.Topic())
 		fmt.Printf("MSG: %s\n", msg.Payload())
 		choke <- true
+		return nil
 	}
 	sops.SetDefaultPublishHandler(f)
 
@@ -555,10 +563,11 @@ func Test_p1s1(t *testing.T) {
 	sops := NewClientOptions()
 	sops.AddBroker(FVTTCP)
 	sops.SetClientID("p1s1-sub")
-	var f MessageHandler = func(client Client, msg Message) {
+	var f MessageHandler = func(client Client, msg Message) error {
 		fmt.Printf("TOPIC: %s\n", msg.Topic())
 		fmt.Printf("MSG: %s\n", msg.Payload())
 		choke <- true
+		return nil
 	}
 	sops.SetDefaultPublishHandler(f)
 
@@ -601,10 +610,11 @@ func Test_p1s2(t *testing.T) {
 	sops := NewClientOptions()
 	sops.AddBroker(FVTTCP)
 	sops.SetClientID("p1s2-sub")
-	var f MessageHandler = func(client Client, msg Message) {
+	var f MessageHandler = func(client Client, msg Message) error {
 		fmt.Printf("TOPIC: %s\n", msg.Topic())
 		fmt.Printf("MSG: %s\n", msg.Payload())
 		choke <- true
+		return nil
 	}
 	sops.SetDefaultPublishHandler(f)
 
@@ -648,10 +658,11 @@ func Test_p2s0(t *testing.T) {
 	sops := NewClientOptions()
 	sops.AddBroker(FVTTCP)
 	sops.SetClientID("p2s0-sub")
-	var f MessageHandler = func(client Client, msg Message) {
+	var f MessageHandler = func(client Client, msg Message) error {
 		fmt.Printf("TOPIC: %s\n", msg.Topic())
 		fmt.Printf("MSG: %s\n", msg.Payload())
 		choke <- true
+		return nil
 	}
 	sops.SetDefaultPublishHandler(f)
 
@@ -693,10 +704,11 @@ func Test_p2s1(t *testing.T) {
 	sops := NewClientOptions()
 	sops.AddBroker(FVTTCP)
 	sops.SetClientID("p2s1-sub")
-	var f MessageHandler = func(client Client, msg Message) {
+	var f MessageHandler = func(client Client, msg Message) error {
 		fmt.Printf("TOPIC: %s\n", msg.Topic())
 		fmt.Printf("MSG: %s\n", msg.Payload())
 		choke <- true
+		return nil
 	}
 	sops.SetDefaultPublishHandler(f)
 
@@ -740,10 +752,11 @@ func Test_p2s2(t *testing.T) {
 	sops := NewClientOptions()
 	sops.AddBroker(FVTTCP)
 	sops.SetClientID("p2s2-sub")
-	var f MessageHandler = func(client Client, msg Message) {
+	var f MessageHandler = func(client Client, msg Message) error {
 		fmt.Printf("TOPIC: %s\n", msg.Topic())
 		fmt.Printf("MSG: %s\n", msg.Payload())
 		choke <- true
+		return nil
 	}
 	sops.SetDefaultPublishHandler(f)
 
@@ -785,7 +798,7 @@ func Test_PublishMessage(t *testing.T) {
 	sops := NewClientOptions()
 	sops.AddBroker(FVTTCP)
 	sops.SetClientID("pubmsg-sub")
-	var f MessageHandler = func(client Client, msg Message) {
+	var f MessageHandler = func(client Client, msg Message) error {
 		fmt.Printf("TOPIC: %s\n", msg.Topic())
 		fmt.Printf("MSG: %s\n", msg.Payload())
 		if string(msg.Payload()) != "pubmsg payload" {
@@ -793,6 +806,7 @@ func Test_PublishMessage(t *testing.T) {
 			t.Fatalf("Message payload incorrect")
 		}
 		choke <- true
+		return nil
 	}
 	sops.SetDefaultPublishHandler(f)
 
@@ -834,13 +848,14 @@ func Test_PublishEmptyMessage(t *testing.T) {
 	sops := NewClientOptions()
 	sops.AddBroker(FVTTCP)
 	sops.SetClientID("pubmsgempty-sub")
-	var f MessageHandler = func(client Client, msg Message) {
+	var f MessageHandler = func(client Client, msg Message) error {
 		fmt.Printf("TOPIC: %s\n", msg.Topic())
 		fmt.Printf("MSG: %s\n", msg.Payload())
 		if string(msg.Payload()) != "" {
 			t.Fatalf("Message payload incorrect")
 		}
 		choke <- true
+		return nil
 	}
 	sops.SetDefaultPublishHandler(f)
 

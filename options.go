@@ -23,7 +23,7 @@ import (
 // MessageHandler is a callback type which can be set to be
 // executed upon the arrival of messages published to topics
 // to which the client is subscribed.
-type MessageHandler func(Client, Message)
+type MessageHandler func(Client, Message) error
 
 // ConnectionLostHandler is a callback type which can be set to be
 // executed upon an unintended disconnection from the MQTT broker.

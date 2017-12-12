@@ -30,6 +30,8 @@ import (
 	"golang.org/x/net/websocket"
 )
 
+type responseCallback func()
+
 func signalError(c chan<- error, err error) {
 	select {
 	case c <- err:
@@ -255,31 +257,39 @@ func alllogic(c *client) {
 				DEBUG.Println(NET, "putting msg on onPubChan")
 				switch m.Qos {
 				case 2:
-					c.incomingPubChan <- m
-					DEBUG.Println(NET, "done putting msg on incomingPubChan")
-					pr := packets.NewControlPacket(packets.Pubrec).(*packets.PubrecPacket)
-					pr.MessageID = m.MessageID
-					DEBUG.Println(NET, "putting pubrec msg on obound")
-					select {
-					case c.oboundP <- &PacketAndToken{p: pr, t: nil}:
-					case <-c.stop:
+					c.incomingPubChan <- routedPacket{
+						message: m,
+						callback: func() {
+							pr := packets.NewControlPacket(packets.Pubrec).(*packets.PubrecPacket)
+							pr.MessageID = m.MessageID
+							DEBUG.Println(NET, "putting pubrec msg on obound")
+							select {
+							case c.oboundP <- &PacketAndToken{p: pr, t: nil}:
+							case <-c.stop:
+							}
+							DEBUG.Println(NET, "done putting pubrec msg on obound")
+						},
 					}
-					DEBUG.Println(NET, "done putting pubrec msg on obound")
+					DEBUG.Println(NET, "done putting msg on incomingPubChan")
 				case 1:
-					c.incomingPubChan <- m
-					DEBUG.Println(NET, "done putting msg on incomingPubChan")
-					pa := packets.NewControlPacket(packets.Puback).(*packets.PubackPacket)
-					pa.MessageID = m.MessageID
-					DEBUG.Println(NET, "putting puback msg on obound")
-					persistOutbound(c.persist, pa)
-					select {
-					case c.oboundP <- &PacketAndToken{p: pa, t: nil}:
-					case <-c.stop:
+					c.incomingPubChan <- routedPacket{
+						message: m,
+						callback: func() {
+							pa := packets.NewControlPacket(packets.Puback).(*packets.PubackPacket)
+							pa.MessageID = m.MessageID
+							DEBUG.Println(NET, "putting puback msg on obound")
+							persistOutbound(c.persist, pa)
+							select {
+							case c.oboundP <- &PacketAndToken{p: pa, t: nil}:
+							case <-c.stop:
+							}
+							DEBUG.Println(NET, "done putting puback msg on obound")
+						},
 					}
-					DEBUG.Println(NET, "done putting puback msg on obound")
+					DEBUG.Println(NET, "done putting msg on incomingPubChan")
 				case 0:
 					select {
-					case c.incomingPubChan <- m:
+					case c.incomingPubChan <- routedPacket{ message: m, callback: nil }:
 					case <-c.stop:
 					}
 					DEBUG.Println(NET, "done putting msg on incomingPubChan")
