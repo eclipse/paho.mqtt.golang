@@ -471,11 +471,22 @@ func (c *client) closeConn() {
 	}
 }
 
+func (c * client) closeStopRouter() {
+	c.Lock()
+	defer c.Unlock()
+	select {
+	case <-c.stopRouter:
+		DEBUG.Println("In disconnect and stop route channel is already closed")
+	default:
+		close(c.stopRouter)
+	}
+}
+
 func (c *client) disconnect() {
 	c.closeStop()
 	c.closeConn()
 	c.workers.Wait()
-	close(c.stopRouter)
+	c.closeStopRouter()
 	DEBUG.Println(CLI, "disconnected")
 	c.persist.Close()
 }
