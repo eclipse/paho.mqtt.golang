@@ -264,10 +264,8 @@ func (c *client) Connect() Token {
 			c.persist.Reset()
 		}
 
+		c.workers.Add(4)
 		go errorWatch(c)
-
-		// Do not start incoming until resume has completed
-		c.workers.Add(3)
 		go alllogic(c)
 		go outgoing(c)
 		go incoming(c)
@@ -359,9 +357,8 @@ func (c *client) reconnect() {
 		go c.options.OnConnect(c)
 	}
 
+	c.workers.Add(4)
 	go errorWatch(c)
-
-	c.workers.Add(3)
 	go alllogic(c)
 	go outgoing(c)
 	go incoming(c)

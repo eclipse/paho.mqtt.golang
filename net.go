@@ -320,6 +320,7 @@ func alllogic(c *client) {
 }
 
 func errorWatch(c *client) {
+	defer c.workers.Done()
 	select {
 	case <-c.stop:
 		WARN.Println(NET, "errorWatch stopped")
