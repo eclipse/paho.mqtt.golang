@@ -437,9 +437,7 @@ func (c *client) internalConnLost(err error) {
 		c.closeStop()
 		c.conn.Close()
 		c.workers.Wait()
-		if c.options.CleanSession {
-			c.messageIds.cleanUp()
-		}
+		c.messageIds.cleanUp()
 		if c.options.AutoReconnect {
 			c.setConnected(reconnecting)
 			go c.reconnect()
