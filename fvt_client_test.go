@@ -1040,3 +1040,38 @@ func Test_cleanUpMids(t *testing.T) {
 
 	c.Disconnect(250)
 }
+
+// Test that cleanup happens properly on explicit Disconnect()
+func Test_cleanUpMids_2(t *testing.T) {
+	ops := NewClientOptions()
+	ops.AddBroker(FVTTCP)
+	ops.SetClientID("auto_reconnect")
+	ops.SetCleanSession(true)
+	ops.SetAutoReconnect(true)
+	ops.SetKeepAlive(10 * time.Second)
+
+	c := NewClient(ops)
+
+	if token := c.Connect(); token.Wait() && token.Error() != nil {
+		t.Fatalf("Error on Client.Connect(): %v", token.Error())
+	}
+
+	token := c.Publish("/test/cleanUP", 2, false, "cleanup test 2")
+	if len(c.(*client).messageIds.index) == 0 {
+		t.Fatalf("Should be a token in the messageIDs, none found")
+	}
+	fmt.Println("Disconnecting", len(c.(*client).messageIds.index))
+	c.Disconnect(0)
+
+	fmt.Println("Wait on Token")
+	// We should be able to wait on this token without any issue
+	token.Wait()
+
+	if len(c.(*client).messageIds.index) > 0 {
+		t.Fatalf("Should have cleaned up messageIDs, have %d left", len(c.(*client).messageIds.index))
+	}
+	if token.Error() == nil {
+		t.Fatal("token should have received an error on connection loss")
+	}
+	fmt.Println(token.Error())
+}
