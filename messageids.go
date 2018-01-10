@@ -52,6 +52,7 @@ func (mids *messageIds) cleanUp() {
 	}
 	mids.index = make(map[uint16]tokenCompletor)
 	mids.Unlock()
+	DEBUG.Println(MID, "cleaned up")
 }
 
 func (mids *messageIds) freeID(id uint16) {

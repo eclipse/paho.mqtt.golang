@@ -470,6 +470,7 @@ func (c *client) disconnect() {
 	c.closeStop()
 	c.closeConn()
 	c.workers.Wait()
+	c.messageIds.cleanUp()
 	close(c.stopRouter)
 	DEBUG.Println(CLI, "disconnected")
 	c.persist.Close()
