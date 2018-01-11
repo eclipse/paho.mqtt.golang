@@ -18,7 +18,6 @@ import (
 	"container/list"
 	"strings"
 	"sync"
-	"regexp"
 
 	"github.com/eclipse/paho.mqtt.golang/packets"
 )
@@ -69,9 +68,7 @@ func routeIncludesTopic(route, topic string) bool {
 // shared subscription routes to correctly match the topic
 func routeSplit(route string) []string {
 	var result []string
-	re := regexp.MustCompile(`^\$share/`)
-	matched := re.MatchString(route)
-	if matched {
+	if strings.HasPrefix(route, "$share") {
 		result = strings.Split(route, "/")[2:]
 	} else {
 		result = strings.Split(route, "/")
