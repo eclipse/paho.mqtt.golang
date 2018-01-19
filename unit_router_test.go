@@ -286,3 +286,36 @@ func Test_MatchAndDispatch(t *testing.T) {
 	}
 
 }
+
+func Test_SharedSubscription_MatchAndDispatch(t *testing.T) {
+	calledback := make(chan bool)
+
+	cb := func(c Client, m Message) {
+		calledback <- true
+	}
+
+	pub := packets.NewControlPacket(packets.Publish).(*packets.PublishPacket)
+	pub.Qos = 2
+	pub.TopicName = "a"
+	pub.Payload = []byte("foo")
+
+	msgs := make(chan *packets.PublishPacket)
+
+	router, stopper := newRouter()
+	router.addRoute("$share/az1/a", cb)
+
+	router.matchAndDispatch(msgs, true, nil)
+
+	msgs <- pub
+
+	<-calledback
+
+	stopper <- true
+
+	select {
+	case msgs <- pub:
+		t.Errorf("msgs should not have a listener")
+	default:
+	}
+
+}
