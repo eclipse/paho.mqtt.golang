@@ -60,6 +60,7 @@ type Client interface {
 	SubscribeMultiple(filters map[string]byte, callback MessageHandler) Token
 	Unsubscribe(topics ...string) Token
 	AddRoute(topic string, callback MessageHandler)
+	OptionsReader() ClientOptionsReader
 }
 
 // client implements the Client interface
