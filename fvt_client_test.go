@@ -963,7 +963,7 @@ func Test_ping1_idle5(t *testing.T) {
 	ops.SetConnectionLostHandler(func(c Client, err error) {
 		t.Fatalf("Connection-lost handler was called: %s", err)
 	})
-	ops.SetKeepAlive(3 * time.Second)
+	ops.SetKeepAlive(4 * time.Second)
 
 	c := NewClient(ops)
 

@@ -101,3 +101,5 @@ func (d *DummyToken) flowComplete() {
 func (d *DummyToken) Error() error {
 	return nil
 }
+
+func (d *DummyToken) setError(e error) {}

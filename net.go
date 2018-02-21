@@ -174,6 +174,7 @@ func outgoing(c *client) {
 
 			if err := msg.Write(c.conn); err != nil {
 				ERROR.Println(NET, "outgoing stopped with error", err)
+				pub.t.setError(err)
 				signalError(c.errors, err)
 				return
 			}
@@ -198,6 +199,7 @@ func outgoing(c *client) {
 			DEBUG.Println(NET, "obound priority msg to write, type", reflect.TypeOf(msg.p))
 			if err := msg.p.Write(c.conn); err != nil {
 				ERROR.Println(NET, "outgoing stopped with error", err)
+				msg.t.setError(err)
 				signalError(c.errors, err)
 				return
 			}

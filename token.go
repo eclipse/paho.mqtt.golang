@@ -34,6 +34,7 @@ type Token interface {
 	Wait() bool
 	WaitTimeout(time.Duration) bool
 	Error() error
+	setError(error)
 }
 
 type tokenCompletor interface {
@@ -78,13 +79,24 @@ func (b *baseToken) WaitTimeout(d time.Duration) bool {
 }
 
 func (b *baseToken) flowComplete() {
-	close(b.complete)
+	select {
+	case <-b.complete:
+	default:
+		close(b.complete)
+	}
 }
 
 func (b *baseToken) Error() error {
 	b.m.RLock()
 	defer b.m.RUnlock()
 	return b.err
+}
+
+func (b *baseToken) setError(e error) {
+	b.m.Lock()
+	defer b.m.Unlock()
+	b.err = e
+	b.flowComplete()
 }
 
 func newToken(tType byte) tokenCompletor {
