@@ -515,11 +515,18 @@ func (c *client) Publish(topic string, qos byte, retained bool, payload interfac
 		token.messageID = pub.MessageID
 	}
 	persistOutbound(c.persist, pub)
+	t := time.NewTimer(c.options.PublishTimeout * time.Millisecond)
 	select {
 	case c.obound <- &PacketAndToken{p: pub, t: token}:
 		DEBUG.Println(CLI, "sending publish message, topic:", topic)
-	case <-time.After(c.options.PublishTimeout * time.Millisecond):
+	case <-t.C:
 		ERROR.Println(CLI, "timeout of sending publish message, topic:", topic)
+	}
+	if t.Stop() {
+		select {
+		case <-t.C:
+		default:
+		}
 	}
 	return token
 }
