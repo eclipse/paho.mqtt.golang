@@ -27,7 +27,7 @@ func main() {
 	password := flag.String("password", "", "Password to match username")
 	flag.Parse()
 
-	c, err := paho.NewClient(paho.OpenConn("tcp", *server))
+	c, err := paho.NewClient(paho.OpenTCPConn(*server))
 
 	cp := pk.NewConnect(
 		pk.KeepAlive(30),
