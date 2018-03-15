@@ -51,3 +51,23 @@ func (p *Pubrec) Send(w io.Writer) error {
 
 	return cp.Send(w)
 }
+
+func NewPubrec(opts ...func(p *Pubrec)) *Pubrec {
+	p := &Pubrec{
+		Properties: Properties{
+			User: make(map[string]string),
+		},
+	}
+
+	for _, opt := range opts {
+		opt(p)
+	}
+
+	return p
+}
+
+func PubrecFromPublish(pb *Publish) func(*Pubrec) {
+	return func(pr *Pubrec) {
+		pr.PacketID = pb.PacketID
+	}
+}

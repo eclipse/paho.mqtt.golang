@@ -9,10 +9,9 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	pk "github.com/eclipse/paho.mqtt.golang/packets"
-	"github.com/eclipse/paho.mqtt.golang/simple"
+	"github.com/eclipse/paho.mqtt.golang/paho"
 )
 
 func main() {
@@ -28,7 +27,12 @@ func main() {
 	password := flag.String("password", "", "Password to match username")
 	flag.Parse()
 
-	c, err := simple.NewClient(simple.OpenConn("tcp", *server))
+	c, err := paho.NewClient(
+		paho.OpenTCPConn(*server),
+		paho.DefaultMessageHandler(func(m paho.Message) {
+			log.Printf("%s : %s", m.Properties.User["chatname"], string(m.Payload))
+		}),
+	)
 
 	cp := pk.NewConnect(
 		pk.KeepAlive(30),
@@ -43,12 +47,9 @@ func main() {
 		pk.Password([]byte(*password))(cp)
 	}
 
-	ca, err := c.Connect(cp)
+	_, err = c.Connect(cp)
 	if err != nil {
 		log.Fatalln(err)
-	}
-	if ca.ReasonCode != 0 {
-		log.Fatalf("Failed to connect to %s : %d - %s", *server, ca.ReasonCode, ca.Reason())
 	}
 
 	fmt.Printf("Connected to %s\n", *server)
@@ -56,49 +57,25 @@ func main() {
 	ic := make(chan os.Signal, 1)
 	signal.Notify(ic, os.Interrupt, syscall.SIGTERM)
 	go func() {
-		for {
-			select {
-			case <-time.After(30 * time.Second):
-				if err := c.Ping(); err != nil {
-					log.Fatalln(err)
-				}
-			case <-ic:
-				fmt.Println("signal received, exiting")
-				if c != nil {
-					d := pk.NewDisconnect(pk.DisconnectReason(0))
-					c.Disconnect(d)
-				}
-				os.Exit(0)
-			}
+		<-ic
+		fmt.Println("signal received, exiting")
+		if c != nil {
+			d := pk.NewDisconnect(pk.DisconnectReason(0))
+			c.Disconnect(d)
 		}
+		os.Exit(0)
 	}()
 
-	s := pk.NewSubscribe(
-		pk.Sub(*topic, pk.SubOptions{QoS: byte(*qos), NoLocal: true}),
+	_, err = c.Subscribe(
+		pk.NewSubscribe(
+			pk.Sub(*topic, pk.SubOptions{QoS: byte(*qos), NoLocal: true}),
+		),
 	)
-	s.PacketID = 1
-
-	sa, err := c.Subscribe(s)
 	if err != nil {
 		log.Fatalln(err)
 	}
-	if sa.Reasons[0] != 0 {
-		log.Fatalf("Failed to subscribe to %s : %s", *topic, sa.Reason(0))
-	}
+
 	log.Printf("Subscribed to %s", *topic)
-
-	go func() {
-		for {
-			pb, err := c.Receive()
-			if err != nil {
-				log.Fatalln(err)
-			}
-
-			if pb != nil {
-				log.Printf("%s : %s", pb.Properties.User["chatname"], string(pb.Payload))
-			}
-		}
-	}()
 
 	for {
 		message, err := stdin.ReadString('\n')

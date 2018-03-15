@@ -37,7 +37,7 @@ func (s *Suback) Buffers() net.Buffers {
 	writeUint16(s.PacketID, &b)
 	idvp := s.Properties.Pack(SUBACK)
 	propLen := encodeVBI(len(idvp))
-	return net.Buffers{b.Bytes(), propLen, idvp}
+	return net.Buffers{b.Bytes(), propLen, idvp, s.Reasons}
 }
 
 func (s *Suback) Send(w io.Writer) error {

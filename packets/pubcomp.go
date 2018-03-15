@@ -51,3 +51,35 @@ func (p *Pubcomp) Send(w io.Writer) error {
 
 	return cp.Send(w)
 }
+
+func NewPubcomp(opts ...func(p *Pubcomp)) *Pubcomp {
+	p := &Pubcomp{
+		Properties: Properties{
+			User: make(map[string]string),
+		},
+	}
+
+	for _, opt := range opts {
+		opt(p)
+	}
+
+	return p
+}
+
+func PubcompFromPubrel(pr *Pubrel) func(*Pubcomp) {
+	return func(pc *Pubcomp) {
+		pc.PacketID = pr.PacketID
+	}
+}
+
+func PubcompReasonCode(r byte) func(*Pubcomp) {
+	return func(pc *Pubcomp) {
+		pc.ReasonCode = r
+	}
+}
+
+func PubcompProperties(p *Properties) func(*Pubcomp) {
+	return func(pc *Pubcomp) {
+		pc.Properties = *p
+	}
+}

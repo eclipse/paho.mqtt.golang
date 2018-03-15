@@ -63,6 +63,31 @@ type ControlPacket struct {
 	Content Packet
 }
 
+func (c *ControlPacket) PacketID() uint16 {
+	switch r := c.Content.(type) {
+	case *Publish:
+		return r.PacketID
+	case *Puback:
+		return r.PacketID
+	case *Pubrec:
+		return r.PacketID
+	case *Pubrel:
+		return r.PacketID
+	case *Pubcomp:
+		return r.PacketID
+	case *Subscribe:
+		return r.PacketID
+	case *Suback:
+		return r.PacketID
+	case *Unsubscribe:
+		return r.PacketID
+	case *Unsuback:
+		return r.PacketID
+	default:
+		return 0
+	}
+}
+
 // NewControlPacket takes a packetType and returns a pointer to a
 // ControlPacket where the VariableHeader field is a pointer to an
 // instance of a VariableHeader definition for that packetType
@@ -138,6 +163,9 @@ func ReadPacket(r io.Reader) (*ControlPacket, error) {
 		return nil, fmt.Errorf("Invalid packet type requested, %d", t[0]>>4)
 	}
 	cp.Flags = t[0] & 0xF
+	if cp.Type == PUBLISH {
+		cp.Content.(*Publish).QoS = (cp.Flags & 0x6) >> 1
+	}
 	vbi, err := getVBI(r)
 	if err != nil {
 		return nil, err
@@ -174,11 +202,9 @@ func (c *ControlPacket) Send(w io.Writer) error {
 	for _, b := range buffers {
 		c.remainingLength += len(b)
 	}
-	//c.remainingLength += len(c.Payload)
 
 	packet = append(packet, c.FixedHeader.Pack())
 	packet = append(packet, buffers...)
-	//packet = append(packet, c.Payload)
 
 	_, err := packet.WriteTo(w)
 	if err != nil {
