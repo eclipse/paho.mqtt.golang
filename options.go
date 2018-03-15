@@ -20,6 +20,10 @@ import (
 	"time"
 )
 
+// CredentialsProvider allows the username and password to be updated
+// before reconnecting. It should return the current username and password.
+type CredentialsProvider func() (username string, password string)
+
 // MessageHandler is a callback type which can be set to be
 // executed upon the arrival of messages published to topics
 // to which the client is subscribed.
@@ -42,6 +46,7 @@ type ClientOptions struct {
 	ClientID                string
 	Username                string
 	Password                string
+	CredentialsProvider     CredentialsProvider
 	CleanSession            bool
 	Order                   bool
 	WillEnabled             bool
@@ -139,6 +144,15 @@ func (o *ClientOptions) SetUsername(u string) *ClientOptions {
 // be sent in plaintext accross the wire.
 func (o *ClientOptions) SetPassword(p string) *ClientOptions {
 	o.Password = p
+	return o
+}
+
+// SetCredentialsProvider will set a method to be called by this client when
+// connecting to the MQTT broker that provide the current username and password.
+// Note: without the use of SSL/TLS, this information will be sent
+// in plaintext accross the wire.
+func (o *ClientOptions) SetCredentialsProvider(p CredentialsProvider) *ClientOptions {
+	o.CredentialsProvider = p
 	return o
 }
 
