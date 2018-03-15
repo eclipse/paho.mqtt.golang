@@ -63,6 +63,7 @@ type ClientOptions struct {
 	OnConnectionLost        ConnectionLostHandler
 	WriteTimeout            time.Duration
 	MessageChannelDepth     uint
+	ResumeSubs              bool
 }
 
 // NewClientOptions will create a new ClientClientOptions type with some
@@ -100,6 +101,7 @@ func NewClientOptions() *ClientOptions {
 		OnConnectionLost:        DefaultConnectionLostHandler,
 		WriteTimeout:            0, // 0 represents timeout disabled
 		MessageChannelDepth:     100,
+		ResumeSubs:              false,
 	}
 	return o
 }
@@ -115,6 +117,12 @@ func (o *ClientOptions) AddBroker(server string) *ClientOptions {
 	if err == nil {
 		o.Servers = append(o.Servers, brokerURI)
 	}
+	return o
+}
+
+// SetResumeSubs will enable resuming of stored (un)subscribe message
+func (o *ClientOptions) SetResumeSubs(resume bool) *ClientOptions {
+	o.ResumeSubs = resume
 	return o
 }
 

@@ -281,19 +281,18 @@ func (c *client) Connect() Token {
 			go c.options.OnConnect(c)
 		}
 
-		// Take care of any messages in the store
-		//var leftovers []Receipt
-		if c.options.CleanSession == false {
-			//leftovers = c.resume()
-		} else {
-			c.persist.Reset()
-		}
-
 		c.workers.Add(4)
 		go errorWatch(c)
 		go alllogic(c)
 		go outgoing(c)
 		go incoming(c)
+
+		// Take care of any messages in the store
+		if c.options.CleanSession == false {
+			c.resume(c.options.ResumeSubs)
+		} else {
+			c.persist.Reset()
+		}
 
 		DEBUG.Println(CLI, "exit startClient")
 		t.flowComplete()
@@ -387,6 +386,8 @@ func (c *client) reconnect() {
 	go alllogic(c)
 	go outgoing(c)
 	go incoming(c)
+
+	c.resume(false)
 }
 
 // This function is only used for receiving a connack
@@ -531,13 +532,17 @@ func (c *client) Publish(topic string, qos byte, retained bool, payload interfac
 		return token
 	}
 
-	DEBUG.Println(CLI, "sending publish message, topic:", topic)
 	if pub.Qos != 0 && pub.MessageID == 0 {
 		pub.MessageID = c.getID(token)
 		token.messageID = pub.MessageID
 	}
 	persistOutbound(c.persist, pub)
-	c.obound <- &PacketAndToken{p: pub, t: token}
+	if c.connectionStatus() == reconnecting {
+		DEBUG.Println(CLI, "storing publish message (reconnecting), topic:", topic)
+	} else {
+		DEBUG.Println(CLI, "sending publish message, topic:", topic)
+		c.obound <- &PacketAndToken{p: pub, t: token}
+	}
 	return token
 }
 
@@ -597,6 +602,67 @@ func (c *client) SubscribeMultiple(filters map[string]byte, callback MessageHand
 	c.oboundP <- &PacketAndToken{p: sub, t: token}
 	DEBUG.Println(CLI, "exit SubscribeMultiple")
 	return token
+}
+
+// Load all stored messages and resend them
+// Call this to ensure QOS > 1,2 even after an application crash
+func (c *client) resume(subscription bool) []Token {
+
+	storedKeys := c.persist.All()
+	tokens := make([]Token, len(storedKeys))
+	for idx, key := range storedKeys {
+		packet := c.persist.Get(key)
+		details := packet.Details()
+		if isKeyOutbound(key) {
+			switch packet.(type) {
+			case *packets.SubscribePacket:
+				if subscription {
+					DEBUG.Println(STR, fmt.Sprintf("loaded pending subscribe (%d)", details.MessageID))
+					token := newToken(packets.Subscribe).(*SubscribeToken)
+					tokens[idx] = token
+					c.oboundP <- &PacketAndToken{p: packet, t: token}
+				}
+			case *packets.UnsubscribePacket:
+				if subscription {
+					DEBUG.Println(STR, fmt.Sprintf("loaded pending unsubscribe (%d)", details.MessageID))
+					token := newToken(packets.Unsubscribe).(*UnsubscribeToken)
+					tokens[idx] = token
+					c.oboundP <- &PacketAndToken{p: packet, t: token}
+				}
+			case *packets.PubrelPacket:
+				DEBUG.Println(STR, fmt.Sprintf("loaded pending pubrel (%d)", details.MessageID))
+				select {
+				case c.oboundP <- &PacketAndToken{p: packet, t: nil}:
+				case <-c.stop:
+				}
+			case *packets.PublishPacket:
+				token := newToken(packets.Publish).(*PublishToken)
+				token.messageID = details.MessageID
+				tokens[idx] = token
+				c.claimID(token, details.MessageID)
+				DEBUG.Println(STR, fmt.Sprintf("loaded pending publish (%d)", details.MessageID))
+				DEBUG.Println(STR, details)
+				c.obound <- &PacketAndToken{p: packet, t: token}
+			default:
+				ERROR.Println(STR, "invalid message type in store (discarded)")
+				c.persist.Del(key)
+			}
+		} else {
+			switch packet.(type) {
+			case *packets.PubrelPacket, *packets.PublishPacket:
+				DEBUG.Println(STR, fmt.Sprintf("loaded pending incomming (%d)", details.MessageID))
+				select {
+				case c.ibound <- packet:
+				case <-c.stop:
+				}
+			default:
+				ERROR.Println(STR, "invalid message type in store (discarded)")
+				c.persist.Del(key)
+			}
+		}
+	}
+
+	return tokens
 }
 
 // Unsubscribe will end the subscription from each of the topics provided.

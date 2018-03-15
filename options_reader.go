@@ -37,6 +37,12 @@ func (r *ClientOptionsReader) Servers() []*url.URL {
 	return s
 }
 
+//ResumeSubs returns true if resuming stored (un)sub is enabled
+func (r *ClientOptionsReader) ResumeSubs() bool {
+	s := r.options.ResumeSubs
+	return s
+}
+
 //ClientID returns the set client id
 func (r *ClientOptionsReader) ClientID() string {
 	s := r.options.ClientID

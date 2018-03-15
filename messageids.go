@@ -61,6 +61,18 @@ func (mids *messageIds) freeID(id uint16) {
 	mids.Unlock()
 }
 
+func (mids *messageIds) claimID(token tokenCompletor, id uint16) {
+	mids.Lock()
+	defer mids.Unlock()
+	if _, ok := mids.index[id]; !ok {
+		mids.index[id] = token
+	} else {
+		old := mids.index[id]
+		old.flowComplete()
+		mids.index[id] = token
+	}
+}
+
 func (mids *messageIds) getID(t tokenCompletor) uint16 {
 	mids.Lock()
 	defer mids.Unlock()
