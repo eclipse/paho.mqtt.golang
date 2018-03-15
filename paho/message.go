@@ -14,6 +14,16 @@ type Message struct {
 	Payload    []byte
 }
 
+func MessageFromPublish(pb *p.Publish) Message {
+	return Message{
+		Topic:      pb.Topic,
+		QoS:        pb.QoS,
+		Retain:     pb.Retain,
+		Properties: pb.Properties,
+		Payload:    pb.Payload,
+	}
+}
+
 func (m *Message) String() string {
 	ret := fmt.Sprintf("topic: %s  qos: %d  retain: %t\n", m.Topic, m.QoS, m.Retain)
 	if m.Properties.PayloadFormat != nil {
@@ -94,8 +104,8 @@ func (m *Message) String() string {
 	if m.Properties.SharedSubAvailable != nil {
 		ret += fmt.Sprintf("SharedSubAvailable: %v\n", m.Properties.SharedSubAvailable)
 	}
-	for k, v := range m.Properties.UserProperty {
-		ret += fmt.Sprintf("UserProperty: %s : %s\n", k, v)
+	for k, v := range m.Properties.User {
+		ret += fmt.Sprintf("User: %s : %s\n", k, v)
 	}
 	ret += string(m.Payload)
 

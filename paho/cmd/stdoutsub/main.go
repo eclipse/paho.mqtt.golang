@@ -7,10 +7,9 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	pk "github.com/eclipse/paho.mqtt.golang/packets"
-	"github.com/eclipse/paho.mqtt.golang/simple"
+	"github.com/eclipse/paho.mqtt.golang/paho"
 )
 
 func main() {
@@ -22,7 +21,14 @@ func main() {
 	password := flag.String("password", "", "Password to match username")
 	flag.Parse()
 
-	c, err := simple.NewClient(simple.OpenConn("tcp", *server))
+	paho.SetDebugLogger(log.New(os.Stderr, "SUB: ", log.LstdFlags))
+	msgChan := make(chan paho.Message)
+
+	c, err := paho.NewClient(
+		paho.OpenTCPConn(*server),
+		paho.DefaultMessageHandler(func(m paho.Message) {
+			msgChan <- m
+		}))
 
 	cp := pk.NewConnect(
 		pk.KeepAlive(30),
@@ -50,45 +56,29 @@ func main() {
 	ic := make(chan os.Signal, 1)
 	signal.Notify(ic, os.Interrupt, syscall.SIGTERM)
 	go func() {
-		for {
-			select {
-			case <-time.After(30 * time.Second):
-				if err := c.Ping(); err != nil {
-					log.Fatalln(err)
-				}
-			case <-ic:
-				fmt.Println("signal received, exiting")
-				if c != nil {
-					d := pk.NewDisconnect(pk.DisconnectReason(0))
-					c.Disconnect(d)
-				}
-				os.Exit(0)
-			}
+		<-ic
+		fmt.Println("signal received, exiting")
+		if c != nil {
+			d := pk.NewDisconnect(pk.DisconnectReason(0))
+			c.Disconnect(d)
 		}
+		os.Exit(0)
 	}()
 
 	s := pk.NewSubscribe(
 		pk.Sub(*topic, pk.SubOptions{QoS: byte(*qos)}),
 	)
-	s.PacketID = 1
 
 	sa, err := c.Subscribe(s)
 	if err != nil {
 		log.Fatalln(err)
 	}
-	if sa.Reasons[0] != 0 {
+	if sa.Reasons[0] != byte(*qos) {
 		log.Fatalf("Failed to subscribe to %s : %s", *topic, sa.Reason(0))
 	}
 	log.Printf("Subscribed to %s", *topic)
 
-	for {
-		pb, err := c.Receive()
-		if err != nil {
-			log.Fatalln(err)
-		}
-
-		if pb != nil {
-			log.Printf("Received message %s", pb)
-		}
+	for m := range msgChan {
+		log.Println("Received message:", string(m.Payload))
 	}
 }

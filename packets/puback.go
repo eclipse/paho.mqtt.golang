@@ -51,3 +51,23 @@ func (p *Puback) Send(w io.Writer) error {
 
 	return cp.Send(w)
 }
+
+func NewPuback(opts ...func(p *Puback)) *Puback {
+	p := &Puback{
+		Properties: Properties{
+			User: make(map[string]string),
+		},
+	}
+
+	for _, opt := range opts {
+		opt(p)
+	}
+
+	return p
+}
+
+func PubackFromPublish(pb *Publish) func(*Puback) {
+	return func(pa *Puback) {
+		pa.PacketID = pb.PacketID
+	}
+}

@@ -25,9 +25,11 @@ func (p *Publish) Unpack(r *bytes.Buffer) error {
 	if err != nil {
 		return err
 	}
-	p.PacketID, err = readUint16(r)
-	if err != nil {
-		return err
+	if p.QoS > 0 {
+		p.PacketID, err = readUint16(r)
+		if err != nil {
+			return err
+		}
 	}
 
 	err = p.Properties.Unpack(r, PUBLISH)
@@ -47,7 +49,9 @@ func (p *Publish) Unpack(r *bytes.Buffer) error {
 func (p *Publish) Buffers() net.Buffers {
 	var b bytes.Buffer
 	writeString(p.Topic, &b)
-	writeUint16(p.PacketID, &b)
+	if p.QoS > 0 {
+		writeUint16(p.PacketID, &b)
+	}
 	properties := p.Properties.Pack(PUBLISH)
 	propLen := encodeVBI(len(properties))
 	return net.Buffers{b.Bytes(), propLen, properties, p.Payload}

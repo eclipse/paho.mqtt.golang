@@ -8,8 +8,9 @@ import (
 
 // Unsubscribe is the Variable Header definition for a Unsubscribe control packet
 type Unsubscribe struct {
-	PacketID uint16
-	Topics   []string
+	PacketID   uint16
+	Properties Properties
+	Topics     []string
 }
 
 //Unpack is the implementation of the interface required function for a packet
@@ -26,6 +27,32 @@ func (u *Unsubscribe) Unpack(r *bytes.Buffer) error {
 	}
 
 	return nil
+}
+
+func NewUnsubscribe(opts ...func(u *Unsubscribe)) *Unsubscribe {
+	u := &Unsubscribe{
+		Properties: Properties{
+			User: make(map[string]string),
+		},
+	}
+
+	for _, opt := range opts {
+		opt(u)
+	}
+
+	return u
+}
+
+func Topics(topics []string) func(*Unsubscribe) {
+	return func(u *Unsubscribe) {
+		u.Topics = topics
+	}
+}
+
+func UnsubscribeProperties(p *Properties) func(*Unsubscribe) {
+	return func(u *Unsubscribe) {
+		u.Properties = *p
+	}
 }
 
 // Buffers is the implementation of the interface required function for a packet

@@ -46,8 +46,40 @@ func (p *Pubrel) Buffers() net.Buffers {
 }
 
 func (p *Pubrel) Send(w io.Writer) error {
-	cp := &ControlPacket{FixedHeader: FixedHeader{Type: PUBREL}}
+	cp := &ControlPacket{FixedHeader: FixedHeader{Type: PUBREL, Flags: 2}}
 	cp.Content = p
 
 	return cp.Send(w)
+}
+
+func NewPubrel(opts ...func(p *Pubrel)) *Pubrel {
+	p := &Pubrel{
+		Properties: Properties{
+			User: make(map[string]string),
+		},
+	}
+
+	for _, opt := range opts {
+		opt(p)
+	}
+
+	return p
+}
+
+func PubrelFromPubrec(p *Pubrec) func(*Pubrel) {
+	return func(pr *Pubrel) {
+		pr.PacketID = p.PacketID
+	}
+}
+
+func PubrelReasonCode(r byte) func(*Pubrel) {
+	return func(pr *Pubrel) {
+		pr.ReasonCode = r
+	}
+}
+
+func PubrelProperties(p *Properties) func(*Pubrel) {
+	return func(pr *Pubrel) {
+		pr.Properties = *p
+	}
 }
