@@ -196,9 +196,17 @@ func (c *client) Connect() Token {
 		c.persist.Open()
 
 		c.setConnected(connecting)
+		c.errors = make(chan error, 1)
+		c.stop = make(chan struct{})
+
 		var rc byte
 		cm := newConnectMsgFromOptions(&c.options)
 		protocolVersion := c.options.ProtocolVersion
+
+		if len(c.options.Servers) == 0 {
+			t.setError(fmt.Errorf("No servers defined to connect to"))
+			return
+		}
 
 		for _, broker := range c.options.Servers {
 			c.options.ProtocolVersion = protocolVersion
@@ -247,22 +255,18 @@ func (c *client) Connect() Token {
 
 		if c.conn == nil {
 			ERROR.Println(CLI, "Failed to connect to a broker")
-			t.returnCode = rc
-			if rc != packets.ErrNetworkError {
-				t.err = packets.ConnErrors[rc]
-			} else {
-				t.err = fmt.Errorf("%s : %s", packets.ConnErrors[rc], err)
-			}
 			c.setConnected(disconnected)
 			c.persist.Close()
-			t.flowComplete()
+			t.returnCode = rc
+			if rc != packets.ErrNetworkError {
+				t.setError(packets.ConnErrors[rc])
+			} else {
+				t.setError(fmt.Errorf("%s : %s", packets.ConnErrors[rc], err))
+			}
 			return
 		}
 
 		c.options.protocolVersionExplicit = true
-
-		c.errors = make(chan error, 1)
-		c.stop = make(chan struct{})
 
 		if c.options.KeepAlive != 0 {
 			atomic.StoreInt32(&c.pingOutstanding, 0)

@@ -93,8 +93,6 @@ func (b *baseToken) Error() error {
 }
 
 func (b *baseToken) setError(e error) {
-	b.m.Lock()
-	defer b.m.Unlock()
 	b.err = e
 	b.flowComplete()
 }
