@@ -606,11 +606,10 @@ func (c *client) SubscribeMultiple(filters map[string]byte, callback MessageHand
 
 // Load all stored messages and resend them
 // Call this to ensure QOS > 1,2 even after an application crash
-func (c *client) resume(subscription bool) []Token {
+func (c *client) resume(subscription bool) {
 
 	storedKeys := c.persist.All()
-	tokens := make([]Token, len(storedKeys))
-	for idx, key := range storedKeys {
+	for _, key := range storedKeys {
 		packet := c.persist.Get(key)
 		details := packet.Details()
 		if isKeyOutbound(key) {
@@ -619,14 +618,12 @@ func (c *client) resume(subscription bool) []Token {
 				if subscription {
 					DEBUG.Println(STR, fmt.Sprintf("loaded pending subscribe (%d)", details.MessageID))
 					token := newToken(packets.Subscribe).(*SubscribeToken)
-					tokens[idx] = token
 					c.oboundP <- &PacketAndToken{p: packet, t: token}
 				}
 			case *packets.UnsubscribePacket:
 				if subscription {
 					DEBUG.Println(STR, fmt.Sprintf("loaded pending unsubscribe (%d)", details.MessageID))
 					token := newToken(packets.Unsubscribe).(*UnsubscribeToken)
-					tokens[idx] = token
 					c.oboundP <- &PacketAndToken{p: packet, t: token}
 				}
 			case *packets.PubrelPacket:
@@ -638,7 +635,6 @@ func (c *client) resume(subscription bool) []Token {
 			case *packets.PublishPacket:
 				token := newToken(packets.Publish).(*PublishToken)
 				token.messageID = details.MessageID
-				tokens[idx] = token
 				c.claimID(token, details.MessageID)
 				DEBUG.Println(STR, fmt.Sprintf("loaded pending publish (%d)", details.MessageID))
 				DEBUG.Println(STR, details)
@@ -661,8 +657,6 @@ func (c *client) resume(subscription bool) []Token {
 			}
 		}
 	}
-
-	return tokens
 }
 
 // Unsubscribe will end the subscription from each of the topics provided.

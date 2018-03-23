@@ -120,7 +120,8 @@ func (o *ClientOptions) AddBroker(server string) *ClientOptions {
 	return o
 }
 
-// SetResumeSubs will enable resuming of stored (un)subscribe message
+// SetResumeSubs will enable resuming of stored (un)subscribe messages when connecting
+// but not reconnecting if CleanSession is false. Otherwise these messages are discarded.
 func (o *ClientOptions) SetResumeSubs(resume bool) *ClientOptions {
 	o.ResumeSubs = resume
 	return o
