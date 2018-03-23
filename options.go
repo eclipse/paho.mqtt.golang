@@ -17,6 +17,7 @@ package mqtt
 import (
 	"crypto/tls"
 	"net/url"
+	"strings"
 	"time"
 )
 
@@ -114,12 +115,22 @@ func NewClientOptions() *ClientOptions {
 // Where "scheme" is one of "tcp", "ssl", or "ws", "host" is the ip-address (or hostname)
 // and "port" is the port on which the broker is accepting connections.
 //
+// Default values for hostname is "127.0.0.1", for schema is "tcp://".
+//
 // An example broker URI would look like: tcp://foobar.com:1883
 func (o *ClientOptions) AddBroker(server string) *ClientOptions {
-	brokerURI, err := url.Parse(server)
-	if err == nil {
-		o.Servers = append(o.Servers, brokerURI)
+	if len(server) > 0 && server[0] == ':' {
+		server = "127.0.0.1" + server
 	}
+	if !strings.Contains(server, "://") {
+		server = "tcp://" + server
+	}
+	brokerURI, err := url.Parse(server)
+	if err != nil {
+		ERROR.Println(CLI, "Failed to parse %q broker address: %s", server, err)
+		return o
+	}
+	o.Servers = append(o.Servers, brokerURI)
 	return o
 }
 
