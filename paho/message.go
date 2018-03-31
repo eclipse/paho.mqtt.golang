@@ -6,6 +6,9 @@ import (
 	p "github.com/eclipse/paho.mqtt.golang/packets"
 )
 
+// Message is a struct to represent the contents of a received
+// Publish in an easier way to handle, these are passed to
+// the MessageHandlers related to the subscriptions of the client
 type Message struct {
 	Topic      string
 	QoS        byte
@@ -14,6 +17,7 @@ type Message struct {
 	Payload    []byte
 }
 
+// MessageFromPublish takes a Publish packet and returns a Message
 func MessageFromPublish(pb *p.Publish) Message {
 	return Message{
 		Topic:      pb.Topic,
@@ -24,6 +28,7 @@ func MessageFromPublish(pb *p.Publish) Message {
 	}
 }
 
+// String returns a string displaying the contents of a Message
 func (m *Message) String() string {
 	ret := fmt.Sprintf("topic: %s  qos: %d  retain: %t\n", m.Topic, m.QoS, m.Retain)
 	if m.Properties.PayloadFormat != nil {

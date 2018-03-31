@@ -10,6 +10,7 @@ import (
 	p "github.com/eclipse/paho.mqtt.golang/packets"
 )
 
+// Client is the struct representing an MQTT client
 type Client struct {
 	sync.Mutex
 	Stop          chan struct{}
@@ -23,6 +24,12 @@ type Client struct {
 	Disconnected  func(p.Disconnect)
 }
 
+// NewClient is used to create a new instance of an MQTT client. It
+// returns a pointer to the new client instance and an error.
+// opts is a variadic of functions that take a pointer to a Client and
+// returns an error. These functions are used to modify the properties
+// of the client (such as setting the PingHandler, Router, etc), a
+// selection of such functions are provided in this library.
 func NewClient(opts ...func(*Client) error) (*Client, error) {
 	debug.Println("Creating new client")
 	c := &Client{
@@ -37,7 +44,11 @@ func NewClient(opts ...func(*Client) error) (*Client, error) {
 	}
 
 	if c.PingHandler == nil {
-		c.PingHandler = &pingHandler{}
+		c.PingHandler = &PingHandler{
+			pingFailHandler: func(e error) {
+				c.Error(e)
+			},
+		}
 	}
 
 	if c.Persistence == nil {
@@ -55,10 +66,21 @@ func NewClient(opts ...func(*Client) error) (*Client, error) {
 	return c, nil
 }
 
+// Connect is used to connect the client to a server. It presumes that
+// the Client instance already has a working network connection.
+// The function takes a pre-prepared Connect packet, and uses that to
+// establish an MQTT connection. Assuming the connection completes
+// successfully the rest of the client is initiated and the Connack
+// returned. Otherwise the failure Connack (if there is one) is returned
+// along with an error indicating the reason for the failure to connect.
 func (c *Client) Connect(cp *p.Connect) (*p.Connack, error) {
 	debug.Println("Connecting")
 	c.Lock()
 	defer c.Unlock()
+
+	if c.Conn == nil {
+		return nil, fmt.Errorf("Client has no connection")
+	}
 
 	debug.Println("Sending CONNECT")
 	if err := cp.Send(c.Conn); err != nil {
@@ -88,6 +110,11 @@ func (c *Client) Connect(cp *p.Connect) (*p.Connack, error) {
 	return ca.Content.(*p.Connack), nil
 }
 
+// Incoming is the Client function that reads and handles incoming
+// packets from the server. The function is started as a goroutine
+// from Connect(), it exits when it receives a server initiated
+// Disconnect, the Stop channel is closed or there is an error reading
+// a packet from the network connection
 func (c *Client) Incoming() {
 	defer c.Workers.Done()
 	for {
@@ -153,6 +180,10 @@ func (c *Client) Incoming() {
 	}
 }
 
+// Error is called to signify that an error situation has occurred, this
+// causes the client's Stop channel to be closed (if it hasn't already been)
+// which results in the other client goroutines terminating.
+// It also closes the client network connection.
 func (c *Client) Error(e error) {
 	c.Lock()
 	debug.Println("Error called:", e)
@@ -166,6 +197,10 @@ func (c *Client) Error(e error) {
 	c.Unlock()
 }
 
+// Subscribe is used to send a Subscription request to the MQTT server.
+// It is passed a pre-prepared Subscribe packet and blocks waiting for
+// a response Suback, or for the timeout to fire. Any reponse Suback
+// is returned from the function, along with any errors.
 func (c *Client) Subscribe(s *p.Subscribe) (*p.Suback, error) {
 	debug.Printf("Subscribing to %+v", s.Subscriptions)
 	ctx, cf := context.WithTimeout(context.Background(), c.PacketTimeout)
@@ -213,6 +248,10 @@ func (c *Client) Subscribe(s *p.Subscribe) (*p.Suback, error) {
 	return resp.Content.(*p.Suback), nil
 }
 
+// Unsubscribe is used to send an Unsubscribe request to the MQTT server.
+// It is passed a pre-prepared Unsubscribe packet and blocks waiting for
+// a response Unsuback, or for the timeout to fire. Any reponse Unsuback
+// is returned from the function, along with any errors.
 func (c *Client) Unsubscribe(u *p.Unsubscribe) (*p.Unsuback, error) {
 	debug.Printf("Unsubscribing from %+v", u.Topics)
 	ctx, cf := context.WithTimeout(context.Background(), c.PacketTimeout)
@@ -260,6 +299,10 @@ func (c *Client) Unsubscribe(u *p.Unsubscribe) (*p.Unsuback, error) {
 	return resp.Content.(*p.Unsuback), nil
 }
 
+// Publish is used to send a publication to the MQTT server.
+// It is passed a pre-prepared Publish packet and blocks waiting for
+// the appropriate response, or for the timeout to fire.
+// Any reponse message is returned from the function, along with any errors.
 func (c *Client) Publish(pb *p.Publish) (p.Packet, error) {
 	debug.Printf("Sending message to %s", pb.Topic)
 	c.Lock()
@@ -319,6 +362,10 @@ func (c *Client) publishQoS12(pb *p.Publish) (p.Packet, error) {
 	return nil, fmt.Errorf("Ended up with a non QoS1/2 message: %d", pb.QoS)
 }
 
+// Disconnect is used to send a Disconnect packet to the MQTT server
+// Whether or not the attempt to send the Disconnect packet fails
+// (and if it does this function returns any error) the network connection
+// is closed.
 func (c *Client) Disconnect(d *p.Disconnect) error {
 	c.Lock()
 	defer c.Unlock()

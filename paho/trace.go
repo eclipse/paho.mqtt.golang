@@ -13,7 +13,12 @@ type (
 	NOOPLogger struct{}
 )
 
-func (NOOPLogger) Println(v ...interface{})               {}
+// Println is the library provided NOOPLogger's
+// implementation of the required interface function()
+func (NOOPLogger) Println(v ...interface{}) {}
+
+// Printf is the library provided NOOPLogger's
+// implementation of the required interface function(){}
 func (NOOPLogger) Printf(format string, v ...interface{}) {}
 
 // Internal levels of library output that are initialised to not print
@@ -23,10 +28,14 @@ var (
 	debug  Logger = NOOPLogger{}
 )
 
+// SetDebugLogger takes an instance of the paho Logger interface
+// and sets it to be used by the debug log endpoint
 func SetDebugLogger(l Logger) {
 	debug = l
 }
 
+// SetErrorLogger takes an instance of the paho Logger interface
+// and sets it to be used by the error log endpoint
 func SetErrorLogger(l Logger) {
 	errors = l
 }
