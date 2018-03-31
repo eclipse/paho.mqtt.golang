@@ -7,20 +7,35 @@ import (
 	p "github.com/eclipse/paho.mqtt.golang/packets"
 )
 
+// MessageHandler is a type for a function that is invoked
+// by a Router when it has received a Publish.
 type MessageHandler func(Message)
 
+// Router is an interface of the functions for a struct that is
+// used to handle invoking MessageHandlers depending on the
+// the topic the message was published on.
+// RegisterHandler() takes a string of the topic, and a MessageHandler
+// to be invoked when Publishes are received that match that topic
+// UnregisterHandler() takes a string of the topic to remove
+// MessageHandlers for
+// Route() takes a Publish message and determines which MessageHandlers
+// should be invoked
 type Router interface {
 	RegisterHandler(string, MessageHandler)
 	UnregisterHandler(string)
 	Route(*p.Publish)
 }
 
-type router struct {
+// StandardRouter is a library provided implementation of a Router that
+// allows for unique and multiple MessageHandlers per topic
+type StandardRouter struct {
 	sync.RWMutex
 	subscriptions map[string][]MessageHandler
 }
 
-func (r *router) RegisterHandler(topic string, h MessageHandler) {
+// RegisterHandler is the library provided StandardRouter's
+// implementation of the required interface function()
+func (r *StandardRouter) RegisterHandler(topic string, h MessageHandler) {
 	r.Lock()
 	defer r.Unlock()
 	debug.Println("Registering handler for:", topic)
@@ -28,7 +43,9 @@ func (r *router) RegisterHandler(topic string, h MessageHandler) {
 	r.subscriptions[topic] = append(r.subscriptions[topic], h)
 }
 
-func (r *router) UnregisterHandler(topic string) {
+// UnregisterHandler is the library provided StandardRouter's
+// implementation of the required interface function()
+func (r *StandardRouter) UnregisterHandler(topic string) {
 	r.Lock()
 	defer r.Unlock()
 	debug.Println("Unregistering handler for:", topic)
@@ -36,7 +53,9 @@ func (r *router) UnregisterHandler(topic string) {
 	delete(r.subscriptions, topic)
 }
 
-func (r *router) Route(pb *p.Publish) {
+// Route is the library provided StandardRouter's implementation
+// of the required interface function()
+func (r *StandardRouter) Route(pb *p.Publish) {
 	r.RLock()
 	defer r.RUnlock()
 	debug.Println("Routing message for:", pb.Topic)
@@ -104,14 +123,23 @@ func topicSplit(topic string) []string {
 	return strings.Split(topic, "/")
 }
 
+// SingleHandlerRouter is a library provided implementation of a Router
+// that stores only a single MessageHandler and invokes this MessageHandler
+// for all received Publishes
 type SingleHandlerRouter struct {
 	messageHandler MessageHandler
 }
 
+// RegisterHandler is the library provided SingleHandlerRouter's
+// implementation of the required interface function()
 func (s *SingleHandlerRouter) RegisterHandler(topic string, h MessageHandler) {}
 
+// UnregisterHandler is the library provided SingleHandlerRouter's
+// implementation of the required interface function()
 func (s *SingleHandlerRouter) UnregisterHandler(topic string) {}
 
+// Route is the library provided SingleHandlerRouter's
+// implementation of the required interface function()
 func (s *SingleHandlerRouter) Route(pb *p.Publish) {
 	s.messageHandler(MessageFromPublish(pb))
 }
