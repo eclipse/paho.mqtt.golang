@@ -40,6 +40,7 @@ func (s *Suback) Buffers() net.Buffers {
 	return net.Buffers{b.Bytes(), propLen, idvp, s.Reasons}
 }
 
+// Send is the implementation of the interface required function for a packet
 func (s *Suback) Send(w io.Writer) error {
 	cp := &ControlPacket{FixedHeader: FixedHeader{Type: SUBACK}}
 	cp.Content = s
@@ -47,6 +48,7 @@ func (s *Suback) Send(w io.Writer) error {
 	return cp.Send(w)
 }
 
+// Reason returns a string representation of the meaning of the ReasonCode
 func (s *Suback) Reason(index int) string {
 	if index >= 0 && index < len(s.Reasons) {
 		switch s.Reasons[index] {

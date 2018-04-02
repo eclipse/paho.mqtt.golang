@@ -13,7 +13,7 @@ type Unsuback struct {
 	Reasons    []byte
 }
 
-//Unpack is the implementation of the interface required function for a packet
+// Unpack is the implementation of the interface required function for a packet
 func (u *Unsuback) Unpack(r *bytes.Buffer) error {
 	var err error
 	u.PacketID, err = readUint16(r)
@@ -40,6 +40,7 @@ func (u *Unsuback) Buffers() net.Buffers {
 	return net.Buffers{b.Bytes(), propLen, idvp, u.Reasons}
 }
 
+// Send is the implementation of the interface required function for a packet
 func (u *Unsuback) Send(w io.Writer) error {
 	cp := &ControlPacket{FixedHeader: FixedHeader{Type: UNSUBACK}}
 	cp.Content = u
@@ -47,6 +48,7 @@ func (u *Unsuback) Send(w io.Writer) error {
 	return cp.Send(w)
 }
 
+// Reason returns a string representation of the meaning of the ReasonCode
 func (u *Unsuback) Reason(index int) string {
 	if index >= 0 && index < len(u.Reasons) {
 		switch u.Reasons[index] {

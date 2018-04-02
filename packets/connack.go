@@ -39,6 +39,7 @@ func (c *Connack) Buffers() net.Buffers {
 	return nil
 }
 
+// Send is the implementation of the interface required function for a packet
 func (c *Connack) Send(w io.Writer) error {
 	cp := &ControlPacket{FixedHeader: FixedHeader{Type: CONNACK}}
 	cp.Content = c
@@ -46,6 +47,7 @@ func (c *Connack) Send(w io.Writer) error {
 	return cp.Send(w)
 }
 
+// Reason returns a string representation of the meaning of the ReasonCode
 func (c *Connack) Reason() string {
 	switch c.ReasonCode {
 	case 0:

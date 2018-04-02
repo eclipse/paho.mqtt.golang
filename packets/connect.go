@@ -25,6 +25,8 @@ type Connect struct {
 	Properties      Properties
 }
 
+// NewConnect creates a new Connect packet and applies all the
+// provided/listed option functions to configure the packet
 func NewConnect(opts ...func(c *Connect)) *Connect {
 	c := &Connect{
 		ProtocolName:    "MQTT",
@@ -41,6 +43,8 @@ func NewConnect(opts ...func(c *Connect)) *Connect {
 	return c
 }
 
+// Username is a Connect option function that sets the username
+// to be used in the Connect Packet
 func Username(u string) func(*Connect) {
 	return func(c *Connect) {
 		c.UsernameFlag = true
@@ -48,6 +52,8 @@ func Username(u string) func(*Connect) {
 	}
 }
 
+// Password is a Connect option function that sets the password
+// to be used in the Connect Packet
 func Password(p []byte) func(*Connect) {
 	return func(c *Connect) {
 		c.PasswordFlag = true
@@ -55,12 +61,16 @@ func Password(p []byte) func(*Connect) {
 	}
 }
 
+// KeepAlive is a Connect option function that sets the keep alive
+// value to be used in the Connect Packet
 func KeepAlive(k uint16) func(*Connect) {
 	return func(c *Connect) {
 		c.KeepAlive = k
 	}
 }
 
+// Will is a Connect option function that sets the will message
+// to be used in the Connect Packet
 func Will(topic string, retain bool, qos byte, message []byte) func(*Connect) {
 	return func(c *Connect) {
 		c.WillFlag = true
@@ -71,18 +81,24 @@ func Will(topic string, retain bool, qos byte, message []byte) func(*Connect) {
 	}
 }
 
+// CleanStart is a Connect option function that sets the cleanstart
+// value to be used in the Connect Packet
 func CleanStart(s bool) func(*Connect) {
 	return func(c *Connect) {
 		c.CleanStart = s
 	}
 }
 
+// ClientID is a Connect option function that sets the clientID
+// to be used in the Connect Packet
 func ClientID(i string) func(*Connect) {
 	return func(c *Connect) {
 		c.ClientID = i
 	}
 }
 
+// ConnectProperties is a Connect option function that sets
+// the Properties for the Connect packet
 func ConnectProperties(p *Properties) func(*Connect) {
 	return func(c *Connect) {
 		c.Properties = *p
@@ -208,6 +224,7 @@ func (c *Connect) Buffers() net.Buffers {
 	return net.Buffers{header.Bytes(), propLen, idvp, body.Bytes()}
 }
 
+// Send is the implementation of the interface required function for a packet
 func (c *Connect) Send(w io.Writer) error {
 	cp := &ControlPacket{FixedHeader: FixedHeader{Type: CONNECT}}
 	cp.Content = c

@@ -58,6 +58,7 @@ func (p *Publish) Buffers() net.Buffers {
 
 }
 
+// Send is the implementation of the interface required function for a packet
 func (p *Publish) Send(w io.Writer) error {
 	f := p.QoS << 1
 	if p.Duplicate {
@@ -73,6 +74,8 @@ func (p *Publish) Send(w io.Writer) error {
 	return cp.Send(w)
 }
 
+// NewPublish creates a new Publish packet and applies all the
+// provided/listed option functions to configure the packet
 func NewPublish(opts ...func(p *Publish)) *Publish {
 	p := &Publish{
 		Properties: Properties{
@@ -87,6 +90,9 @@ func NewPublish(opts ...func(p *Publish)) *Publish {
 	return p
 }
 
+// Message is a publish option function that sets the topic,
+// qos, retain and payload for the Publish packet to the
+// values provided
 func Message(topic string, qos byte, retain bool, payload []byte) func(*Publish) {
 	return func(p *Publish) {
 		p.Topic = topic
@@ -96,6 +102,8 @@ func Message(topic string, qos byte, retain bool, payload []byte) func(*Publish)
 	}
 }
 
+// PublishProperties is a Publish option function that sets
+// the Properties for the Publish packet
 func PublishProperties(p *Properties) func(*Publish) {
 	return func(pp *Publish) {
 		pp.Properties = *p
