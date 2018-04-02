@@ -31,7 +31,7 @@ func TestLiveConnection(t *testing.T) {
 	assert.Equal(t, CONNACK, p.Type)
 
 	s := NewSubscribe(
-		Sub("test", SubOptions{QoS: 1}),
+		SubscribeSingle("test", SubOptions{QoS: 1}),
 	)
 	s.PacketID = 1
 

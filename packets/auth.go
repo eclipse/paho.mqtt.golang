@@ -35,6 +35,7 @@ func (a *Auth) Buffers() net.Buffers {
 	return net.Buffers{[]byte{a.AuthReasonCode}, propLen, properties}
 }
 
+// Send is the implementation of the interface required function for a packet
 func (a *Auth) Send(w io.Writer) error {
 	cp := &ControlPacket{FixedHeader: FixedHeader{Type: AUTH}}
 	cp.Content = a

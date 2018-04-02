@@ -20,6 +20,7 @@ func (p *Pingreq) Buffers() net.Buffers {
 	return nil
 }
 
+// Send is the implementation of the interface required function for a packet
 func (p *Pingreq) Send(w io.Writer) error {
 	cp := &ControlPacket{FixedHeader: FixedHeader{Type: PINGREQ}}
 	cp.Content = p

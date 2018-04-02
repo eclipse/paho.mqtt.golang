@@ -13,7 +13,7 @@ type Unsubscribe struct {
 	Topics     []string
 }
 
-//Unpack is the implementation of the interface required function for a packet
+// Unpack is the implementation of the interface required function for a packet
 func (u *Unsubscribe) Unpack(r *bytes.Buffer) error {
 	for {
 		t, err := readString(r)
@@ -29,6 +29,8 @@ func (u *Unsubscribe) Unpack(r *bytes.Buffer) error {
 	return nil
 }
 
+// NewUnsubscribe creates a new Unsubscribe packet and applies all the
+// provided/listed option functions to configure the packet
 func NewUnsubscribe(opts ...func(u *Unsubscribe)) *Unsubscribe {
 	u := &Unsubscribe{
 		Properties: Properties{
@@ -43,12 +45,16 @@ func NewUnsubscribe(opts ...func(u *Unsubscribe)) *Unsubscribe {
 	return u
 }
 
-func Topics(topics []string) func(*Unsubscribe) {
+// UnsubscribeTopics is an Unsubscribe option function that takes a
+// slice of strings being the topics that should be unsubscribed from
+func UnsubscribeTopics(topics []string) func(*Unsubscribe) {
 	return func(u *Unsubscribe) {
 		u.Topics = topics
 	}
 }
 
+// UnsubscribeProperties is an Unsubscribe option function that sets
+// the Properties for the Unsubscribe packet
 func UnsubscribeProperties(p *Properties) func(*Unsubscribe) {
 	return func(u *Unsubscribe) {
 		u.Properties = *p
@@ -65,6 +71,7 @@ func (u *Unsubscribe) Buffers() net.Buffers {
 	return net.Buffers{b.Bytes()}
 }
 
+// Send is the implementation of the interface required function for a packet
 func (u *Unsubscribe) Send(w io.Writer) error {
 	cp := &ControlPacket{FixedHeader: FixedHeader{Type: UNSUBSCRIBE}}
 	cp.Content = u

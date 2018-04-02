@@ -45,6 +45,7 @@ func (p *Puback) Buffers() net.Buffers {
 	return net.Buffers{b.Bytes(), propLen, idvp}
 }
 
+// Send is the implementation of the interface required function for a packet
 func (p *Puback) Send(w io.Writer) error {
 	cp := &ControlPacket{FixedHeader: FixedHeader{Type: PUBACK}}
 	cp.Content = p
@@ -52,6 +53,8 @@ func (p *Puback) Send(w io.Writer) error {
 	return cp.Send(w)
 }
 
+// NewPuback creates a new Puback packet and applies all the
+// provided/listed option functions to configure the packet
 func NewPuback(opts ...func(p *Puback)) *Puback {
 	p := &Puback{
 		Properties: Properties{
@@ -66,6 +69,9 @@ func NewPuback(opts ...func(p *Puback)) *Puback {
 	return p
 }
 
+// PubackFromPublish reads the PacketID from the provided Publish
+// and creates a Puback packet with the same PacketID, this is used
+// to respond to a QoS1 publish
 func PubackFromPublish(pb *Publish) func(*Puback) {
 	return func(pa *Puback) {
 		pa.PacketID = pb.PacketID

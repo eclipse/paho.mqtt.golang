@@ -13,6 +13,7 @@ type Subscribe struct {
 	Subscriptions map[string]SubOptions
 }
 
+// SubOptions is the struct representing the options for a subscription
 type SubOptions struct {
 	QoS               byte
 	NoLocal           bool
@@ -20,6 +21,7 @@ type SubOptions struct {
 	RetainHandling    byte
 }
 
+// Pack is the implementation of the interface required function for a packet
 func (s *SubOptions) Pack() byte {
 	var ret byte
 	ret |= s.QoS & 0x03
@@ -34,6 +36,8 @@ func (s *SubOptions) Pack() byte {
 	return ret
 }
 
+// NewSubscribe creates a new Subscribe packet and applies all the
+// provided/listed option functions to configure the packet
 func NewSubscribe(opts ...func(c *Subscribe)) *Subscribe {
 	s := &Subscribe{
 		Subscriptions: make(map[string]SubOptions),
@@ -49,13 +53,20 @@ func NewSubscribe(opts ...func(c *Subscribe)) *Subscribe {
 	return s
 }
 
-func Sub(topic string, subOpts SubOptions) func(*Subscribe) {
+// SubscribeSingle is a Subscribe option function that adds a single subscription
+// to the subscribe packet for the topic given and with the
+// associated SubOptions
+func SubscribeSingle(topic string, subOpts SubOptions) func(*Subscribe) {
 	return func(s *Subscribe) {
 		s.Subscriptions[topic] = subOpts
 	}
 }
 
-func MultiSub(subs map[string]SubOptions) func(*Subscribe) {
+// SubscribeMulti is a Subscribe option function that adds a map of string
+// to SubOptions, the string keys of the map are topics to subscribe to
+// the SubOption values are the subscription options to be applied to
+// the subscription
+func SubscribeMulti(subs map[string]SubOptions) func(*Subscribe) {
 	return func(s *Subscribe) {
 		for k, v := range subs {
 			s.Subscriptions[k] = v
@@ -63,13 +74,15 @@ func MultiSub(subs map[string]SubOptions) func(*Subscribe) {
 	}
 }
 
+// SubscribeProperties is a Subscribe option function that sets
+// the Properties for the Subscribe packet
 func SubscribeProperties(p *Properties) func(*Subscribe) {
 	return func(s *Subscribe) {
 		s.Properties = *p
 	}
 }
 
-//Unpack is the implementation of the interface required function for a packet
+// Unpack is the implementation of the interface required function for a packet
 func (s *Subscribe) Unpack(r *bytes.Buffer) error {
 	var err error
 	s.PacketID, err = readUint16(r)
@@ -99,6 +112,7 @@ func (s *Subscribe) Buffers() net.Buffers {
 	return net.Buffers{b.Bytes(), propLen, idvp, subs.Bytes()}
 }
 
+// Send is the implementation of the interface required function for a packet
 func (s *Subscribe) Send(w io.Writer) error {
 	cp := &ControlPacket{FixedHeader: FixedHeader{Type: SUBSCRIBE, Flags: 2}}
 	cp.Content = s

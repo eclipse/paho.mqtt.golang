@@ -63,6 +63,8 @@ type ControlPacket struct {
 	Content Packet
 }
 
+// PacketID is a helper function that returns the value of the PacketID
+// field from any kind of mqtt packet in the Content element
 func (c *ControlPacket) PacketID() uint16 {
 	switch r := c.Content.(type) {
 	case *Publish:
@@ -97,52 +99,44 @@ func NewControlPacket(t PacketType) *ControlPacket {
 	case CONNECT:
 		cp.Content = &Connect{
 			ProtocolName:    "MQTT",
-			ProtocolVersion: 5}
-		cp.Content.(*Connect).Properties.User = make(map[string]string)
+			ProtocolVersion: 5,
+			Properties:      Properties{User: make(map[string]string)},
+		}
 	case CONNACK:
-		cp.Content = &Connack{}
-		cp.Content.(*Connack).Properties.User = make(map[string]string)
+		cp.Content = &Connack{Properties: Properties{User: make(map[string]string)}}
 	case PUBLISH:
-		cp.Content = &Publish{}
-		cp.Content.(*Publish).Properties.User = make(map[string]string)
+		cp.Content = &Publish{Properties: Properties{User: make(map[string]string)}}
 	case PUBACK:
-		cp.Content = &Puback{}
-		cp.Content.(*Puback).Properties.User = make(map[string]string)
+		cp.Content = &Puback{Properties: Properties{User: make(map[string]string)}}
 	case PUBREC:
-		cp.Content = &Pubrec{}
-		cp.Content.(*Pubrec).Properties.User = make(map[string]string)
+		cp.Content = &Pubrec{Properties: Properties{User: make(map[string]string)}}
 	case PUBREL:
 		cp.Flags = 2
-		cp.Content = &Pubrel{}
-		cp.Content.(*Pubrel).Properties.User = make(map[string]string)
+		cp.Content = &Pubrel{Properties: Properties{User: make(map[string]string)}}
 	case PUBCOMP:
-		cp.Content = &Pubcomp{}
-		cp.Content.(*Pubcomp).Properties.User = make(map[string]string)
+		cp.Content = &Pubcomp{Properties: Properties{User: make(map[string]string)}}
 	case SUBSCRIBE:
 		cp.Flags = 2
 		cp.Content = &Subscribe{
 			Subscriptions: make(map[string]SubOptions),
+			Properties:    Properties{User: make(map[string]string)},
 		}
 	case SUBACK:
-		cp.Content = &Suback{}
-		cp.Content.(*Suback).Properties.User = make(map[string]string)
+		cp.Content = &Suback{Properties: Properties{User: make(map[string]string)}}
 	case UNSUBSCRIBE:
 		cp.Flags = 2
-		cp.Content = &Unsubscribe{}
+		cp.Content = &Unsubscribe{Properties: Properties{User: make(map[string]string)}}
 	case UNSUBACK:
-		cp.Content = &Unsuback{}
-		cp.Content.(*Unsuback).Properties.User = make(map[string]string)
+		cp.Content = &Unsuback{Properties: Properties{User: make(map[string]string)}}
 	case PINGREQ:
 		cp.Content = &Pingreq{}
 	case PINGRESP:
 		cp.Content = &Pingresp{}
 	case DISCONNECT:
-		cp.Content = &Disconnect{}
-		cp.Content.(*Disconnect).Properties.User = make(map[string]string)
+		cp.Content = &Disconnect{Properties: Properties{User: make(map[string]string)}}
 	case AUTH:
 		cp.Flags = 1
-		cp.Content = &Auth{}
-		cp.Content.(*Auth).Properties.User = make(map[string]string)
+		cp.Content = &Auth{Properties: Properties{User: make(map[string]string)}}
 	default:
 		return nil
 	}
@@ -267,11 +261,7 @@ func writeUint16(u uint16, b *bytes.Buffer) error {
 	if err := b.WriteByte(byte(u >> 8)); err != nil {
 		return err
 	}
-	if err := b.WriteByte(byte(u)); err != nil {
-		return err
-	}
-
-	return nil
+	return b.WriteByte(byte(u))
 }
 
 func writeUint32(u uint32, b *bytes.Buffer) error {
@@ -284,11 +274,7 @@ func writeUint32(u uint32, b *bytes.Buffer) error {
 	if err := b.WriteByte(byte(u >> 8)); err != nil {
 		return err
 	}
-	if err := b.WriteByte(byte(u)); err != nil {
-		return err
-	}
-
-	return nil
+	return b.WriteByte(byte(u))
 }
 
 func writeString(s string, b *bytes.Buffer) {

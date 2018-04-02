@@ -6,6 +6,8 @@ import (
 	"io"
 )
 
+// PropPayloadFormat, etc are the list of property codes for the
+// MQTT packet properties
 const (
 	PropPayloadFormat          byte = 1
 	PropPubExpiry                   = 2
@@ -70,6 +72,8 @@ type Properties struct {
 	SharedSubAvailable     *byte
 }
 
+// NewProperties creates a new Properties and applies all the
+// provided/listed option functions to configure them
 func NewProperties(opts ...func(*Properties)) *Properties {
 	p := &Properties{
 		User: make(map[string]string),
@@ -82,116 +86,184 @@ func NewProperties(opts ...func(*Properties)) *Properties {
 	return p
 }
 
+// PayloadFormat is a Properties option function that sets the
+// payload format for a Properties struct
 func PayloadFormat(x *byte) func(*Properties) {
 	return func(i *Properties) {
 		i.PayloadFormat = x
 	}
 }
+
+// PubExpiry is a Properties option function that sets the
+// pub expiry for a Properties struct
 func PubExpiry(x *uint32) func(*Properties) {
 	return func(i *Properties) {
 		i.PubExpiry = x
 	}
 }
+
+// ContentType is a Properties option function that sets the
+// content type for a Properties struct
 func ContentType(x string) func(*Properties) {
 	return func(i *Properties) {
 		i.ContentType = x
 	}
 }
+
+// ReplyTopic is a Properties option function that sets the
+// reply topic for a Properties struct
 func ReplyTopic(x string) func(*Properties) {
 	return func(i *Properties) {
 		i.ReplyTopic = x
 	}
 }
+
+// CorrelationData is a Properties option function that sets the
+// correlation data for a Properties struct
 func CorrelationData(x []byte) func(*Properties) {
 	return func(i *Properties) {
 		i.CorrelationData = x
 	}
 }
+
+// SubscriptionIdentifier is a Properties option function that sets the
+// subscription identifier for a Properties struct
 func SubscriptionIdentifier(x *uint32) func(*Properties) {
 	return func(i *Properties) {
 		i.SubscriptionIdentifier = x
 	}
 }
+
+// SessionExpiryInterval is a Properties option function that sets the
+// session expiry interval for a Properties struct
 func SessionExpiryInterval(x *uint32) func(*Properties) {
 	return func(i *Properties) {
 		i.SessionExpiryInterval = x
 	}
 }
+
+// AssignedClientID is a Properties option function that sets the
+// assigned client id for a Properties struct
 func AssignedClientID(x string) func(*Properties) {
 	return func(i *Properties) {
 		i.AssignedClientID = x
 	}
 }
+
+// ServerKeepAlive is a Properties option function that sets the
+// server keep alive for a Properties struct
 func ServerKeepAlive(x *uint16) func(*Properties) {
 	return func(i *Properties) {
 		i.ServerKeepAlive = x
 	}
 }
+
+// AuthMethod is a Properties option function that sets the
+// auth method for a Properties struct
 func AuthMethod(x string) func(*Properties) {
 	return func(i *Properties) {
 		i.AuthMethod = x
 	}
 }
+
+// AuthData is a Properties option function that sets the
+// auth data for a Properties struct
 func AuthData(x []byte) func(*Properties) {
 	return func(i *Properties) {
 		i.AuthData = x
 	}
 }
+
+// RequestProblemInfo is a Properties option function that sets the
+// request problem info for a Properties struct
 func RequestProblemInfo(x *byte) func(*Properties) {
 	return func(i *Properties) {
 		i.RequestProblemInfo = x
 	}
 }
+
+// WillDelayInterval is a Properties option function that sets the
+// will delay interval for a Properties struct
 func WillDelayInterval(x *uint32) func(*Properties) {
 	return func(i *Properties) {
 		i.WillDelayInterval = x
 	}
 }
+
+// RequestResponseInfo is a Properties option function that sets the
+// request response info for a Properties struct
 func RequestResponseInfo(x *byte) func(*Properties) {
 	return func(i *Properties) {
 		i.RequestResponseInfo = x
 	}
 }
+
+// ResponseInfo is a Properties option function that sets the
+// response info for a Properties struct
 func ResponseInfo(x string) func(*Properties) {
 	return func(i *Properties) {
 		i.ResponseInfo = x
 	}
 }
+
+// ServerReference is a Properties option function that sets the
+// server reference for a Properties struct
 func ServerReference(x string) func(*Properties) {
 	return func(i *Properties) {
 		i.ServerReference = x
 	}
 }
+
+// ReasonString is a Properties option function that sets the
+// reason string for a Properties struct
 func ReasonString(x string) func(*Properties) {
 	return func(i *Properties) {
 		i.ReasonString = x
 	}
 }
+
+// ReceiveMaximum is a Properties option function that sets the
+// receive maximum for a Properties struct
 func ReceiveMaximum(x *uint16) func(*Properties) {
 	return func(i *Properties) {
 		i.ReceiveMaximum = x
 	}
 }
+
+// TopicAliasMaximum is a Properties option function that sets the
+// topic alias maximum for a Properties struct
 func TopicAliasMaximum(x *uint16) func(*Properties) {
 	return func(i *Properties) {
 		i.TopicAliasMaximum = x
 	}
 }
+
+// TopicAlias is a Properties option function that sets the
+// topic alias for a Properties struct
 func TopicAlias(x *uint16) func(*Properties) {
 	return func(i *Properties) {
 		i.TopicAlias = x
 	}
 }
+
+// MaximumQOS is a Properties option function that sets the
+// maximum qos for a Properties struct
 func MaximumQOS(x *byte) func(*Properties) {
 	return func(i *Properties) {
 		i.MaximumQOS = x
 	}
 }
+
+// RetainAvailable is a Properties option function that sets the
+// retain available for a Properties struct
 func RetainAvailable(x *byte) func(*Properties) {
 	return func(i *Properties) {
 		i.RetainAvailable = x
 	}
 }
+
+// UserMap is a Properties option function that sets the
+// user properties to be the values in the provided map
 func UserMap(x map[string]string) func(*Properties) {
 	return func(i *Properties) {
 		for k, v := range x {
@@ -200,30 +272,40 @@ func UserMap(x map[string]string) func(*Properties) {
 	}
 }
 
+// UserSingle is a Properties option function that sets the
+// a single key/value property in the user properties
 func UserSingle(k, v string) func(*Properties) {
 	return func(i *Properties) {
 		i.User[k] = v
 	}
 }
 
+// MaximumPacketSize is a Properties option function that sets the
+// maximum packet size for a Properties struct
 func MaximumPacketSize(x *uint32) func(*Properties) {
 	return func(i *Properties) {
 		i.MaximumPacketSize = x
 	}
 }
 
+// WildcardSubAvailable is a Properties option function that sets the
+// wildcard sub available for a Properties struct
 func WildcardSubAvailable(x *byte) func(*Properties) {
 	return func(i *Properties) {
 		i.WildcardSubAvailable = x
 	}
 }
 
+// SubIDAvailable is a Properties option function that sets the
+// sub id available for a Properties struct
 func SubIDAvailable(x *byte) func(*Properties) {
 	return func(i *Properties) {
 		i.SubIDAvailable = x
 	}
 }
 
+// SharedSubAvailable is a Properties option function that sets the
+// shared sub available for a Properties struct
 func SharedSubAvailable(x *byte) func(*Properties) {
 	return func(i *Properties) {
 		i.SharedSubAvailable = x
@@ -595,7 +677,7 @@ func (i *Properties) Unpack(r *bytes.Buffer, p PacketType) error {
 	return nil
 }
 
-// ValidPropertiess is a map of the various properties and the
+// ValidProperties is a map of the various properties and the
 // PacketTypes that property is valid for.
 var ValidProperties = map[byte]map[PacketType]struct{}{
 	PropPayloadFormat:          {PUBLISH: {}},
