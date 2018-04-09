@@ -2,43 +2,53 @@ package packets
 
 import (
 	"bytes"
+	"io"
 	"net"
 )
 
 // Suback is the Variable Header definition for a Suback control packet
 type Suback struct {
-	PacketID uint16
-	IDVP     IDValuePair
-	Reasons  []byte
+	PacketID   uint16
+	Properties Properties
+	Reasons    []byte
 }
 
 //Unpack is the implementation of the interface required function for a packet
-func (s *Suback) Unpack(r *bytes.Buffer) (int, error) {
+func (s *Suback) Unpack(r *bytes.Buffer) error {
 	var err error
 	s.PacketID, err = readUint16(r)
 	if err != nil {
-		return 0, err
+		return err
 	}
 
-	idvpLen, err := s.IDVP.Unpack(r, SUBACK)
+	err = s.Properties.Unpack(r, SUBACK)
 	if err != nil {
-		return 0, err
+		return err
 	}
 
 	s.Reasons = r.Bytes()
 
-	return idvpLen + 2 + len(s.Reasons), nil
+	return nil
 }
 
 // Buffers is the implementation of the interface required function for a packet
 func (s *Suback) Buffers() net.Buffers {
 	var b bytes.Buffer
 	writeUint16(s.PacketID, &b)
-	idvp := s.IDVP.Pack(SUBACK)
-	idvpLen := encodeVBI(len(idvp))
-	return net.Buffers{b.Bytes(), idvpLen, idvp}
+	idvp := s.Properties.Pack(SUBACK)
+	propLen := encodeVBI(len(idvp))
+	return net.Buffers{b.Bytes(), propLen, idvp, s.Reasons}
 }
 
+// Send is the implementation of the interface required function for a packet
+func (s *Suback) Send(w io.Writer) error {
+	cp := &ControlPacket{FixedHeader: FixedHeader{Type: SUBACK}}
+	cp.Content = s
+
+	return cp.Send(w)
+}
+
+// Reason returns a string representation of the meaning of the ReasonCode
 func (s *Suback) Reason(index int) string {
 	if index >= 0 && index < len(s.Reasons) {
 		switch s.Reasons[index] {

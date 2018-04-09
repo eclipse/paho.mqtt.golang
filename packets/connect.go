@@ -2,15 +2,16 @@ package packets
 
 import (
 	"bytes"
+	"io"
 	"net"
 )
 
 // Connect is the Variable Header definition for a connect control packet
 type Connect struct {
+	PasswordFlag    bool
+	UsernameFlag    bool
 	ProtocolName    string
 	ProtocolVersion byte
-	UsernameFlag    bool
-	PasswordFlag    bool
 	WillTopic       string
 	WillRetain      bool
 	WillQOS         byte
@@ -21,16 +22,96 @@ type Connect struct {
 	Password        []byte
 	KeepAlive       uint16
 	ClientID        string
-	IDVP            IDValuePair
+	Properties      Properties
+}
+
+// NewConnect creates a new Connect packet and applies all the
+// provided/listed option functions to configure the packet
+func NewConnect(opts ...func(c *Connect)) *Connect {
+	c := &Connect{
+		ProtocolName:    "MQTT",
+		ProtocolVersion: 5,
+		Properties: Properties{
+			User: make(map[string]string),
+		},
+	}
+
+	for _, opt := range opts {
+		opt(c)
+	}
+
+	return c
+}
+
+// Username is a Connect option function that sets the username
+// to be used in the Connect Packet
+func Username(u string) func(*Connect) {
+	return func(c *Connect) {
+		c.UsernameFlag = true
+		c.Username = u
+	}
+}
+
+// Password is a Connect option function that sets the password
+// to be used in the Connect Packet
+func Password(p []byte) func(*Connect) {
+	return func(c *Connect) {
+		c.PasswordFlag = true
+		c.Password = p
+	}
+}
+
+// KeepAlive is a Connect option function that sets the keep alive
+// value to be used in the Connect Packet
+func KeepAlive(k uint16) func(*Connect) {
+	return func(c *Connect) {
+		c.KeepAlive = k
+	}
+}
+
+// Will is a Connect option function that sets the will message
+// to be used in the Connect Packet
+func Will(topic string, retain bool, qos byte, message []byte) func(*Connect) {
+	return func(c *Connect) {
+		c.WillFlag = true
+		c.WillTopic = topic
+		c.WillRetain = retain
+		c.WillQOS = qos
+		c.WillMessage = message
+	}
+}
+
+// CleanStart is a Connect option function that sets the cleanstart
+// value to be used in the Connect Packet
+func CleanStart(s bool) func(*Connect) {
+	return func(c *Connect) {
+		c.CleanStart = s
+	}
+}
+
+// ClientID is a Connect option function that sets the clientID
+// to be used in the Connect Packet
+func ClientID(i string) func(*Connect) {
+	return func(c *Connect) {
+		c.ClientID = i
+	}
+}
+
+// ConnectProperties is a Connect option function that sets
+// the Properties for the Connect packet
+func ConnectProperties(p *Properties) func(*Connect) {
+	return func(c *Connect) {
+		c.Properties = *p
+	}
 }
 
 // PackFlags takes the Connect flags and packs them into the single byte
 // representation used on the wire by MQTT
 func (c *Connect) PackFlags() (f byte) {
-	if c.UsernameFlag {
+	if c.Username != "" {
 		f |= 0x01 << 7
 	}
-	if c.PasswordFlag {
+	if c.Password != nil {
 		f |= 0x01 << 6
 	}
 	if c.WillFlag {
@@ -58,72 +139,63 @@ func (c *Connect) UnpackFlags(b byte) {
 }
 
 //Unpack is the implementation of the interface required function for a packet
-func (c *Connect) Unpack(r *bytes.Buffer) (int, error) {
-	var length int
+func (c *Connect) Unpack(r *bytes.Buffer) error {
 	var err error
 
 	if c.ProtocolName, err = readString(r); err != nil {
-		return 0, err
+		return err
 	}
-	length += len(c.ProtocolName) + 2
 
 	if c.ProtocolVersion, err = r.ReadByte(); err != nil {
-		return 0, err
+		return err
 	}
 
 	flags, err := r.ReadByte()
 	if err != nil {
-		return 0, err
+		return err
 	}
 	c.UnpackFlags(flags)
 
 	if c.KeepAlive, err = readUint16(r); err != nil {
-		return 0, err
+		return err
 	}
-	length += 4
 
-	idvpLen, err := c.IDVP.Unpack(r, CONNECT)
-	length += idvpLen
+	err = c.Properties.Unpack(r, CONNECT)
 	if err != nil {
-		return 0, err
+		return err
 	}
 
 	c.ClientID, err = readString(r)
-	length += len(c.ClientID) + 2
 	if err != nil {
-		return 0, err
+		return err
 	}
 
 	if c.WillFlag {
 		c.WillTopic, err = readString(r)
-		length += len(c.WillTopic) + 2
 		if err != nil {
-			return 0, err
+			return err
 		}
 		c.WillMessage, err = readBinary(r)
-		length += len(c.WillMessage) + 2
 		if err != nil {
-			return 0, err
+			return err
 		}
 	}
 
 	if c.UsernameFlag {
 		c.Username, err = readString(r)
-		length += len(c.Username) + 2
 		if err != nil {
-			return 0, err
+			return err
 		}
 	}
 
 	if c.PasswordFlag {
 		c.Password, err = readBinary(r)
-		length += len(c.Password) + 2
 		if err != nil {
-			return 0, err
+			return err
 		}
 	}
 
-	return length, nil
+	return nil
 }
 
 // Buffers is the implementation of the interface required function for a packet
@@ -134,20 +206,28 @@ func (c *Connect) Buffers() net.Buffers {
 	header.WriteByte(c.ProtocolVersion)
 	header.WriteByte(c.PackFlags())
 	writeUint16(c.KeepAlive, &header)
-	idvp := c.IDVP.Pack(CONNECT)
-	idvpLen := encodeVBI(len(idvp))
+	idvp := c.Properties.Pack(CONNECT)
+	propLen := encodeVBI(len(idvp))
 
 	writeString(c.ClientID, &body)
 	if c.WillFlag {
 		writeString(c.WillTopic, &body)
 		writeBinary(c.WillMessage, &body)
 	}
-	if c.UsernameFlag {
+	if c.Username != "" {
 		writeString(c.Username, &body)
 	}
-	if c.PasswordFlag {
+	if c.Password != nil {
 		writeBinary(c.Password, &body)
 	}
 
-	return net.Buffers{header.Bytes(), idvpLen, idvp, body.Bytes()}
+	return net.Buffers{header.Bytes(), propLen, idvp, body.Bytes()}
+}
+
+// Send is the implementation of the interface required function for a packet
+func (c *Connect) Send(w io.Writer) error {
+	cp := &ControlPacket{FixedHeader: FixedHeader{Type: CONNECT}}
+	cp.Content = c
+
+	return cp.Send(w)
 }

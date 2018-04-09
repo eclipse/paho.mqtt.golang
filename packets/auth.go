@@ -2,34 +2,43 @@ package packets
 
 import (
 	"bytes"
+	"io"
 	"net"
 )
 
 // Auth is the Variable Header definition for a Auth control packet
 type Auth struct {
 	AuthReasonCode byte
-	IDVP           IDValuePair
+	Properties     Properties
 }
 
 // Unpack is the implementation of the interface required function for a packet
-func (a *Auth) Unpack(r *bytes.Buffer) (int, error) {
+func (a *Auth) Unpack(r *bytes.Buffer) error {
 	var err error
 	a.AuthReasonCode, err = r.ReadByte()
 	if err != nil {
-		return 0, err
+		return err
 	}
 
-	idvpLen, err := a.IDVP.Unpack(r, AUTH)
+	err = a.Properties.Unpack(r, AUTH)
 	if err != nil {
-		return 0, err
+		return err
 	}
 
-	return idvpLen + 1, nil
+	return nil
 }
 
 // Buffers is the implementation of the interface required function for a packet
 func (a *Auth) Buffers() net.Buffers {
-	idvp := a.IDVP.Pack(AUTH)
-	idvpLen := encodeVBI(len(idvp))
-	return net.Buffers{[]byte{a.AuthReasonCode}, idvpLen, idvp}
+	properties := a.Properties.Pack(AUTH)
+	propLen := encodeVBI(len(properties))
+	return net.Buffers{[]byte{a.AuthReasonCode}, propLen, properties}
+}
+
+// Send is the implementation of the interface required function for a packet
+func (a *Auth) Send(w io.Writer) error {
+	cp := &ControlPacket{FixedHeader: FixedHeader{Type: AUTH}}
+	cp.Content = a
+
+	return cp.Send(w)
 }

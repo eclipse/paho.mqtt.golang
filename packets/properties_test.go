@@ -2,138 +2,138 @@ package packets
 
 import "testing"
 
-func TestIDValuePairs(t *testing.T) {
-	if !ValidateID(PUBLISH, idvpPayloadFormat) {
+func TestPropertiess(t *testing.T) {
+	if !ValidateID(PUBLISH, PropPayloadFormat) {
 		t.Fatalf("'payloadFormat' is valid for 'PUBLISH' packets")
 	}
 
-	if !ValidateID(PUBLISH, idvpPubExpiry) {
+	if !ValidateID(PUBLISH, PropPubExpiry) {
 		t.Fatalf("'pubExpiry' is valid for 'PUBLISH' packets")
 	}
 
-	if !ValidateID(PUBLISH, idvpReplyTopic) {
+	if !ValidateID(PUBLISH, PropReplyTopic) {
 		t.Fatalf("'replyTopic' is valid for 'PUBLISH' packets")
 	}
 
-	if !ValidateID(PUBLISH, idvpCorrelationData) {
+	if !ValidateID(PUBLISH, PropCorrelationData) {
 		t.Fatalf("'correlationData' is valid for 'PUBLISH' packets")
 	}
 
-	if !ValidateID(CONNECT, idvpSessionExpiryInterval) {
+	if !ValidateID(CONNECT, PropSessionExpiryInterval) {
 		t.Fatalf("'sessionExpiryInterval' is valid for 'CONNECT' packets")
 	}
 
-	if !ValidateID(DISCONNECT, idvpSessionExpiryInterval) {
+	if !ValidateID(DISCONNECT, PropSessionExpiryInterval) {
 		t.Fatalf("'sessionExpiryInterval' is valid for 'DISCONNECT' packets")
 	}
 
-	if !ValidateID(CONNACK, idvpAssignedClientID) {
+	if !ValidateID(CONNACK, PropAssignedClientID) {
 		t.Fatalf("'assignedClientID' is valid for 'CONNACK' packets")
 	}
 
-	if !ValidateID(CONNACK, idvpServerKeepAlive) {
+	if !ValidateID(CONNACK, PropServerKeepAlive) {
 		t.Fatalf("'serverKeepAlive' is valid for 'CONNACK' packets")
 	}
 
-	if !ValidateID(CONNECT, idvpAuthMethod) {
+	if !ValidateID(CONNECT, PropAuthMethod) {
 		t.Fatalf("'authMethod' is valid for 'CONNECT' packets")
 	}
 
-	if !ValidateID(CONNACK, idvpAuthMethod) {
+	if !ValidateID(CONNACK, PropAuthMethod) {
 		t.Fatalf("'authMethod' is valid for 'CONNACK' packets")
 	}
 
-	if !ValidateID(AUTH, idvpAuthMethod) {
+	if !ValidateID(AUTH, PropAuthMethod) {
 		t.Fatalf("'authMethod' is valid for 'auth' packets")
 	}
 
-	if !ValidateID(CONNECT, idvpAuthData) {
+	if !ValidateID(CONNECT, PropAuthData) {
 		t.Fatalf("'authData' is valid for 'CONNECT' packets")
 	}
 
-	if !ValidateID(CONNACK, idvpAuthData) {
+	if !ValidateID(CONNACK, PropAuthData) {
 		t.Fatalf("'authData' is valid for 'CONNACK' packets")
 	}
 
-	if !ValidateID(AUTH, idvpAuthData) {
+	if !ValidateID(AUTH, PropAuthData) {
 		t.Fatalf("'authData' is valid for 'auth' packets")
 	}
 
-	if !ValidateID(CONNECT, idvpRequestProblemInfo) {
+	if !ValidateID(CONNECT, PropRequestProblemInfo) {
 		t.Fatalf("'requestProblemInfo' is valid for 'CONNECT' packets")
 	}
 
-	if !ValidateID(CONNECT, idvpWillDelayInterval) {
+	if !ValidateID(CONNECT, PropWillDelayInterval) {
 		t.Fatalf("'willDelayInterval' is valid for 'CONNECT' packets")
 	}
 
-	if !ValidateID(CONNECT, idvpRequestResponseInfo) {
+	if !ValidateID(CONNECT, PropRequestResponseInfo) {
 		t.Fatalf("'requestResponseInfo' is valid for 'CONNECT' packets")
 	}
 
-	if !ValidateID(CONNACK, idvpResponseInfo) {
+	if !ValidateID(CONNACK, PropResponseInfo) {
 		t.Fatalf("'ResponseInfo' is valid for 'CONNACK' packets")
 	}
 
-	if !ValidateID(CONNACK, idvpServerReference) {
+	if !ValidateID(CONNACK, PropServerReference) {
 		t.Fatalf("'serverReference' is valid for 'CONNACK' packets")
 	}
 
-	if !ValidateID(DISCONNECT, idvpServerReference) {
+	if !ValidateID(DISCONNECT, PropServerReference) {
 		t.Fatalf("'serverReference' is valid for 'DISCONNECT' packets")
 	}
 
-	if !ValidateID(CONNACK, idvpReasonString) {
+	if !ValidateID(CONNACK, PropReasonString) {
 		t.Fatalf("'reasonString' is valid for 'CONNACK' packets")
 	}
 
-	if !ValidateID(DISCONNECT, idvpReasonString) {
+	if !ValidateID(DISCONNECT, PropReasonString) {
 		t.Fatalf("'reasonString' is valid for 'DISCONNECT' packets")
 	}
 
-	if !ValidateID(CONNECT, idvpReceiveMaximum) {
+	if !ValidateID(CONNECT, PropReceiveMaximum) {
 		t.Fatalf("'receiveMaximum' is valid for 'CONNECT' packets")
 	}
 
-	if !ValidateID(CONNACK, idvpReceiveMaximum) {
+	if !ValidateID(CONNACK, PropReceiveMaximum) {
 		t.Fatalf("'receiveMaximum' is valid for 'CONNACK' packets")
 	}
 
-	if !ValidateID(CONNECT, idvpTopicAliasMaximum) {
+	if !ValidateID(CONNECT, PropTopicAliasMaximum) {
 		t.Fatalf("'topicAliasMaximum' is valid for 'CONNECT' packets")
 	}
 
-	if !ValidateID(CONNACK, idvpTopicAliasMaximum) {
+	if !ValidateID(CONNACK, PropTopicAliasMaximum) {
 		t.Fatalf("'topicAliasMaximum' is valid for 'CONNACK' packets")
 	}
 
-	if !ValidateID(PUBLISH, idvpTopicAlias) {
+	if !ValidateID(PUBLISH, PropTopicAlias) {
 		t.Fatalf("'topicAlias' is valid for 'PUBLISH' packets")
 	}
 
-	if !ValidateID(CONNECT, idvpMaximumQOS) {
+	if !ValidateID(CONNECT, PropMaximumQOS) {
 		t.Fatalf("'maximumQOS' is valid for 'CONNECT' packets")
 	}
 
-	if !ValidateID(CONNACK, idvpMaximumQOS) {
+	if !ValidateID(CONNACK, PropMaximumQOS) {
 		t.Fatalf("'maximumQOS' is valid for 'CONNACK' packets")
 	}
 
-	if !ValidateID(CONNACK, idvpRetainAvailable) {
+	if !ValidateID(CONNACK, PropRetainAvailable) {
 		t.Fatalf("'retainAvailable' is valid for 'CONNACK' packets")
 	}
 
-	if !ValidateID(CONNECT, idvpUserProperty) {
-		t.Fatalf("'userProperty' is valid for 'CONNECT' packets")
+	if !ValidateID(CONNECT, PropUser) {
+		t.Fatalf("'user' is valid for 'CONNECT' packets")
 	}
 
-	if !ValidateID(PUBLISH, idvpUserProperty) {
-		t.Fatalf("'userProperty' is valid for 'PUBLISH' packets")
+	if !ValidateID(PUBLISH, PropUser) {
+		t.Fatalf("'user' is valid for 'PUBLISH' packets")
 	}
 }
 
-func TestInvalidIDValuePairs(t *testing.T) {
-	if ValidateID(PUBLISH, idvpRequestResponseInfo) {
+func TestInvalidPropertiess(t *testing.T) {
+	if ValidateID(PUBLISH, PropRequestResponseInfo) {
 		t.Fatalf("'requestReplyInfo' is invalid for 'PUBLISH' packets")
 	}
 }

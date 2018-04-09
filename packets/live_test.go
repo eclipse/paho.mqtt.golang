@@ -11,16 +11,14 @@ import (
 )
 
 func TestLiveConnection(t *testing.T) {
-	x := NewControlPacket(CONNECT)
+	x := NewConnect(
+		ClientID("testClient"),
+		Username("testUser"),
+		KeepAlive(30),
+	)
 
-	require.Equal(t, CONNECT, x.Type)
-
-	x.Content.(*Connect).KeepAlive = 30
-	x.Content.(*Connect).ClientID = "testClient"
-	x.Content.(*Connect).UsernameFlag = true
-	x.Content.(*Connect).Username = "testUser"
 	sExpiryInterval := uint32(30)
-	x.Content.(*Connect).IDVP.SessionExpiryInterval = &sExpiryInterval
+	x.Properties.SessionExpiryInterval = &sExpiryInterval
 
 	conn, err := net.Dial("tcp", "127.0.0.1:1883")
 	require.Nil(t, err)
@@ -32,9 +30,10 @@ func TestLiveConnection(t *testing.T) {
 	require.Nil(t, err)
 	assert.Equal(t, CONNACK, p.Type)
 
-	s := NewControlPacket(SUBSCRIBE)
-	s.Content.(*Subscribe).PacketID = 1
-	s.Content.(*Subscribe).Subscriptions["test"] = 1
+	s := NewSubscribe(
+		SubscribeSingle("test", SubOptions{QoS: 1}),
+	)
+	s.PacketID = 1
 
 	err = s.Send(conn)
 	require.Nil(t, err)
@@ -43,10 +42,10 @@ func TestLiveConnection(t *testing.T) {
 	require.Nil(t, err)
 	assert.Equal(t, SUBACK, sa.Type)
 
-	pb := NewControlPacket(PUBLISH)
-	pb.Payload = []byte("Test message")
-	pb.Content.(*Publish).PacketID = 2
-	pb.Content.(*Publish).Topic = "test"
+	pb := NewPublish(
+		Message("test", 0, false, []byte("Test message")),
+	)
+	pb.PacketID = 2
 
 	err = pb.Send(conn)
 	require.Nil(t, err)
@@ -54,13 +53,13 @@ func TestLiveConnection(t *testing.T) {
 	p, err = ReadPacket(bufio.NewReader(conn))
 	require.Nil(t, err)
 	assert.Equal(t, PUBLISH, p.Type)
-	fmt.Println(string(p.Payload))
+	fmt.Println(string(p.Content.(*Publish).Payload))
 
-	pb = NewControlPacket(PUBLISH)
-	pb.Payload = []byte("Test message")
-	pb.Content.(*Publish).PacketID = 3
-	pb.Content.(*Publish).Topic = "testqos1"
-	pb.FixedHeader.Flags = 2
+	pb = NewPublish(
+		Message("testqos1", 1, false, []byte("Test message")),
+	)
+
+	pb.PacketID = 3
 
 	err = pb.Send(conn)
 	require.Nil(t, err)
@@ -69,11 +68,10 @@ func TestLiveConnection(t *testing.T) {
 	require.Nil(t, err)
 	assert.Equal(t, PUBACK, p.Type)
 
-	pb = NewControlPacket(PUBLISH)
-	pb.Payload = []byte("Test message")
-	pb.Content.(*Publish).PacketID = 4
-	pb.Content.(*Publish).Topic = "testqos2"
-	pb.FixedHeader.Flags = 4
+	pb = NewPublish(
+		Message("testqos2", 2, false, []byte("Test message")),
+	)
+	pb.PacketID = 4
 
 	err = pb.Send(conn)
 	require.Nil(t, err)
@@ -82,10 +80,10 @@ func TestLiveConnection(t *testing.T) {
 	require.Nil(t, err)
 	assert.Equal(t, PUBREC, p.Type)
 
-	pb = NewControlPacket(PUBREL)
-	pb.Content.(*Pubrel).PacketID = 4
+	pr := NewControlPacket(PUBREL)
+	pr.Content.(*Pubrel).PacketID = 4
 
-	err = pb.Send(conn)
+	err = pr.Send(conn)
 	require.Nil(t, err)
 
 	p, err = ReadPacket(bufio.NewReader(conn))

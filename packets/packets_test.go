@@ -113,7 +113,7 @@ func TestNewControlPacketConnect(t *testing.T) {
 	x.Content.(*Connect).UsernameFlag = true
 	x.Content.(*Connect).Username = "testUser"
 	sExpiryInterval := uint32(30)
-	x.Content.(*Connect).IDVP.SessionExpiryInterval = &sExpiryInterval
+	x.Content.(*Connect).Properties.SessionExpiryInterval = &sExpiryInterval
 
 	err := x.Send(&b)
 
@@ -131,7 +131,7 @@ func TestReadPacketConnect(t *testing.T) {
 	assert.Equal(t, "testClient", c.Content.(*Connect).ClientID)
 	assert.Equal(t, true, c.Content.(*Connect).UsernameFlag)
 	assert.Equal(t, "testUser", c.Content.(*Connect).Username)
-	assert.Equal(t, uint32(30), *c.Content.(*Connect).IDVP.SessionExpiryInterval)
+	assert.Equal(t, uint32(30), *c.Content.(*Connect).Properties.SessionExpiryInterval)
 }
 
 func TestReadStringWriteString(t *testing.T) {
