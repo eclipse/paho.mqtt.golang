@@ -13,6 +13,17 @@ type Unsuback struct {
 	Reasons    []byte
 }
 
+// UnsubackSuccess, etc are the list of valid unsuback reason codes.
+const (
+	UnsubackSuccess                     = 0x00
+	UnsubackNoSubscriptionFound         = 0x11
+	UnsubackUnspecifiedError            = 0x80
+	UnsubackImplementationSpecificError = 0x83
+	UnsubackNotAuthorized               = 0x87
+	UnsubackTopicFilterInvalid          = 0x8F
+	UnsubackPacketIdentifierInUse       = 0x91
+)
+
 // Unpack is the implementation of the interface required function for a packet
 func (u *Unsuback) Unpack(r *bytes.Buffer) error {
 	var err error
@@ -69,4 +80,36 @@ func (u *Unsuback) Reason(index int) string {
 		}
 	}
 	return "Invalid Reason index"
+}
+
+// NewUnsuback creates a new Unsuback packet and applies all the
+// provided/listed option functions to configure the packet
+func NewUnsuback(opts ...func(u *Unsuback)) *Unsuback {
+	u := &Unsuback{
+		Properties: Properties{
+			User: make(map[string]string),
+		},
+	}
+
+	for _, opt := range opts {
+		opt(u)
+	}
+
+	return u
+}
+
+// UnsubackReasons is a Unsuback option function that sets the
+// reason codes for the Unsuback packet
+func UnsubackReasons(r []byte) func(*Unsuback) {
+	return func(u *Unsuback) {
+		u.Reasons = r
+	}
+}
+
+// UnsubackProperties is a Unsuback option function that sets
+// the Properties for the Unsuback packet
+func UnsubackProperties(p *Properties) func(*Unsuback) {
+	return func(u *Unsuback) {
+		u.Properties = *p
+	}
 }
