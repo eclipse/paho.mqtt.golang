@@ -13,6 +13,22 @@ type Suback struct {
 	Reasons    []byte
 }
 
+// SubackGrantedQoS0, etc are the list of valid suback reason codes.
+const (
+	SubackGrantedQoS0                         = 0x00
+	SubackGrantedQoS1                         = 0x01
+	SubackGrantedQoS2                         = 0x02
+	SubackUnspecifiederror                    = 0x80
+	SubackImplementationspecificerror         = 0x83
+	SubackNotauthorized                       = 0x87
+	SubackTopicFilterinvalid                  = 0x8F
+	SubackPacketIdentifierinuse               = 0x91
+	SubackQuotaexceeded                       = 0x97
+	SubackSharedSubscriptionnotsupported      = 0x9E
+	SubackSubscriptionIdentifiersnotsupported = 0xA1
+	SubackWildcardsubscriptionsnotsupported   = 0xA2
+)
+
 //Unpack is the implementation of the interface required function for a packet
 func (s *Suback) Unpack(r *bytes.Buffer) error {
 	var err error
@@ -79,4 +95,36 @@ func (s *Suback) Reason(index int) string {
 		}
 	}
 	return "Invalid Reason index"
+}
+
+// NewSuback creates a new Suback packet and applies all the
+// provided/listed option functions to configure the packet
+func NewSuback(opts ...func(sa *Suback)) *Suback {
+	sa := &Suback{
+		Properties: Properties{
+			User: make(map[string]string),
+		},
+	}
+
+	for _, opt := range opts {
+		opt(sa)
+	}
+
+	return sa
+}
+
+// SubackReasons is a Suback option function that sets the
+// reason codes for the Suback packet
+func SubackReasons(r []byte) func(*Suback) {
+	return func(sa *Suback) {
+		sa.Reasons = r
+	}
+}
+
+// SubackProperties is a Suback option function that sets
+// the Properties for the Suback packet
+func SubackProperties(p *Properties) func(*Suback) {
+	return func(sa *Suback) {
+		sa.Properties = *p
+	}
 }
