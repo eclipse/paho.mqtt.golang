@@ -180,10 +180,6 @@ func ReadPacket(r io.Reader) (*ControlPacket, error) {
 	if err != nil {
 		return nil, err
 	}
-	// payloadLength := cp.remainingLength - length
-	// if payloadLength > 0 {
-	// 	cp.Payload = content[length:]
-	// }
 	return cp, nil
 }
 
