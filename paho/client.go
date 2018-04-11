@@ -82,6 +82,9 @@ func (c *Client) Connect(cp *p.Connect) (*p.Connack, error) {
 		return nil, fmt.Errorf("Client has no connection")
 	}
 
+	cp.ProtocolName = "MQTT"
+	cp.ProtocolVersion = 5
+
 	debug.Println("Sending CONNECT")
 	if err := cp.Send(c.Conn); err != nil {
 		return nil, err

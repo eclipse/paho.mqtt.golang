@@ -34,17 +34,17 @@ func main() {
 		}),
 	)
 
-	cp := pk.NewConnect(
-		pk.KeepAlive(30),
-		pk.ClientID(*clientid),
-		pk.CleanStart(true),
-	)
+	cp := &pk.Connect{
+		KeepAlive:  30,
+		ClientID:   *clientid,
+		CleanStart: true,
+	}
 
 	if *username != "" {
-		pk.Username(*username)(cp)
+		cp.Username = *username
 	}
 	if *password != "" {
-		pk.Password([]byte(*password))(cp)
+		cp.Password = []byte(*password)
 	}
 
 	_, err = c.Connect(cp)
@@ -66,12 +66,11 @@ func main() {
 		os.Exit(0)
 	}()
 
-	_, err = c.Subscribe(
-		pk.NewSubscribe(
-			pk.Sub(*topic, pk.SubOptions{QoS: byte(*qos), NoLocal: true}),
-		),
-	)
-	if err != nil {
+	if _, err = c.Subscribe(&pk.Subscribe{
+		Subscriptions: map[string]pk.SubOptions{
+			*topic: pk.SubOptions{QoS: byte(*qos), NoLocal: true},
+		},
+	}); err != nil {
 		log.Fatalln(err)
 	}
 
@@ -82,12 +81,17 @@ func main() {
 		if err == io.EOF {
 			os.Exit(0)
 		}
-		pb := pk.NewPublish(
-			pk.Message(*topic, byte(*qos), false, []byte(message)),
-			pk.PublishProperties(pk.NewProperties(
-				pk.UserSingle("chatname", *name),
-			)),
-		)
+
+		pb := &pk.Publish{
+			Topic:   *topic,
+			QoS:     byte(*qos),
+			Payload: []byte(message),
+			Properties: pk.Properties{
+				User: map[string]string{
+					"chatname": *name,
+				},
+			},
+		}
 
 		if _, err = c.Publish(pb); err != nil {
 			log.Println(err)

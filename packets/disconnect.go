@@ -8,8 +8,8 @@ import (
 
 // Disconnect is the Variable Header definition for a Disconnect control packet
 type Disconnect struct {
-	DisconnectReasonCode byte
-	Properties           Properties
+	ReasonCode byte
+	Properties Properties
 }
 
 // DisconnectNormalDisconnection, etc are the list of valid disconnection reason codes.
@@ -61,7 +61,7 @@ func NewDisconnect(opts ...func(*Disconnect)) *Disconnect {
 // reason code for the Disconnect packet
 func DisconnectReason(r byte) func(*Disconnect) {
 	return func(d *Disconnect) {
-		d.DisconnectReasonCode = r
+		d.ReasonCode = r
 	}
 }
 
@@ -76,7 +76,7 @@ func DisconnectProperties(p Properties) func(*Disconnect) {
 // Unpack is the implementation of the interface required function for a packet
 func (d *Disconnect) Unpack(r *bytes.Buffer) error {
 	var err error
-	d.DisconnectReasonCode, err = r.ReadByte()
+	d.ReasonCode, err = r.ReadByte()
 	if err != nil {
 		return err
 	}
@@ -93,7 +93,7 @@ func (d *Disconnect) Unpack(r *bytes.Buffer) error {
 func (d *Disconnect) Buffers() net.Buffers {
 	idvp := d.Properties.Pack(DISCONNECT)
 	propLen := encodeVBI(len(idvp))
-	return net.Buffers{[]byte{d.DisconnectReasonCode}, propLen, idvp}
+	return net.Buffers{[]byte{d.ReasonCode}, propLen, idvp}
 }
 
 // Send is the implementation of the interface required function for a packet
@@ -106,7 +106,7 @@ func (d *Disconnect) Send(w io.Writer) error {
 
 // Reason returns a string representation of the meaning of the ReasonCode
 func (d *Disconnect) Reason() string {
-	switch d.DisconnectReasonCode {
+	switch d.ReasonCode {
 	case 0:
 		return "Normal disconnection - Close the connection normally. Do not send the Will Message."
 	case 4:

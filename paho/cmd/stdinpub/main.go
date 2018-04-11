@@ -29,17 +29,17 @@ func main() {
 
 	c, err := paho.NewClient(paho.OpenTCPConn(*server))
 
-	cp := pk.NewConnect(
-		pk.KeepAlive(30),
-		pk.ClientID(*clientid),
-		pk.CleanStart(true),
-	)
+	cp := &pk.Connect{
+		KeepAlive:  30,
+		ClientID:   *clientid,
+		CleanStart: true,
+	}
 
 	if *username != "" {
-		pk.Username(*username)(cp)
+		cp.Username = *username
 	}
 	if *password != "" {
-		pk.Password([]byte(*password))(cp)
+		cp.Password = []byte(*password)
 	}
 
 	ca, err := c.Connect(cp)
@@ -70,11 +70,12 @@ func main() {
 			os.Exit(0)
 		}
 
-		pb := pk.NewPublish(
-			pk.Message(*topic, byte(*qos), *retained, []byte(message)),
-		)
-
-		if _, err = c.Publish(pb); err != nil {
+		if _, err = c.Publish(&pk.Publish{
+			Topic:   *topic,
+			QoS:     byte(*qos),
+			Retain:  *retained,
+			Payload: []byte(message),
+		}); err != nil {
 			log.Println(err)
 		}
 	}

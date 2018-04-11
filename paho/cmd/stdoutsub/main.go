@@ -30,17 +30,17 @@ func main() {
 			msgChan <- m
 		}))
 
-	cp := pk.NewConnect(
-		pk.KeepAlive(30),
-		pk.ClientID(*clientid),
-		pk.CleanStart(true),
-	)
+	cp := &pk.Connect{
+		KeepAlive:  30,
+		ClientID:   *clientid,
+		CleanStart: true,
+	}
 
 	if *username != "" {
-		pk.Username(*username)(cp)
+		cp.Username = *username
 	}
 	if *password != "" {
-		pk.Password([]byte(*password))(cp)
+		cp.Password = []byte(*password)
 	}
 
 	ca, err := c.Connect(cp)
@@ -59,17 +59,16 @@ func main() {
 		<-ic
 		fmt.Println("signal received, exiting")
 		if c != nil {
-			d := pk.NewDisconnect(pk.DisconnectReason(0))
-			c.Disconnect(d)
+			c.Disconnect(&pk.Disconnect{ReasonCode: pk.DisconnectNormalDisconnection})
 		}
 		os.Exit(0)
 	}()
 
-	s := pk.NewSubscribe(
-		pk.Sub(*topic, pk.SubOptions{QoS: byte(*qos)}),
-	)
-
-	sa, err := c.Subscribe(s)
+	sa, err := c.Subscribe(&pk.Subscribe{
+		Subscriptions: map[string]pk.SubOptions{
+			*topic: pk.SubOptions{QoS: byte(*qos)},
+		},
+	})
 	if err != nil {
 		log.Fatalln(err)
 	}
