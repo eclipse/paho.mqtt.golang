@@ -259,26 +259,9 @@ func alllogic(c *client) {
 				case 2:
 					c.incomingPubChan <- m
 					DEBUG.Println(NET, "done putting msg on incomingPubChan")
-					pr := packets.NewControlPacket(packets.Pubrec).(*packets.PubrecPacket)
-					pr.MessageID = m.MessageID
-					DEBUG.Println(NET, "putting pubrec msg on obound")
-					select {
-					case c.oboundP <- &PacketAndToken{p: pr, t: nil}:
-					case <-c.stop:
-					}
-					DEBUG.Println(NET, "done putting pubrec msg on obound")
 				case 1:
 					c.incomingPubChan <- m
 					DEBUG.Println(NET, "done putting msg on incomingPubChan")
-					pa := packets.NewControlPacket(packets.Puback).(*packets.PubackPacket)
-					pa.MessageID = m.MessageID
-					DEBUG.Println(NET, "putting puback msg on obound")
-					persistOutbound(c.persist, pa)
-					select {
-					case c.oboundP <- &PacketAndToken{p: pa, t: nil}:
-					case <-c.stop:
-					}
-					DEBUG.Println(NET, "done putting puback msg on obound")
 				case 0:
 					select {
 					case c.incomingPubChan <- m:
@@ -317,6 +300,34 @@ func alllogic(c *client) {
 		case <-c.stop:
 			WARN.Println(NET, "logic stopped")
 			return
+		}
+	}
+}
+
+func (c *client) ackFunc(packet *packets.PublishPacket) func() {
+	return func() {
+		switch packet.Qos {
+		case 2:
+			pr := packets.NewControlPacket(packets.Pubrec).(*packets.PubrecPacket)
+			pr.MessageID = packet.MessageID
+			DEBUG.Println(NET, "putting pubrec msg on obound")
+			select {
+			case c.oboundP <- &PacketAndToken{p: pr, t: nil}:
+			case <-c.stop:
+			}
+			DEBUG.Println(NET, "done putting pubrec msg on obound")
+		case 1:
+			pa := packets.NewControlPacket(packets.Puback).(*packets.PubackPacket)
+			pa.MessageID = packet.MessageID
+			DEBUG.Println(NET, "putting puback msg on obound")
+			persistOutbound(c.persist, pa)
+			select {
+			case c.oboundP <- &PacketAndToken{p: pa, t: nil}:
+			case <-c.stop:
+			}
+			DEBUG.Println(NET, "done putting puback msg on obound")
+		case 0:
+			// do nothing, since there is no need to send an ack packet back
 		}
 	}
 }
