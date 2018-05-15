@@ -77,3 +77,14 @@ func Test_NewClient_optionsReader(t *testing.T) {
 	}
 
 }
+
+func Test_isConnectionOpen(t *testing.T) {
+	ops := NewClientOptions()
+	c := NewClient(ops)
+
+	c.(*client).setConnected(reconnecting)
+	if c.IsConnectionOpen() {
+		t.Fail()
+	}
+
+}
