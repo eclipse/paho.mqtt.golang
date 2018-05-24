@@ -34,11 +34,15 @@ type Token interface {
 	Wait() bool
 	WaitTimeout(time.Duration) bool
 	Error() error
+}
+
+type TokenErrorSetter interface {
 	setError(error)
 }
 
 type tokenCompletor interface {
 	Token
+	TokenErrorSetter
 	flowComplete()
 }
 
