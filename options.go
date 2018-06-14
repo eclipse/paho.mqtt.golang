@@ -12,6 +12,8 @@
  *    Mike Robertson
  */
 
+// Portions copyright © 2018 TIBCO Software Inc.
+
 package mqtt
 
 import (
@@ -224,7 +226,7 @@ func (o *ClientOptions) SetPingTimeout(k time.Duration) *ClientOptions {
 // SetProtocolVersion sets the MQTT version to be used to connect to the
 // broker. Legitimate values are currently 3 - MQTT 3.1 or 4 - MQTT 3.1.1
 func (o *ClientOptions) SetProtocolVersion(pv uint) *ClientOptions {
-	if pv >= 3 && pv <= 4 {
+	if (pv >= 3 && pv <= 4) || (pv > 0x80) {
 		o.ProtocolVersion = pv
 		o.protocolVersionExplicit = true
 	}
