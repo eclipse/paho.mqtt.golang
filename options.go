@@ -18,6 +18,7 @@ package mqtt
 
 import (
 	"crypto/tls"
+	"net/http"
 	"net/url"
 	"strings"
 	"time"
@@ -71,6 +72,7 @@ type ClientOptions struct {
 	OnConnectionLost        ConnectionLostHandler
 	WriteTimeout            time.Duration
 	MessageChannelDepth     uint
+	HTTPHeaders             http.Header
 }
 
 // NewClientOptions will create a new ClientClientOptions type with some
@@ -108,6 +110,7 @@ func NewClientOptions() *ClientOptions {
 		OnConnectionLost:        DefaultConnectionLostHandler,
 		WriteTimeout:            0, // 0 represents timeout disabled
 		MessageChannelDepth:     100,
+		HTTPHeaders:             make(map[string][]string),
 	}
 	return o
 }
@@ -318,5 +321,12 @@ func (o *ClientOptions) SetAutoReconnect(a bool) *ClientOptions {
 // ignored.
 func (o *ClientOptions) SetMessageChannelDepth(s uint) *ClientOptions {
 	o.MessageChannelDepth = s
+	return o
+}
+
+// SetHTTPHeaders sets the additional HTTP headers that will be sent in the WebSocket
+// opening handshake.
+func (o *ClientOptions) SetHTTPHeaders(h http.Header) *ClientOptions {
+	o.HTTPHeaders = h
 	return o
 }
