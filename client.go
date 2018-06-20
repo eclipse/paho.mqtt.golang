@@ -238,6 +238,9 @@ func (c *client) Connect() Token {
 					cm.ProtocolName = "MQTT"
 					cm.ProtocolVersion = 4
 				}
+				if c.options.BridgeProtocolVersion {
+					cm.ProtocolVersion |= 0x80
+				}
 				cm.Write(c.conn)
 
 				rc = c.connect()

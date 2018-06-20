@@ -59,6 +59,7 @@ type ClientOptions struct {
 	WillQos                 byte
 	WillRetained            bool
 	ProtocolVersion         uint
+	BridgeProtocolVersion   bool
 	protocolVersionExplicit bool
 	TLSConfig               tls.Config
 	KeepAlive               int64
