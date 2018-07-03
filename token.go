@@ -114,7 +114,7 @@ func newToken(tType byte) tokenCompletor {
 	case packets.Disconnect:
 		return &DisconnectToken{baseToken: baseToken{complete: make(chan struct{})}}
 	}
-	return nil
+	return &baseToken{complete: make(chan struct{})}
 }
 
 //ConnectToken is an extension of Token containing the extra fields

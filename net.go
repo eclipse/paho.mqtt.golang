@@ -265,7 +265,7 @@ func alllogic(c *client) {
 					pr.MessageID = m.MessageID
 					DEBUG.Println(NET, "putting pubrec msg on obound")
 					select {
-					case c.oboundP <- &PacketAndToken{p: pr, t: nil}:
+					case c.oboundP <- &PacketAndToken{p: pr, t: newToken(packets.Pubrec)}:
 					case <-c.stop:
 					}
 					DEBUG.Println(NET, "done putting pubrec msg on obound")
@@ -277,7 +277,7 @@ func alllogic(c *client) {
 					DEBUG.Println(NET, "putting puback msg on obound")
 					persistOutbound(c.persist, pa)
 					select {
-					case c.oboundP <- &PacketAndToken{p: pa, t: nil}:
+					case c.oboundP <- &PacketAndToken{p: pa, t: newToken(packets.Puback)}:
 					case <-c.stop:
 					}
 					DEBUG.Println(NET, "done putting puback msg on obound")
@@ -299,7 +299,7 @@ func alllogic(c *client) {
 				prel := packets.NewControlPacket(packets.Pubrel).(*packets.PubrelPacket)
 				prel.MessageID = m.MessageID
 				select {
-				case c.oboundP <- &PacketAndToken{p: prel, t: nil}:
+				case c.oboundP <- &PacketAndToken{p: prel, t: newToken(packets.Pubrel)}:
 				case <-c.stop:
 				}
 			case *packets.PubrelPacket:
@@ -308,7 +308,7 @@ func alllogic(c *client) {
 				pc.MessageID = m.MessageID
 				persistOutbound(c.persist, pc)
 				select {
-				case c.oboundP <- &PacketAndToken{p: pc, t: nil}:
+				case c.oboundP <- &PacketAndToken{p: pc, t: newToken(packets.Pubcomp)}:
 				case <-c.stop:
 				}
 			case *packets.PubcompPacket:
