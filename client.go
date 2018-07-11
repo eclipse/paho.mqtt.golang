@@ -204,7 +204,6 @@ func (c *client) Connect() Token {
 		c.stop = make(chan struct{})
 
 		var rc byte
-		cm := newConnectMsgFromOptions(&c.options)
 		protocolVersion := c.options.ProtocolVersion
 
 		if len(c.options.Servers) == 0 {
@@ -213,6 +212,7 @@ func (c *client) Connect() Token {
 		}
 
 		for _, broker := range c.options.Servers {
+			cm := newConnectMsgFromOptions(&c.options, broker)
 			c.options.ProtocolVersion = protocolVersion
 		CONN:
 			DEBUG.Println(CLI, "about to write new connect msg")
@@ -328,9 +328,8 @@ func (c *client) reconnect() {
 	)
 
 	for rc != 0 && c.status != disconnected {
-		cm := newConnectMsgFromOptions(&c.options)
-
 		for _, broker := range c.options.Servers {
+			cm := newConnectMsgFromOptions(&c.options, broker)
 			DEBUG.Println(CLI, "about to write new connect msg")
 			c.conn, err = openConnection(broker, &c.options.TLSConfig, c.options.ConnectTimeout, c.options.HTTPHeaders)
 			if err == nil {
