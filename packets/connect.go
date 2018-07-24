@@ -22,7 +22,8 @@ type Connect struct {
 	Password        []byte
 	KeepAlive       uint16
 	ClientID        string
-	Properties      Properties
+	Properties      *Properties
+	WillProperties  *Properties
 }
 
 // NewConnect creates a new Connect packet and applies all the
@@ -31,7 +32,7 @@ func NewConnect(opts ...func(c *Connect)) *Connect {
 	c := &Connect{
 		ProtocolName:    "MQTT",
 		ProtocolVersion: 5,
-		Properties: Properties{
+		Properties: &Properties{
 			User: make(map[string]string),
 		},
 	}
@@ -71,13 +72,14 @@ func KeepAlive(k uint16) func(*Connect) {
 
 // Will is a Connect option function that sets the will message
 // to be used in the Connect Packet
-func Will(topic string, retain bool, qos byte, message []byte) func(*Connect) {
+func Will(topic string, retain bool, qos byte, message []byte, properties *Properties) func(*Connect) {
 	return func(c *Connect) {
 		c.WillFlag = true
 		c.WillTopic = topic
 		c.WillRetain = retain
 		c.WillQOS = qos
 		c.WillMessage = message
+		c.WillProperties = properties
 	}
 }
 
@@ -101,17 +103,17 @@ func ClientID(i string) func(*Connect) {
 // the Properties for the Connect packet
 func ConnectProperties(p *Properties) func(*Connect) {
 	return func(c *Connect) {
-		c.Properties = *p
+		c.Properties = p
 	}
 }
 
 // PackFlags takes the Connect flags and packs them into the single byte
 // representation used on the wire by MQTT
 func (c *Connect) PackFlags() (f byte) {
-	if c.Username != "" {
+	if c.UsernameFlag {
 		f |= 0x01 << 7
 	}
-	if c.Password != nil {
+	if c.PasswordFlag {
 		f |= 0x01 << 6
 	}
 	if c.WillFlag {
@@ -171,6 +173,10 @@ func (c *Connect) Unpack(r *bytes.Buffer) error {
 	}
 
 	if c.WillFlag {
+		err = c.WillProperties.Unpack(r, CONNECT)
+		if err != nil {
+			return err
+		}
 		c.WillTopic, err = readString(r)
 		if err != nil {
 			return err
@@ -211,23 +217,26 @@ func (c *Connect) Buffers() net.Buffers {
 
 	writeString(c.ClientID, &body)
 	if c.WillFlag {
+		willIdvp := c.WillProperties.Pack(CONNECT)
+		writeBinary(encodeVBI(len(willIdvp)), &body)
+		writeBinary(willIdvp, &body)
 		writeString(c.WillTopic, &body)
 		writeBinary(c.WillMessage, &body)
 	}
-	if c.Username != "" {
+	if c.UsernameFlag {
 		writeString(c.Username, &body)
 	}
-	if c.Password != nil {
+	if c.PasswordFlag {
 		writeBinary(c.Password, &body)
 	}
 
 	return net.Buffers{header.Bytes(), propLen, idvp, body.Bytes()}
 }
 
-// Send is the implementation of the interface required function for a packet
-func (c *Connect) Send(w io.Writer) error {
+// WriteTo is the implementation of the interface required function for a packet
+func (c *Connect) WriteTo(w io.Writer) (int64, error) {
 	cp := &ControlPacket{FixedHeader: FixedHeader{Type: CONNECT}}
 	cp.Content = c
 
-	return cp.Send(w)
+	return cp.WriteTo(w)
 }

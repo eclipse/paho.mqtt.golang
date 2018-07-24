@@ -9,7 +9,7 @@ import (
 // Auth is the Variable Header definition for a Auth control packet
 type Auth struct {
 	AuthReasonCode byte
-	Properties     Properties
+	Properties     *Properties
 }
 
 // Unpack is the implementation of the interface required function for a packet
@@ -35,10 +35,10 @@ func (a *Auth) Buffers() net.Buffers {
 	return net.Buffers{[]byte{a.AuthReasonCode}, propLen, properties}
 }
 
-// Send is the implementation of the interface required function for a packet
-func (a *Auth) Send(w io.Writer) error {
+// WriteTo is the implementation of the interface required function for a packet
+func (a *Auth) WriteTo(w io.Writer) (int64, error) {
 	cp := &ControlPacket{FixedHeader: FixedHeader{Type: AUTH}}
 	cp.Content = a
 
-	return cp.Send(w)
+	return cp.WriteTo(w)
 }

@@ -68,7 +68,7 @@ func (p *PingHandler) Start(c net.Conn, pt time.Duration) {
 			}
 			if time.Now().Sub(p.lastPing) >= pt {
 				//time to send a ping
-				if err := packets.NewControlPacket(packets.PINGREQ).Send(p.conn); err != nil {
+				if _, err := packets.NewControlPacket(packets.PINGREQ).WriteTo(p.conn); err != nil {
 					debug.Println("pingHandler sending ping request")
 					if p.pingFailHandler != nil {
 						p.pingFailHandler(err)

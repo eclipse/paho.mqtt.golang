@@ -9,7 +9,7 @@ import (
 // Disconnect is the Variable Header definition for a Disconnect control packet
 type Disconnect struct {
 	ReasonCode byte
-	Properties Properties
+	Properties *Properties
 }
 
 // DisconnectNormalDisconnection, etc are the list of valid disconnection reason codes.
@@ -67,7 +67,7 @@ func DisconnectReason(r byte) func(*Disconnect) {
 
 // DisconnectProperties is a Disconnect option function that sets
 // the Properties for the Disconnect packet
-func DisconnectProperties(p Properties) func(*Disconnect) {
+func DisconnectProperties(p *Properties) func(*Disconnect) {
 	return func(d *Disconnect) {
 		d.Properties = p
 	}
@@ -96,12 +96,12 @@ func (d *Disconnect) Buffers() net.Buffers {
 	return net.Buffers{[]byte{d.ReasonCode}, propLen, idvp}
 }
 
-// Send is the implementation of the interface required function for a packet
-func (d *Disconnect) Send(w io.Writer) error {
+// WriteTo is the implementation of the interface required function for a packet
+func (d *Disconnect) WriteTo(w io.Writer) (int64, error) {
 	cp := &ControlPacket{FixedHeader: FixedHeader{Type: DISCONNECT}}
 	cp.Content = d
 
-	return cp.Send(w)
+	return cp.WriteTo(w)
 }
 
 // Reason returns a string representation of the meaning of the ReasonCode

@@ -10,7 +10,7 @@ import (
 type Pubcomp struct {
 	PacketID   uint16
 	ReasonCode byte
-	Properties Properties
+	Properties *Properties
 }
 
 // PubcompSuccess, etc are the list of valid pubcomp reason codes.
@@ -23,6 +23,7 @@ const (
 func (p *Pubcomp) Unpack(r *bytes.Buffer) error {
 	var err error
 	success := r.Len() == 2
+	noProps := r.Len() == 3
 	p.PacketID, err = readUint16(r)
 	if err != nil {
 		return err
@@ -33,9 +34,11 @@ func (p *Pubcomp) Unpack(r *bytes.Buffer) error {
 			return err
 		}
 
-		err = p.Properties.Unpack(r, PUBACK)
-		if err != nil {
-			return err
+		if !noProps {
+			err = p.Properties.Unpack(r, PUBACK)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -51,12 +54,12 @@ func (p *Pubcomp) Buffers() net.Buffers {
 	return net.Buffers{b.Bytes(), propLen, idvp}
 }
 
-// Send is the implementation of the interface required function for a packet
-func (p *Pubcomp) Send(w io.Writer) error {
+// WriteTo is the implementation of the interface required function for a packet
+func (p *Pubcomp) WriteTo(w io.Writer) (int64, error) {
 	cp := &ControlPacket{FixedHeader: FixedHeader{Type: PUBCOMP}}
 	cp.Content = p
 
-	return cp.Send(w)
+	return cp.WriteTo(w)
 }
 
 // Reason returns a string representation of the meaning of the ReasonCode
@@ -75,7 +78,7 @@ func (p *Pubcomp) Reason() string {
 // provided/listed option functions to configure the packet
 func NewPubcomp(opts ...func(p *Pubcomp)) *Pubcomp {
 	p := &Pubcomp{
-		Properties: Properties{
+		Properties: &Properties{
 			User: make(map[string]string),
 		},
 	}
@@ -116,6 +119,6 @@ func PubcompReasonCode(r byte) func(*Pubcomp) {
 // the Properties for the Pubcomp packet
 func PubcompProperties(p *Properties) func(*Pubcomp) {
 	return func(pc *Pubcomp) {
-		pc.Properties = *p
+		pc.Properties = p
 	}
 }

@@ -4,12 +4,12 @@ import (
 	"strings"
 	"sync"
 
-	p "github.com/eclipse/paho.mqtt.golang/packets"
+	"github.com/eclipse/paho.mqtt.golang/packets"
 )
 
 // MessageHandler is a type for a function that is invoked
 // by a Router when it has received a Publish.
-type MessageHandler func(Message)
+type MessageHandler func(*Publish)
 
 // Router is an interface of the functions for a struct that is
 // used to handle invoking MessageHandlers depending on the
@@ -23,7 +23,7 @@ type MessageHandler func(Message)
 type Router interface {
 	RegisterHandler(string, MessageHandler)
 	UnregisterHandler(string)
-	Route(*p.Publish)
+	Route(*packets.Publish)
 }
 
 // StandardRouter is a library provided implementation of a Router that
@@ -36,9 +36,9 @@ type StandardRouter struct {
 // RegisterHandler is the library provided StandardRouter's
 // implementation of the required interface function()
 func (r *StandardRouter) RegisterHandler(topic string, h MessageHandler) {
+	debug.Println("Registering handler for:", topic)
 	r.Lock()
 	defer r.Unlock()
-	debug.Println("Registering handler for:", topic)
 
 	r.subscriptions[topic] = append(r.subscriptions[topic], h)
 }
@@ -46,21 +46,21 @@ func (r *StandardRouter) RegisterHandler(topic string, h MessageHandler) {
 // UnregisterHandler is the library provided StandardRouter's
 // implementation of the required interface function()
 func (r *StandardRouter) UnregisterHandler(topic string) {
+	debug.Println("Unregistering handler for:", topic)
 	r.Lock()
 	defer r.Unlock()
-	debug.Println("Unregistering handler for:", topic)
 
 	delete(r.subscriptions, topic)
 }
 
 // Route is the library provided StandardRouter's implementation
 // of the required interface function()
-func (r *StandardRouter) Route(pb *p.Publish) {
+func (r *StandardRouter) Route(pb *packets.Publish) {
+	debug.Println("Routing message for:", pb.Topic)
 	r.RLock()
 	defer r.RUnlock()
-	debug.Println("Routing message for:", pb.Topic)
 
-	m := MessageFromPublish(pb)
+	m := PublishFromPacketPublish(pb)
 	for route, handlers := range r.subscriptions {
 		if match(route, m.Topic) {
 			for _, handler := range handlers {
@@ -140,6 +140,6 @@ func (s *SingleHandlerRouter) UnregisterHandler(topic string) {}
 
 // Route is the library provided SingleHandlerRouter's
 // implementation of the required interface function()
-func (s *SingleHandlerRouter) Route(pb *p.Publish) {
-	s.messageHandler(MessageFromPublish(pb))
+func (s *SingleHandlerRouter) Route(pb *packets.Publish) {
+	s.messageHandler(PublishFromPacketPublish(pb))
 }

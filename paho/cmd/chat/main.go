@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"flag"
 	"fmt"
 	"io"
@@ -10,7 +11,6 @@ import (
 	"os/signal"
 	"syscall"
 
-	pk "github.com/eclipse/paho.mqtt.golang/packets"
 	"github.com/eclipse/paho.mqtt.golang/paho"
 )
 
@@ -29,27 +29,32 @@ func main() {
 
 	c, err := paho.NewClient(
 		paho.OpenTCPConn(*server),
-		paho.DefaultMessageHandler(func(m paho.Message) {
+		paho.DefaultMessageHandler(func(m *paho.Publish) {
 			log.Printf("%s : %s", m.Properties.User["chatname"], string(m.Payload))
 		}),
 	)
 
-	cp := &pk.Connect{
+	cp := &paho.Connect{
 		KeepAlive:  30,
 		ClientID:   *clientid,
 		CleanStart: true,
+		Username:   *username,
+		Password:   []byte(*password),
 	}
 
 	if *username != "" {
-		cp.Username = *username
+		cp.UsernameFlag = true
 	}
 	if *password != "" {
-		cp.Password = []byte(*password)
+		cp.PasswordFlag = true
 	}
 
-	_, err = c.Connect(cp)
+	ca, err := c.Connect(cp)
 	if err != nil {
 		log.Fatalln(err)
+	}
+	if ca.ReasonCode != 0 {
+		log.Fatalf("Failed to connect to %s : %d - %s", *server, ca.ReasonCode, ca.Properties.ReasonString)
 	}
 
 	fmt.Printf("Connected to %s\n", *server)
@@ -60,15 +65,15 @@ func main() {
 		<-ic
 		fmt.Println("signal received, exiting")
 		if c != nil {
-			d := pk.NewDisconnect(pk.DisconnectReason(0))
+			d := &paho.Disconnect{ReasonCode: 0}
 			c.Disconnect(d)
 		}
 		os.Exit(0)
 	}()
 
-	if _, err = c.Subscribe(&pk.Subscribe{
-		Subscriptions: map[string]pk.SubOptions{
-			*topic: pk.SubOptions{QoS: byte(*qos), NoLocal: true},
+	if _, err := c.Subscribe(context.Background(), &paho.Subscribe{
+		Subscriptions: map[string]paho.SubscribeOptions{
+			*topic: paho.SubscribeOptions{QoS: byte(*qos), NoLocal: true},
 		},
 	}); err != nil {
 		log.Fatalln(err)
@@ -82,18 +87,18 @@ func main() {
 			os.Exit(0)
 		}
 
-		pb := &pk.Publish{
+		pb := &paho.Publish{
 			Topic:   *topic,
 			QoS:     byte(*qos),
 			Payload: []byte(message),
-			Properties: pk.Properties{
+			Properties: &paho.PublishProperties{
 				User: map[string]string{
 					"chatname": *name,
 				},
 			},
 		}
 
-		if _, err = c.Publish(pb); err != nil {
+		if _, err = c.Publish(context.Background(), pb); err != nil {
 			log.Println(err)
 		}
 	}

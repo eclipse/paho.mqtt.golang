@@ -10,9 +10,9 @@ import (
 // MQTT packet properties
 const (
 	PropPayloadFormat          byte = 1
-	PropPubExpiry                   = 2
+	PropMessageExpiry               = 2
 	PropContentType                 = 3
-	PropReplyTopic                  = 8
+	PropResponseTopic               = 8
 	PropCorrelationData             = 9
 	PropSubscriptionIdentifier      = 11
 	PropSessionExpiryInterval       = 17
@@ -43,33 +43,60 @@ const (
 // relvative to the packettype it was received in is provided by the
 // ValidateID function
 type Properties struct {
-	PayloadFormat          *byte
-	PubExpiry              *uint32
-	ContentType            string
-	ReplyTopic             string
-	CorrelationData        []byte
+	// PayloadFormat sets the payload format
+	PayloadFormat *byte
+	// MessageExpiry sets the pub expiry
+	MessageExpiry *uint32
+	// ContentType sets the content type
+	ContentType string
+	// ResponseTopic sets the response topic
+	ResponseTopic string
+	// CorrelationData sets the correlation data
+	CorrelationData []byte
+	// SubscriptionIdentifier sets the subscription identifier
 	SubscriptionIdentifier *uint32
-	SessionExpiryInterval  *uint32
-	AssignedClientID       string
-	ServerKeepAlive        *uint16
-	AuthMethod             string
-	AuthData               []byte
-	RequestProblemInfo     *byte
-	WillDelayInterval      *uint32
-	RequestResponseInfo    *byte
-	ResponseInfo           string
-	ServerReference        string
-	ReasonString           string
-	ReceiveMaximum         *uint16
-	TopicAliasMaximum      *uint16
-	TopicAlias             *uint16
-	MaximumQOS             *byte
-	RetainAvailable        *byte
-	User                   map[string]string
-	MaximumPacketSize      *uint32
-	WildcardSubAvailable   *byte
-	SubIDAvailable         *byte
-	SharedSubAvailable     *byte
+	// SessionExpiryInterval sets the session expiry interval
+	SessionExpiryInterval *uint32
+	// AssignedClientID sets the assigned client id
+	AssignedClientID string
+	// ServerKeepAlive sets the server keep alive
+	ServerKeepAlive *uint16
+	// AuthMethod sets the auth method
+	AuthMethod string
+	// AuthData sets the auth data
+	AuthData []byte
+	// RequestProblemInfo sets the request problem info
+	RequestProblemInfo *byte
+	// WillDelayInterval sets the will delay interval
+	WillDelayInterval *uint32
+	// RequestResponseInfo sets the request response info
+	RequestResponseInfo *byte
+	// ResponseInfo sets the response info
+	ResponseInfo string
+	// ServerReference sets the server reference
+	ServerReference string
+	// ReasonString sets the reason string
+	ReasonString string
+	// ReceiveMaximum sets the receive maximum
+	ReceiveMaximum *uint16
+	// TopicAliasMaximum sets the topic alias maximum
+	TopicAliasMaximum *uint16
+	// TopicAlias sets the topic alias
+	TopicAlias *uint16
+	// MaximumQOS sets the maximum qos
+	MaximumQOS *byte
+	// RetainAvailable sets the retain available
+	RetainAvailable *byte
+	// User is a map of user provided properties
+	User map[string]string
+	// MaximumPacketSize sets the maximum packet size
+	MaximumPacketSize *uint32
+	// WildcardSubAvailable sets the wildcard sub available
+	WildcardSubAvailable *byte
+	// SubIDAvailable sets the sub id available
+	SubIDAvailable *byte
+	// SharedSubAvailable sets the shared sub available
+	SharedSubAvailable *byte
 }
 
 // NewProperties creates a new Properties and applies all the
@@ -88,17 +115,17 @@ func NewProperties(opts ...func(*Properties)) *Properties {
 
 // PayloadFormat is a Properties option function that sets the
 // payload format for a Properties struct
-func PayloadFormat(x *byte) func(*Properties) {
+func PayloadFormat(x byte) func(*Properties) {
 	return func(i *Properties) {
-		i.PayloadFormat = x
+		i.PayloadFormat = &x
 	}
 }
 
-// PubExpiry is a Properties option function that sets the
+// MessageExpiry is a Properties option function that sets the
 // pub expiry for a Properties struct
-func PubExpiry(x *uint32) func(*Properties) {
+func MessageExpiry(x uint32) func(*Properties) {
 	return func(i *Properties) {
-		i.PubExpiry = x
+		i.MessageExpiry = &x
 	}
 }
 
@@ -110,11 +137,11 @@ func ContentType(x string) func(*Properties) {
 	}
 }
 
-// ReplyTopic is a Properties option function that sets the
-// reply topic for a Properties struct
-func ReplyTopic(x string) func(*Properties) {
+// ResponseTopic is a Properties option function that sets the
+// Response topic for a Properties struct
+func ResponseTopic(x string) func(*Properties) {
 	return func(i *Properties) {
-		i.ReplyTopic = x
+		i.ResponseTopic = x
 	}
 }
 
@@ -317,15 +344,19 @@ func SharedSubAvailable(x *byte) func(*Properties) {
 func (i *Properties) Pack(p PacketType) []byte {
 	var b bytes.Buffer
 
+	if i == nil {
+		return nil
+	}
+
 	if p == PUBLISH {
 		if i.PayloadFormat != nil {
 			b.WriteByte(PropPayloadFormat)
 			b.WriteByte(*i.PayloadFormat)
 		}
 
-		if i.PubExpiry != nil {
-			b.WriteByte(PropPubExpiry)
-			writeUint32(*i.PubExpiry, &b)
+		if i.MessageExpiry != nil {
+			b.WriteByte(PropMessageExpiry)
+			writeUint32(*i.MessageExpiry, &b)
 		}
 
 		if i.ContentType != "" {
@@ -333,9 +364,9 @@ func (i *Properties) Pack(p PacketType) []byte {
 			writeString(i.ContentType, &b)
 		}
 
-		if i.ReplyTopic != "" {
-			b.WriteByte(PropReplyTopic)
-			writeString(i.ReplyTopic, &b)
+		if i.ResponseTopic != "" {
+			b.WriteByte(PropResponseTopic)
+			writeString(i.ResponseTopic, &b)
 		}
 
 		if i.CorrelationData != nil && len(i.CorrelationData) > 0 {
@@ -480,10 +511,12 @@ func (i *Properties) Pack(p PacketType) []byte {
 func (i *Properties) Unpack(r *bytes.Buffer, p PacketType) error {
 	vbi, err := getVBI(r)
 	if err != nil {
+		fmt.Println("Error at prop getVBI")
 		return err
 	}
 	size, err := decodeVBI(vbi)
 	if err != nil {
+		fmt.Println("Error at prop decodeVBI")
 		return err
 	}
 	if size == 0 {
@@ -509,24 +542,24 @@ func (i *Properties) Unpack(r *bytes.Buffer, p PacketType) error {
 				return err
 			}
 			i.PayloadFormat = &pf
-		case PropPubExpiry:
+		case PropMessageExpiry:
 			pe, err := readUint32(buf)
 			if err != nil {
 				return err
 			}
-			i.PubExpiry = &pe
+			i.MessageExpiry = &pe
 		case PropContentType:
 			ct, err := readString(buf)
 			if err != nil {
 				return err
 			}
 			i.ContentType = ct
-		case PropReplyTopic:
+		case PropResponseTopic:
 			tr, err := readString(buf)
 			if err != nil {
 				return err
 			}
-			i.ReplyTopic = tr
+			i.ResponseTopic = tr
 		case PropCorrelationData:
 			cd, err := readBinary(buf)
 			if err != nil {
@@ -681,9 +714,9 @@ func (i *Properties) Unpack(r *bytes.Buffer, p PacketType) error {
 // PacketTypes that property is valid for.
 var ValidProperties = map[byte]map[PacketType]struct{}{
 	PropPayloadFormat:          {PUBLISH: {}},
-	PropPubExpiry:              {PUBLISH: {}},
+	PropMessageExpiry:          {PUBLISH: {}},
 	PropContentType:            {PUBLISH: {}},
-	PropReplyTopic:             {PUBLISH: {}},
+	PropResponseTopic:          {PUBLISH: {}},
 	PropCorrelationData:        {PUBLISH: {}},
 	PropTopicAlias:             {PUBLISH: {}},
 	PropSubscriptionIdentifier: {PUBLISH: {}, SUBSCRIBE: {}},
@@ -706,7 +739,7 @@ var ValidProperties = map[byte]map[PacketType]struct{}{
 	PropTopicAliasMaximum:      {CONNECT: {}, CONNACK: {}},
 	PropMaximumQOS:             {CONNECT: {}, CONNACK: {}},
 	PropMaximumPacketSize:      {CONNECT: {}, CONNACK: {}},
-	PropUser:                   {CONNECT: {}, CONNACK: {}, PUBLISH: {}, PUBACK: {}, PUBREC: {}, PUBREL: {}, PUBCOMP: {}, SUBACK: {}, UNSUBACK: {}, DISCONNECT: {}, AUTH: {}},
+	PropUser:                   {CONNECT: {}, CONNACK: {}, PUBLISH: {}, PUBACK: {}, PUBREC: {}, PUBREL: {}, PUBCOMP: {}, SUBSCRIBE: {}, UNSUBSCRIBE: {}, SUBACK: {}, UNSUBACK: {}, DISCONNECT: {}, AUTH: {}},
 }
 
 // ValidateID takes a PacketType and a property name and returns

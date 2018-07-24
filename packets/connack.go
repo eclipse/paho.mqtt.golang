@@ -10,7 +10,7 @@ import (
 type Connack struct {
 	SessionPresent bool
 	ReasonCode     byte
-	Properties     Properties
+	Properties     *Properties
 }
 
 //Unpack is the implementation of the interface required function for a packet
@@ -39,12 +39,12 @@ func (c *Connack) Buffers() net.Buffers {
 	return nil
 }
 
-// Send is the implementation of the interface required function for a packet
-func (c *Connack) Send(w io.Writer) error {
+// WriteTo is the implementation of the interface required function for a packet
+func (c *Connack) WriteTo(w io.Writer) (int64, error) {
 	cp := &ControlPacket{FixedHeader: FixedHeader{Type: CONNACK}}
 	cp.Content = c
 
-	return cp.Send(w)
+	return cp.WriteTo(w)
 }
 
 // Reason returns a string representation of the meaning of the ReasonCode
