@@ -14,7 +14,7 @@ type Publish struct {
 	Retain     bool
 	Topic      string
 	PacketID   uint16
-	Properties Properties
+	Properties *Properties
 	Payload    []byte
 }
 
@@ -58,8 +58,8 @@ func (p *Publish) Buffers() net.Buffers {
 
 }
 
-// Send is the implementation of the interface required function for a packet
-func (p *Publish) Send(w io.Writer) error {
+// WriteTo is the implementation of the interface required function for a packet
+func (p *Publish) WriteTo(w io.Writer) (int64, error) {
 	f := p.QoS << 1
 	if p.Duplicate {
 		f |= 1 << 3
@@ -71,14 +71,14 @@ func (p *Publish) Send(w io.Writer) error {
 	cp := &ControlPacket{FixedHeader: FixedHeader{Type: PUBLISH, Flags: f}}
 	cp.Content = p
 
-	return cp.Send(w)
+	return cp.WriteTo(w)
 }
 
 // NewPublish creates a new Publish packet and applies all the
 // provided/listed option functions to configure the packet
 func NewPublish(opts ...func(p *Publish)) *Publish {
 	p := &Publish{
-		Properties: Properties{
+		Properties: &Properties{
 			User: make(map[string]string),
 		},
 	}
@@ -106,6 +106,6 @@ func Message(topic string, qos byte, retain bool, payload []byte) func(*Publish)
 // the Properties for the Publish packet
 func PublishProperties(p *Properties) func(*Publish) {
 	return func(pp *Publish) {
-		pp.Properties = *p
+		pp.Properties = p
 	}
 }

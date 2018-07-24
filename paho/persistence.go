@@ -3,7 +3,7 @@ package paho
 import (
 	"sync"
 
-	p "github.com/eclipse/paho.mqtt.golang/packets"
+	"github.com/eclipse/paho.mqtt.golang/packets"
 )
 
 // Persistence is an interface of the functions for a struct
@@ -20,9 +20,9 @@ import (
 // Reset() clears the Persistence and prepares it to be reused
 type Persistence interface {
 	Open()
-	Put(uint16, p.ControlPacket)
-	Get(uint16) p.ControlPacket
-	All() []p.ControlPacket
+	Put(uint16, packets.ControlPacket)
+	Get(uint16) packets.ControlPacket
+	All() []packets.ControlPacket
 	Delete(uint16)
 	Close()
 	Reset()
@@ -32,20 +32,20 @@ type Persistence interface {
 // that stores the ControlPackets in memory using a map
 type MemoryPersistence struct {
 	sync.RWMutex
-	packets map[uint16]p.ControlPacket
+	packets map[uint16]packets.ControlPacket
 }
 
 // Open is the library provided MemoryPersistence's implementation of
 // the required interface function()
 func (m *MemoryPersistence) Open() {
 	m.Lock()
-	m.packets = make(map[uint16]p.ControlPacket)
+	m.packets = make(map[uint16]packets.ControlPacket)
 	m.Unlock()
 }
 
 // Put is the library provided MemoryPersistence's implementation of
 // the required interface function()
-func (m *MemoryPersistence) Put(id uint16, cp p.ControlPacket) {
+func (m *MemoryPersistence) Put(id uint16, cp packets.ControlPacket) {
 	m.Lock()
 	m.packets[id] = cp
 	m.Unlock()
@@ -53,7 +53,7 @@ func (m *MemoryPersistence) Put(id uint16, cp p.ControlPacket) {
 
 // Get is the library provided MemoryPersistence's implementation of
 // the required interface function()
-func (m *MemoryPersistence) Get(id uint16) p.ControlPacket {
+func (m *MemoryPersistence) Get(id uint16) packets.ControlPacket {
 	m.RLock()
 	defer m.RUnlock()
 	return m.packets[id]
@@ -61,10 +61,10 @@ func (m *MemoryPersistence) Get(id uint16) p.ControlPacket {
 
 // All is the library provided MemoryPersistence's implementation of
 // the required interface function()
-func (m *MemoryPersistence) All() []p.ControlPacket {
+func (m *MemoryPersistence) All() []packets.ControlPacket {
 	m.Lock()
 	defer m.RUnlock()
-	ret := make([]p.ControlPacket, len(m.packets))
+	ret := make([]packets.ControlPacket, len(m.packets))
 
 	for _, cp := range m.packets {
 		ret = append(ret, cp)
@@ -93,6 +93,6 @@ func (m *MemoryPersistence) Close() {
 // the required interface function()
 func (m *MemoryPersistence) Reset() {
 	m.Lock()
-	m.packets = make(map[uint16]p.ControlPacket)
+	m.packets = make(map[uint16]packets.ControlPacket)
 	m.Unlock()
 }

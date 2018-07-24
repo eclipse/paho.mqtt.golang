@@ -7,13 +7,15 @@ import (
 	"sync"
 	"time"
 
-	p "github.com/eclipse/paho.mqtt.golang/packets"
+	"github.com/eclipse/paho.mqtt.golang/packets"
 )
 
 // Client is the struct representing an MQTT client
 type Client struct {
 	sync.Mutex
+	serverProps   CommsProperties
 	Stop          chan struct{}
+	ClientID      string
 	Workers       sync.WaitGroup
 	Conn          net.Conn
 	MIDs          MIDService
@@ -21,7 +23,18 @@ type Client struct {
 	Router        Router
 	Persistence   Persistence
 	PacketTimeout time.Duration
-	Disconnected  func(p.Disconnect)
+	Disconnected  func(packets.Disconnect)
+}
+
+type CommsProperties struct {
+	ReceiveMaximum       uint16
+	MaximumQoS           byte
+	MaximumPacketSize    uint32
+	TopicAliasMaximum    uint16
+	RetainAvailable      bool
+	WildcardSubAvailable bool
+	SubIDAvailable       bool
+	SharedSubAvailable   bool
 }
 
 // NewClient is used to create a new instance of an MQTT client. It
@@ -34,6 +47,16 @@ func NewClient(opts ...func(*Client) error) (*Client, error) {
 	debug.Println("Creating new client")
 	c := &Client{
 		Stop: make(chan struct{}),
+		serverProps: CommsProperties{
+			ReceiveMaximum:       65535,
+			MaximumQoS:           2,
+			MaximumPacketSize:    4294967295,
+			TopicAliasMaximum:    0,
+			RetainAvailable:      true,
+			WildcardSubAvailable: true,
+			SubIDAvailable:       true,
+			SharedSubAvailable:   true,
+		},
 	}
 
 	debug.Println("Setting options")
@@ -73,44 +96,82 @@ func NewClient(opts ...func(*Client) error) (*Client, error) {
 // successfully the rest of the client is initiated and the Connack
 // returned. Otherwise the failure Connack (if there is one) is returned
 // along with an error indicating the reason for the failure to connect.
-func (c *Client) Connect(cp *p.Connect) (*p.Connack, error) {
+func (c *Client) Connect(cp *Connect) (*Connack, error) {
 	debug.Println("Connecting")
 	c.Lock()
 	defer c.Unlock()
+
+	keepalive := cp.KeepAlive
+
+	c.ClientID = cp.ClientID
 
 	if c.Conn == nil {
 		return nil, fmt.Errorf("Client has no connection")
 	}
 
-	cp.ProtocolName = "MQTT"
-	cp.ProtocolVersion = 5
+	ccp := cp.Packet()
+
+	ccp.ProtocolName = "MQTT"
+	ccp.ProtocolVersion = 5
 
 	debug.Println("Sending CONNECT")
-	if err := cp.Send(c.Conn); err != nil {
+	if _, err := ccp.WriteTo(c.Conn); err != nil {
 		return nil, err
 	}
 
 	debug.Println("Waiting for CONNACK")
-	ca, err := p.ReadPacket(c.Conn)
+	cap, err := packets.ReadPacket(c.Conn)
 	if err != nil {
 		return nil, err
 	}
 
-	if ca.Type != p.CONNACK {
-		return nil, fmt.Errorf("Received %d instead of Connack", ca.Type)
+	if cap.Type != packets.CONNACK {
+		return nil, fmt.Errorf("Received %d instead of Connack", cap.Type)
 	}
 
-	if ca.Content.(*p.Connack).ReasonCode >= 0x80 {
-		debug.Println("Received an error code in Connack:", ca.Content.(*p.Connack).ReasonCode)
-		return ca.Content.(*p.Connack), fmt.Errorf("Failed to connect to server: %s", ca.Content.(*p.Connack).Reason())
+	ca := ConnackFromPacketConnack(cap.Content.(*packets.Connack))
+
+	if ca.ReasonCode >= 0x80 {
+		debug.Println("Received an error code in Connack:", ca.ReasonCode)
+		return ca, fmt.Errorf("Failed to connect to server: %s", ca.Properties.ReasonString)
 	}
+
+	if ca.Properties.ServerKeepAlive != nil {
+		keepalive = *ca.Properties.ServerKeepAlive
+	}
+	if ca.Properties.AssignedClientID != "" {
+		c.ClientID = ca.Properties.AssignedClientID
+	}
+	if ca.Properties.ReceiveMaximum != nil {
+		c.serverProps.ReceiveMaximum = *ca.Properties.ReceiveMaximum
+	}
+	if ca.Properties.MaximumQoS != nil {
+		c.serverProps.MaximumQoS = *ca.Properties.MaximumQoS
+	}
+	if ca.Properties.MaximumPacketSize != nil {
+		c.serverProps.MaximumPacketSize = *ca.Properties.MaximumPacketSize
+	}
+	if ca.Properties.TopicAliasMaximum != nil {
+		c.serverProps.TopicAliasMaximum = *ca.Properties.TopicAliasMaximum
+	}
+	c.serverProps.RetainAvailable = ca.Properties.RetainAvailable
+	c.serverProps.WildcardSubAvailable = ca.Properties.WildcardSubAvailable
+	c.serverProps.SubIDAvailable = ca.Properties.SubIDAvailable
+	c.serverProps.SharedSubAvailable = ca.Properties.SharedSubAvailable
 
 	debug.Println("Received CONNACK, starting PingHandler and Incoming")
-	c.Workers.Add(2)
-	go c.PingHandler.Start(c.Conn, time.Duration(cp.KeepAlive)*time.Second)
-	go c.Incoming()
+	c.Workers.Add(1)
+	go func() {
+		defer c.Workers.Done()
+		c.PingHandler.Start(c.Conn, time.Duration(keepalive)*time.Second)
+	}()
+	c.Workers.Add(1)
+	go func() {
+		defer c.Workers.Done()
+		c.Incoming()
+	}()
 
-	return ca.Content.(*p.Connack), nil
+	return ca, nil
 }
 
 // Incoming is the Client function that reads and handles incoming
@@ -119,63 +180,62 @@ func (c *Client) Connect(cp *p.Connect) (*p.Connack, error) {
 // Disconnect, the Stop channel is closed or there is an error reading
 // a packet from the network connection
 func (c *Client) Incoming() {
-	defer c.Workers.Done()
 	for {
 		select {
 		case <-c.Stop:
 			debug.Println("Client stopping, Incoming stopping")
 			return
 		default:
-			recv, err := p.ReadPacket(c.Conn)
+			recv, err := packets.ReadPacket(c.Conn)
 			if err != nil {
 				c.Error(err)
 				return
 			}
 			debug.Println("Received a control packet:", recv.Type)
 			switch recv.Type {
-			case p.PUBLISH:
-				pb := recv.Content.(*p.Publish)
+			case packets.PUBLISH:
+				pb := recv.Content.(*packets.Publish)
 				go c.Router.Route(pb)
 				switch pb.QoS {
 				case 1:
-					p.NewPuback(p.PubackFromPublish(pb)).Send(c.Conn)
+					packets.NewPuback(packets.PubackFromPublish(pb)).WriteTo(c.Conn)
 				case 2:
-					p.NewPubrec(p.PubrecFromPublish(pb)).Send(c.Conn)
+					packets.NewPubrec(packets.PubrecFromPublish(pb)).WriteTo(c.Conn)
 				}
-			case p.PUBACK, p.PUBCOMP, p.SUBACK, p.UNSUBACK:
+			case packets.PUBACK, packets.PUBCOMP, packets.SUBACK, packets.UNSUBACK:
 				if cpCtx := c.MIDs.Get(recv.PacketID()); cpCtx != nil {
 					cpCtx.Return <- *recv
 				} else {
 					debug.Println("Received a response for a message ID we don't know:", recv.PacketID())
 				}
-			case p.PUBREC:
+			case packets.PUBREC:
 				if cpCtx := c.MIDs.Get(recv.PacketID()); cpCtx == nil {
 					debug.Println("Received a PUBREC for a message ID we don't know:", recv.PacketID())
-					p.NewPubrel(
-						p.PubrelFromPubrec(recv.Content.(*p.Pubrec)),
-						p.PubrelReasonCode(0x92),
-					).Send(c.Conn)
+					packets.NewPubrel(
+						packets.PubrelFromPubrec(recv.Content.(*packets.Pubrec)),
+						packets.PubrelReasonCode(0x92),
+					).WriteTo(c.Conn)
 				} else {
-					pr := recv.Content.(*p.Pubrec)
+					pr := recv.Content.(*packets.Pubrec)
 					if pr.ReasonCode >= 0x80 {
 						//Received a failure code, shortcut and return
 						cpCtx.Return <- *recv
 					} else {
-						p.NewPubrel(p.PubrelFromPubrec(pr)).Send(c.Conn)
+						packets.NewPubrel(packets.PubrelFromPubrec(pr)).WriteTo(c.Conn)
 					}
 				}
-			case p.PUBREL:
+			case packets.PUBREL:
 				//Auto respond to pubrels unless failure code
-				pr := recv.Content.(*p.Pubrel)
+				pr := recv.Content.(*packets.Pubrel)
 				if pr.ReasonCode < 0x80 {
 					//Received a failure code, continue
 					continue
 				} else {
-					p.NewPubcomp(p.PubcompFromPubrel(pr)).Send(c.Conn)
+					packets.NewPubcomp(packets.PubcompFromPubrel(pr)).WriteTo(c.Conn)
 				}
-			case p.DISCONNECT:
+			case packets.DISCONNECT:
 				if c.Disconnected != nil {
-					go c.Disconnected(*recv.Content.(*p.Disconnect))
+					go c.Disconnected(*recv.Content.(*packets.Disconnect))
 				}
 				c.Error(fmt.Errorf("Received server initiated disconnect"))
 			}
@@ -188,8 +248,8 @@ func (c *Client) Incoming() {
 // which results in the other client goroutines terminating.
 // It also closes the client network connection.
 func (c *Client) Error(e error) {
-	c.Lock()
 	debug.Println("Error called:", e)
+	c.Lock()
 	select {
 	case <-c.Stop:
 		//already shutting down, do nothing
@@ -204,143 +264,149 @@ func (c *Client) Error(e error) {
 // It is passed a pre-prepared Subscribe packet and blocks waiting for
 // a response Suback, or for the timeout to fire. Any reponse Suback
 // is returned from the function, along with any errors.
-func (c *Client) Subscribe(s *p.Subscribe) (*p.Suback, error) {
+func (c *Client) Subscribe(ctx context.Context, s *Subscribe) (*Suback, error) {
 	debug.Printf("Subscribing to %+v", s.Subscriptions)
-	ctx, cf := context.WithTimeout(context.Background(), c.PacketTimeout)
+	subCtx, cf := context.WithTimeout(ctx, c.PacketTimeout)
 	defer cf()
-	cpCtx := &CPContext{make(chan p.ControlPacket, 1), ctx}
+	cpCtx := &CPContext{make(chan packets.ControlPacket, 1), subCtx}
 
-	s.PacketID = c.MIDs.Request(cpCtx)
+	sp := s.Packet()
+
+	sp.PacketID = c.MIDs.Request(cpCtx)
 	debug.Println("Sending SUBSCRIBE")
-	if err := s.Send(c.Conn); err != nil {
+	if _, err := sp.WriteTo(c.Conn); err != nil {
 		return nil, err
 	}
 	debug.Println("Waiting for SUBACK")
-	var resp p.ControlPacket
+	var sap packets.ControlPacket
 
 	select {
-	case <-ctx.Done():
-		if e := ctx.Err(); e == context.DeadlineExceeded {
+	case <-subCtx.Done():
+		if e := subCtx.Err(); e == context.DeadlineExceeded {
 			debug.Println("Timeout waiting for SUBACK")
 			return nil, e
 		}
-	case resp = <-cpCtx.Return:
+	case sap = <-cpCtx.Return:
 	}
 
-	if resp.Type != p.SUBACK {
-		return nil, fmt.Errorf("Received %d instead of Suback", resp.Type)
+	if sap.Type != packets.SUBACK {
+		return nil, fmt.Errorf("Received %d instead of Suback", sap.Type)
 	}
 	debug.Println("Received SUBACK")
 
-	r := resp.Content.(*p.Suback).Reasons
+	sa := SubackFromUnsubackPacket(sap.Content.(*packets.Suback))
 	switch {
-	case len(r) == 1:
-		if r[0] >= 0x80 {
-			debug.Println("Received an error code in Suback:", r[0])
-			return resp.Content.(*p.Suback), fmt.Errorf("Failed to subscribe to topic: %s", resp.Content.(*p.Suback).Reason(0))
+	case len(sa.Reasons) == 1:
+		if sa.Reasons[0] >= 0x80 {
+			debug.Println("Received an error code in Suback:", sa.Reasons[0])
+			return sa, fmt.Errorf("Failed to subscribe to topic: %s", sa.Properties.ReasonString)
 		}
 	default:
-		for _, code := range r {
+		for _, code := range sa.Reasons {
 			if code >= 0x80 {
 				debug.Println("Received an error code in Suback:", code)
-				return resp.Content.(*p.Suback), fmt.Errorf("At least one requested subscription failed")
+				return sa, fmt.Errorf("At least one requested subscription failed")
 			}
 		}
 	}
 
-	return resp.Content.(*p.Suback), nil
+	return sa, nil
 }
 
 // Unsubscribe is used to send an Unsubscribe request to the MQTT server.
 // It is passed a pre-prepared Unsubscribe packet and blocks waiting for
 // a response Unsuback, or for the timeout to fire. Any reponse Unsuback
 // is returned from the function, along with any errors.
-func (c *Client) Unsubscribe(u *p.Unsubscribe) (*p.Unsuback, error) {
+func (c *Client) Unsubscribe(ctx context.Context, u *Unsubscribe) (*Unsuback, error) {
 	debug.Printf("Unsubscribing from %+v", u.Topics)
-	ctx, cf := context.WithTimeout(context.Background(), c.PacketTimeout)
+	unsubCtx, cf := context.WithTimeout(ctx, c.PacketTimeout)
 	defer cf()
-	cpCtx := &CPContext{make(chan p.ControlPacket, 1), ctx}
+	cpCtx := &CPContext{make(chan packets.ControlPacket, 1), unsubCtx}
 
-	u.PacketID = c.MIDs.Request(cpCtx)
+	up := u.Packet()
+
+	up.PacketID = c.MIDs.Request(cpCtx)
 	debug.Println("Sending UNSUBSCRIBE")
-	if err := u.Send(c.Conn); err != nil {
+	if _, err := up.WriteTo(c.Conn); err != nil {
 		return nil, err
 	}
 	debug.Println("Waiting for UNSUBACK")
-	var resp p.ControlPacket
+	var uap packets.ControlPacket
 
 	select {
-	case <-ctx.Done():
-		if e := ctx.Err(); e == context.DeadlineExceeded {
+	case <-unsubCtx.Done():
+		if e := unsubCtx.Err(); e == context.DeadlineExceeded {
 			debug.Println("Timeout waiting for UNSUBACK")
 			return nil, e
 		}
-	case resp = <-cpCtx.Return:
+	case uap = <-cpCtx.Return:
 	}
 
-	if resp.Type != p.UNSUBACK {
-		return nil, fmt.Errorf("Received %d instead of Unsuback", resp.Type)
+	if uap.Type != packets.UNSUBACK {
+		return nil, fmt.Errorf("Received %d instead of Unsuback", uap.Type)
 	}
 	debug.Println("Received SUBACK")
 
-	r := resp.Content.(*p.Unsuback).Reasons
+	ua := UnsubackFromUnsubackPacket(uap.Content.(*packets.Unsuback))
 	switch {
-	case len(r) == 1:
-		if r[0] >= 0x80 {
-			debug.Println("Received an error code in Suback:", r[0])
-			return resp.Content.(*p.Unsuback), fmt.Errorf("Failed to unsubscribe from topic: %s", resp.Content.(*p.Unsuback).Reason(0))
+	case len(ua.Reasons) == 1:
+		if ua.Reasons[0] >= 0x80 {
+			debug.Println("Received an error code in Suback:", ua.Reasons[0])
+			return ua, fmt.Errorf("Failed to unsubscribe from topic: %s", ua.Properties.ReasonString)
 		}
 	default:
-		for _, code := range r {
+		for _, code := range ua.Reasons {
 			if code >= 0x80 {
 				debug.Println("Received an error code in Suback:", code)
-				return resp.Content.(*p.Unsuback), fmt.Errorf("At least one requested unsubscribe failed")
+				return ua, fmt.Errorf("At least one requested unsubscribe failed")
 			}
 		}
 	}
 
-	return resp.Content.(*p.Unsuback), nil
+	return ua, nil
 }
 
 // Publish is used to send a publication to the MQTT server.
 // It is passed a pre-prepared Publish packet and blocks waiting for
 // the appropriate response, or for the timeout to fire.
 // Any reponse message is returned from the function, along with any errors.
-func (c *Client) Publish(pb *p.Publish) (p.Packet, error) {
-	debug.Printf("Sending message to %s", pb.Topic)
+func (c *Client) Publish(ctx context.Context, p *Publish) (*PublishResponse, error) {
+	debug.Printf("Sending message to %s", p.Topic)
 	c.Lock()
 	defer c.Unlock()
 
-	switch pb.QoS {
+	pb := p.Packet()
+
+	switch p.QoS {
 	case 0:
 		debug.Println("Sending QoS0 message")
-		if err := pb.Send(c.Conn); err != nil {
+		if _, err := pb.WriteTo(c.Conn); err != nil {
 			return nil, err
 		}
 		return nil, nil
 	case 1, 2:
-		return c.publishQoS12(pb)
+		return c.publishQoS12(ctx, pb)
 	}
 
 	return nil, fmt.Errorf("oops")
 }
 
-func (c *Client) publishQoS12(pb *p.Publish) (p.Packet, error) {
+func (c *Client) publishQoS12(ctx context.Context, pb *packets.Publish) (*PublishResponse, error) {
 	debug.Println("Sending QoS1 message")
-	ctx, cf := context.WithTimeout(context.Background(), c.PacketTimeout)
+	pubCtx, cf := context.WithTimeout(ctx, c.PacketTimeout)
 	defer cf()
-	cpCtx := &CPContext{make(chan p.ControlPacket, 1), ctx}
+	cpCtx := &CPContext{make(chan packets.ControlPacket, 1), pubCtx}
 
 	pb.PacketID = c.MIDs.Request(cpCtx)
-	if err := pb.Send(c.Conn); err != nil {
+	if _, err := pb.WriteTo(c.Conn); err != nil {
 		return nil, err
 	}
-	var resp p.ControlPacket
+	var resp packets.ControlPacket
 
 	select {
-	case <-ctx.Done():
-		if e := ctx.Err(); e == context.DeadlineExceeded {
-			debug.Println("Timeout waiting for SUBACK")
+	case <-pubCtx.Done():
+		if e := pubCtx.Err(); e == context.DeadlineExceeded {
+			debug.Println("Timeout waiting for Publish response")
 			return nil, e
 		}
 	case resp = <-cpCtx.Return:
@@ -348,17 +414,25 @@ func (c *Client) publishQoS12(pb *p.Publish) (p.Packet, error) {
 
 	switch pb.QoS {
 	case 1:
-		if resp.Type != p.PUBACK {
+		if resp.Type != packets.PUBACK {
 			return nil, fmt.Errorf("Received %d instead of PUBACK", resp.Type)
 		}
 		debug.Println("Received PUBACK for", pb.PacketID)
-		return resp.Content.(*p.Puback), nil
+
+		pr := PublishResponseFromPuback(resp.Content.(*packets.Puback))
+		if pr.ReasonCode >= 0x80 {
+			debug.Println("Received an error code in Puback:", pr.ReasonCode)
+			return pr, fmt.Errorf("Error publishing: %s", resp.Content.(*packets.Puback).Reason())
+		}
+		return pr, nil
 	case 2:
-		if resp.Type != p.PUBCOMP {
+		if resp.Type != packets.PUBCOMP {
 			return nil, fmt.Errorf("Received %d instead of PUBCOMP", resp.Type)
 		}
 		debug.Println("Received PUBCOMP for", pb.PacketID)
-		return resp.Content.(*p.Pubcomp), nil
+
+		pr := PublishResponseFromPubcomp(resp.Content.(*packets.Pubcomp))
+		return pr, nil
 	}
 
 	debug.Println("Ended up with a non QoS1/2 message:", pb.QoS)
@@ -369,10 +443,13 @@ func (c *Client) publishQoS12(pb *p.Publish) (p.Packet, error) {
 // Whether or not the attempt to send the Disconnect packet fails
 // (and if it does this function returns any error) the network connection
 // is closed.
-func (c *Client) Disconnect(d *p.Disconnect) error {
+func (c *Client) Disconnect(d *Disconnect) error {
+	debug.Println("Disconnecting")
 	c.Lock()
 	defer c.Unlock()
 	defer c.Conn.Close()
 
-	return d.Send(c.Conn)
+	_, err := d.Packet().WriteTo(c.Conn)
+
+	return err
 }

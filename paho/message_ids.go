@@ -4,7 +4,7 @@ import (
 	"context"
 	"sync"
 
-	p "github.com/eclipse/paho.mqtt.golang/packets"
+	"github.com/eclipse/paho.mqtt.golang/packets"
 )
 
 const (
@@ -33,7 +33,7 @@ type MIDService interface {
 // The reponse packet is send down the Return channel and the
 // Context is used to track timeouts.
 type CPContext struct {
-	Return  chan p.ControlPacket
+	Return  chan packets.ControlPacket
 	Context context.Context
 }
 

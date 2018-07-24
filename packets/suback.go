@@ -9,7 +9,7 @@ import (
 // Suback is the Variable Header definition for a Suback control packet
 type Suback struct {
 	PacketID   uint16
-	Properties Properties
+	Properties *Properties
 	Reasons    []byte
 }
 
@@ -56,12 +56,12 @@ func (s *Suback) Buffers() net.Buffers {
 	return net.Buffers{b.Bytes(), propLen, idvp, s.Reasons}
 }
 
-// Send is the implementation of the interface required function for a packet
-func (s *Suback) Send(w io.Writer) error {
+// WriteTo is the implementation of the interface required function for a packet
+func (s *Suback) WriteTo(w io.Writer) (int64, error) {
 	cp := &ControlPacket{FixedHeader: FixedHeader{Type: SUBACK}}
 	cp.Content = s
 
-	return cp.Send(w)
+	return cp.WriteTo(w)
 }
 
 // Reason returns a string representation of the meaning of the ReasonCode
@@ -101,7 +101,7 @@ func (s *Suback) Reason(index int) string {
 // provided/listed option functions to configure the packet
 func NewSuback(opts ...func(sa *Suback)) *Suback {
 	sa := &Suback{
-		Properties: Properties{
+		Properties: &Properties{
 			User: make(map[string]string),
 		},
 	}
@@ -125,6 +125,6 @@ func SubackReasons(r []byte) func(*Suback) {
 // the Properties for the Suback packet
 func SubackProperties(p *Properties) func(*Suback) {
 	return func(sa *Suback) {
-		sa.Properties = *p
+		sa.Properties = p
 	}
 }

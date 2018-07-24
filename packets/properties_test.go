@@ -1,18 +1,21 @@
 package packets
 
-import "testing"
+import (
+	"fmt"
+	"testing"
+)
 
 func TestPropertiess(t *testing.T) {
 	if !ValidateID(PUBLISH, PropPayloadFormat) {
 		t.Fatalf("'payloadFormat' is valid for 'PUBLISH' packets")
 	}
 
-	if !ValidateID(PUBLISH, PropPubExpiry) {
-		t.Fatalf("'pubExpiry' is valid for 'PUBLISH' packets")
+	if !ValidateID(PUBLISH, PropMessageExpiry) {
+		t.Fatalf("'messageExpiry' is valid for 'PUBLISH' packets")
 	}
 
-	if !ValidateID(PUBLISH, PropReplyTopic) {
-		t.Fatalf("'replyTopic' is valid for 'PUBLISH' packets")
+	if !ValidateID(PUBLISH, PropResponseTopic) {
+		t.Fatalf("'responseTopic' is valid for 'PUBLISH' packets")
 	}
 
 	if !ValidateID(PUBLISH, PropCorrelationData) {
@@ -136,4 +139,38 @@ func TestInvalidPropertiess(t *testing.T) {
 	if ValidateID(PUBLISH, PropRequestResponseInfo) {
 		t.Fatalf("'requestReplyInfo' is invalid for 'PUBLISH' packets")
 	}
+}
+
+func BenchmarkPropertyCreationFuncs(b *testing.B) {
+	var p *Properties
+	for i := 0; i < b.N; i++ {
+		p = NewProperties(
+			PayloadFormat(byte(1)),
+			MessageExpiry(32),
+			ContentType("mime/json"),
+			ResponseTopic("x/y"),
+			CorrelationData([]byte("corelid")),
+			//UserSingle("k", "v"),
+		)
+	}
+	fmt.Sprintln(p)
+}
+
+func BenchmarkPropertyCreationStruct(b *testing.B) {
+	var p *Properties
+	pf := byte(1)
+	pe := uint32(32)
+	for i := 0; i < b.N; i++ {
+		p = &Properties{
+			PayloadFormat:   &pf,
+			MessageExpiry:   &pe,
+			ContentType:     "mime/json",
+			ResponseTopic:   "x/y",
+			CorrelationData: []byte("corelid"),
+			// User: map[string]string{
+			// 	"k": "v",
+			// },
+		}
+	}
+	fmt.Sprintln(p)
 }

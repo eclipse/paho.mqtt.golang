@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"flag"
 	"fmt"
 	"io"
@@ -10,7 +11,6 @@ import (
 	"os/signal"
 	"syscall"
 
-	pk "github.com/eclipse/paho.mqtt.golang/packets"
 	"github.com/eclipse/paho.mqtt.golang/paho"
 )
 
@@ -29,25 +29,29 @@ func main() {
 
 	c, err := paho.NewClient(paho.OpenTCPConn(*server))
 
-	cp := &pk.Connect{
+	cp := &paho.Connect{
 		KeepAlive:  30,
 		ClientID:   *clientid,
 		CleanStart: true,
+		Username:   *username,
+		Password:   []byte(*password),
 	}
 
 	if *username != "" {
-		cp.Username = *username
+		cp.UsernameFlag = true
 	}
 	if *password != "" {
-		cp.Password = []byte(*password)
+		cp.PasswordFlag = true
 	}
+
+	log.Println(cp.UsernameFlag, cp.PasswordFlag)
 
 	ca, err := c.Connect(cp)
 	if err != nil {
 		log.Fatalln(err)
 	}
 	if ca.ReasonCode != 0 {
-		log.Fatalf("Failed to connect to %s : %d - %s", *server, ca.ReasonCode, ca.Reason())
+		log.Fatalf("Failed to connect to %s : %d - %s", *server, ca.ReasonCode, ca.Properties.ReasonString)
 	}
 
 	fmt.Printf("Connected to %s\n", *server)
@@ -58,7 +62,7 @@ func main() {
 		<-ic
 		fmt.Println("signal received, exiting")
 		if c != nil {
-			d := pk.NewDisconnect(pk.DisconnectReason(0))
+			d := &paho.Disconnect{ReasonCode: 0}
 			c.Disconnect(d)
 		}
 		os.Exit(0)
@@ -70,7 +74,7 @@ func main() {
 			os.Exit(0)
 		}
 
-		if _, err = c.Publish(&pk.Publish{
+		if _, err = c.Publish(context.Background(), &paho.Publish{
 			Topic:   *topic,
 			QoS:     byte(*qos),
 			Retain:  *retained,

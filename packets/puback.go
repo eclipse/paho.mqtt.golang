@@ -2,6 +2,7 @@ package packets
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"net"
 )
@@ -10,7 +11,7 @@ import (
 type Puback struct {
 	PacketID   uint16
 	ReasonCode byte
-	Properties Properties
+	Properties *Properties
 }
 
 // PubackSuccess, etc are the list of valid puback reason codes.
@@ -30,19 +31,26 @@ const (
 func (p *Puback) Unpack(r *bytes.Buffer) error {
 	var err error
 	success := r.Len() == 2
+	noProps := r.Len() == 3
+	fmt.Println("length", r.Len())
 	p.PacketID, err = readUint16(r)
 	if err != nil {
+		fmt.Println("Error in readUint16")
 		return err
 	}
 	if !success {
 		p.ReasonCode, err = r.ReadByte()
 		if err != nil {
+			fmt.Println("Error at readbyte")
 			return err
 		}
 
-		err = p.Properties.Unpack(r, PUBACK)
-		if err != nil {
-			return err
+		if !noProps {
+			err = p.Properties.Unpack(r, PUBACK)
+			if err != nil {
+				fmt.Println("Error at properties unpack")
+				return err
+			}
 		}
 	}
 	return nil
@@ -58,12 +66,12 @@ func (p *Puback) Buffers() net.Buffers {
 	return net.Buffers{b.Bytes(), propLen, idvp}
 }
 
-// Send is the implementation of the interface required function for a packet
-func (p *Puback) Send(w io.Writer) error {
+// WriteTo is the implementation of the interface required function for a packet
+func (p *Puback) WriteTo(w io.Writer) (int64, error) {
 	cp := &ControlPacket{FixedHeader: FixedHeader{Type: PUBACK}}
 	cp.Content = p
 
-	return cp.Send(w)
+	return cp.WriteTo(w)
 }
 
 // Reason returns a string representation of the meaning of the ReasonCode
@@ -96,7 +104,7 @@ func (p *Puback) Reason() string {
 // provided/listed option functions to configure the packet
 func NewPuback(opts ...func(pa *Puback)) *Puback {
 	pa := &Puback{
-		Properties: Properties{
+		Properties: &Properties{
 			User: make(map[string]string),
 		},
 	}
@@ -120,7 +128,7 @@ func PubackReasonCode(r byte) func(*Puback) {
 // the Properties for the Puback packet
 func PubackProperties(p *Properties) func(*Puback) {
 	return func(pa *Puback) {
-		pa.Properties = *p
+		pa.Properties = p
 	}
 }
 

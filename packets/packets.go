@@ -36,7 +36,7 @@ const (
 type Packet interface {
 	Unpack(*bytes.Buffer) error
 	Buffers() net.Buffers
-	Send(io.Writer) error
+	WriteTo(io.Writer) (int64, error)
 }
 
 // FixedHeader is the definition of a control packet fixed header
@@ -46,15 +46,13 @@ type FixedHeader struct {
 	remainingLength int
 }
 
-// Pack operates on a FixedHeader and takes the option values and produces
+// WriteTo operates on a FixedHeader and takes the option values and produces
 // the wire format byte that represents these.
-func (f *FixedHeader) Pack() []byte {
-	var b bytes.Buffer
+func (f *FixedHeader) WriteTo(w io.Writer) (int, error) {
+	w.Write([]byte{byte(f.Type)<<4 | f.Flags})
+	w.Write(encodeVBI(f.remainingLength))
 
-	b.WriteByte(byte(f.Type)<<4 | f.Flags)
-	b.Write(encodeVBI(f.remainingLength))
-
-	return b.Bytes()
+	return 0, nil
 }
 
 // ControlPacket is the definition of a control packet
@@ -100,43 +98,43 @@ func NewControlPacket(t PacketType) *ControlPacket {
 		cp.Content = &Connect{
 			ProtocolName:    "MQTT",
 			ProtocolVersion: 5,
-			Properties:      Properties{User: make(map[string]string)},
+			Properties:      &Properties{User: make(map[string]string)},
 		}
 	case CONNACK:
-		cp.Content = &Connack{Properties: Properties{User: make(map[string]string)}}
+		cp.Content = &Connack{Properties: &Properties{User: make(map[string]string)}}
 	case PUBLISH:
-		cp.Content = &Publish{Properties: Properties{User: make(map[string]string)}}
+		cp.Content = &Publish{Properties: &Properties{User: make(map[string]string)}}
 	case PUBACK:
-		cp.Content = &Puback{Properties: Properties{User: make(map[string]string)}}
+		cp.Content = &Puback{Properties: &Properties{User: make(map[string]string)}}
 	case PUBREC:
-		cp.Content = &Pubrec{Properties: Properties{User: make(map[string]string)}}
+		cp.Content = &Pubrec{Properties: &Properties{User: make(map[string]string)}}
 	case PUBREL:
 		cp.Flags = 2
-		cp.Content = &Pubrel{Properties: Properties{User: make(map[string]string)}}
+		cp.Content = &Pubrel{Properties: &Properties{User: make(map[string]string)}}
 	case PUBCOMP:
-		cp.Content = &Pubcomp{Properties: Properties{User: make(map[string]string)}}
+		cp.Content = &Pubcomp{Properties: &Properties{User: make(map[string]string)}}
 	case SUBSCRIBE:
 		cp.Flags = 2
 		cp.Content = &Subscribe{
 			Subscriptions: make(map[string]SubOptions),
-			Properties:    Properties{User: make(map[string]string)},
+			Properties:    &Properties{User: make(map[string]string)},
 		}
 	case SUBACK:
-		cp.Content = &Suback{Properties: Properties{User: make(map[string]string)}}
+		cp.Content = &Suback{Properties: &Properties{User: make(map[string]string)}}
 	case UNSUBSCRIBE:
 		cp.Flags = 2
-		cp.Content = &Unsubscribe{Properties: Properties{User: make(map[string]string)}}
+		cp.Content = &Unsubscribe{Properties: &Properties{User: make(map[string]string)}}
 	case UNSUBACK:
-		cp.Content = &Unsuback{Properties: Properties{User: make(map[string]string)}}
+		cp.Content = &Unsuback{Properties: &Properties{User: make(map[string]string)}}
 	case PINGREQ:
 		cp.Content = &Pingreq{}
 	case PINGRESP:
 		cp.Content = &Pingresp{}
 	case DISCONNECT:
-		cp.Content = &Disconnect{Properties: Properties{User: make(map[string]string)}}
+		cp.Content = &Disconnect{Properties: &Properties{User: make(map[string]string)}}
 	case AUTH:
 		cp.Flags = 1
-		cp.Content = &Auth{Properties: Properties{User: make(map[string]string)}}
+		cp.Content = &Auth{Properties: &Properties{User: make(map[string]string)}}
 	default:
 		return nil
 	}
@@ -147,66 +145,71 @@ func NewControlPacket(t PacketType) *ControlPacket {
 // ReadPacket reads a control packet from a io.Reader and returns a completed
 // struct with the appropriate data
 func ReadPacket(r io.Reader) (*ControlPacket, error) {
-	t := make([]byte, 1)
-	_, err := io.ReadFull(r, t)
+	t := [1]byte{}
+	_, err := io.ReadFull(r, t[:])
 	if err != nil {
+		fmt.Println("Error at readfull")
 		return nil, err
 	}
 	cp := NewControlPacket(PacketType(t[0] >> 4))
 	if cp == nil {
 		return nil, fmt.Errorf("Invalid packet type requested, %d", t[0]>>4)
 	}
+	fmt.Println(cp.Type)
 	cp.Flags = t[0] & 0xF
 	if cp.Type == PUBLISH {
 		cp.Content.(*Publish).QoS = (cp.Flags & 0x6) >> 1
 	}
 	vbi, err := getVBI(r)
 	if err != nil {
+		fmt.Println("Error at getVBI")
 		return nil, err
 	}
 	cp.remainingLength, err = decodeVBI(vbi)
 	if err != nil {
+		fmt.Println("Error at decodeVBI")
 		return nil, err
 	}
-	content := make([]byte, cp.remainingLength)
-	n, err := io.ReadFull(r, content)
+
+	var content bytes.Buffer
+	content.Grow(cp.remainingLength)
+
+	n, err := io.CopyN(&content, r, int64(cp.remainingLength))
 	if err != nil {
+		fmt.Println("Error at 2nd readfull")
 		return nil, err
 	}
-	if n != cp.remainingLength {
+	if n != int64(cp.remainingLength) {
 		return nil, fmt.Errorf("Failed to read packet, expected %d bytes, read %d", cp.remainingLength, n)
 	}
-	err = cp.Content.Unpack(bytes.NewBuffer(content))
+	err = cp.Content.Unpack(&content)
 	if err != nil {
+		fmt.Println("Error at unpack")
+
 		return nil, err
 	}
 	return cp, nil
 }
 
-// Send writes a packet to an io.Writer, handling packing all the parts of
+// WriteTo writes a packet to an io.Writer, handling packing all the parts of
 // a control packet.
-func (c *ControlPacket) Send(w io.Writer) error {
-	var packet net.Buffers
-
+func (c *ControlPacket) WriteTo(w io.Writer) (int64, error) {
 	buffers := c.Content.Buffers()
 	for _, b := range buffers {
 		c.remainingLength += len(b)
 	}
 
-	packet = append(packet, c.FixedHeader.Pack())
-	packet = append(packet, buffers...)
+	var header bytes.Buffer
+	c.FixedHeader.WriteTo(&header)
 
-	_, err := packet.WriteTo(w)
-	if err != nil {
-		return err
-	}
+	buffers = append(net.Buffers{header.Bytes()}, buffers...)
 
-	return nil
+	return buffers.WriteTo(w)
 }
 
 func encodeVBI(length int) []byte {
 	var x int
-	b := make([]byte, 4)
+	b := [4]byte{}
 	for {
 		digit := byte(length % 128)
 		length /= 128
@@ -223,9 +226,9 @@ func encodeVBI(length int) []byte {
 
 func getVBI(r io.Reader) (*bytes.Buffer, error) {
 	var ret bytes.Buffer
-	digit := make([]byte, 1)
+	digit := [1]byte{}
 	for {
-		_, err := io.ReadFull(r, digit)
+		_, err := io.ReadFull(r, digit[:])
 		if err != nil {
 			return nil, err
 		}
@@ -320,12 +323,14 @@ func readBinary(b *bytes.Buffer) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	s := make([]byte, size)
-	if _, err := b.Read(s); err != nil {
+
+	var s bytes.Buffer
+	s.Grow(int(size))
+	if _, err := io.CopyN(&s, b, int64(size)); err != nil {
 		return nil, err
 	}
 
-	return s, nil
+	return s.Bytes(), nil
 }
 
 func readString(b *bytes.Buffer) (string, error) {

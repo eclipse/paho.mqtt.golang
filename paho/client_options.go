@@ -5,7 +5,7 @@ import (
 	"net"
 	"time"
 
-	p "github.com/eclipse/paho.mqtt.golang/packets"
+	"github.com/eclipse/paho.mqtt.golang/packets"
 )
 
 // WithConn sets the internal connection for the Client to the net.Conn passed in
@@ -140,7 +140,7 @@ func PacketTimeout(d time.Duration) func(*Client) error {
 
 // DisconnectFunc sets a function to be called by the client when it is sent
 // a DISCONNECT packet by the server.
-func DisconnectFunc(d func(p.Disconnect)) func(*Client) error {
+func DisconnectFunc(d func(packets.Disconnect)) func(*Client) error {
 	return func(c *Client) error {
 		c.Disconnected = d
 		return nil

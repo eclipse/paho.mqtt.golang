@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
@@ -8,7 +9,6 @@ import (
 	"os/signal"
 	"syscall"
 
-	pk "github.com/eclipse/paho.mqtt.golang/packets"
 	"github.com/eclipse/paho.mqtt.golang/paho"
 )
 
@@ -22,25 +22,27 @@ func main() {
 	flag.Parse()
 
 	paho.SetDebugLogger(log.New(os.Stderr, "SUB: ", log.LstdFlags))
-	msgChan := make(chan paho.Message)
+	msgChan := make(chan *paho.Publish)
 
 	c, err := paho.NewClient(
 		paho.OpenTCPConn(*server),
-		paho.DefaultMessageHandler(func(m paho.Message) {
+		paho.DefaultMessageHandler(func(m *paho.Publish) {
 			msgChan <- m
 		}))
 
-	cp := &pk.Connect{
+	cp := &paho.Connect{
 		KeepAlive:  30,
 		ClientID:   *clientid,
 		CleanStart: true,
+		Username:   *username,
+		Password:   []byte(*password),
 	}
 
 	if *username != "" {
-		cp.Username = *username
+		cp.UsernameFlag = true
 	}
 	if *password != "" {
-		cp.Password = []byte(*password)
+		cp.PasswordFlag = true
 	}
 
 	ca, err := c.Connect(cp)
@@ -48,7 +50,7 @@ func main() {
 		log.Fatalln(err)
 	}
 	if ca.ReasonCode != 0 {
-		log.Fatalf("Failed to connect to %s : %d - %s", *server, ca.ReasonCode, ca.Reason())
+		log.Fatalf("Failed to connect to %s : %d - %s", *server, ca.ReasonCode, ca.Properties.ReasonString)
 	}
 
 	fmt.Printf("Connected to %s\n", *server)
@@ -59,21 +61,22 @@ func main() {
 		<-ic
 		fmt.Println("signal received, exiting")
 		if c != nil {
-			c.Disconnect(&pk.Disconnect{ReasonCode: pk.DisconnectNormalDisconnection})
+			d := &paho.Disconnect{ReasonCode: 0}
+			c.Disconnect(d)
 		}
 		os.Exit(0)
 	}()
 
-	sa, err := c.Subscribe(&pk.Subscribe{
-		Subscriptions: map[string]pk.SubOptions{
-			*topic: pk.SubOptions{QoS: byte(*qos)},
+	sa, err := c.Subscribe(context.Background(), &paho.Subscribe{
+		Subscriptions: map[string]paho.SubscribeOptions{
+			*topic: paho.SubscribeOptions{QoS: byte(*qos)},
 		},
 	})
 	if err != nil {
 		log.Fatalln(err)
 	}
 	if sa.Reasons[0] != byte(*qos) {
-		log.Fatalf("Failed to subscribe to %s : %s", *topic, sa.Reason(0))
+		log.Fatalf("Failed to subscribe to %s : %d", *topic, sa.Reasons[0])
 	}
 	log.Printf("Subscribed to %s", *topic)
 

@@ -20,10 +20,10 @@ func (p *Pingresp) Buffers() net.Buffers {
 	return nil
 }
 
-// Send is the implementation of the interface required function for a packet
-func (p *Pingresp) Send(w io.Writer) error {
+// WriteTo is the implementation of the interface required function for a packet
+func (p *Pingresp) WriteTo(w io.Writer) (int64, error) {
 	cp := &ControlPacket{FixedHeader: FixedHeader{Type: PINGRESP}}
 	cp.Content = p
 
-	return cp.Send(w)
+	return cp.WriteTo(w)
 }
