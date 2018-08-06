@@ -29,10 +29,10 @@ type PublishProperties struct {
 	User                   map[string]string
 }
 
-// PropertiesFromPacketProperties is a function that takes a lower level
+// InitProperties is a function that takes a lower level
 // Properties struct and completes the properties of the Publish on
 // which it is called
-func (p *Publish) PropertiesFromPacketProperties(prop *packets.Properties) {
+func (p *Publish) InitProperties(prop *packets.Properties) {
 	p.Properties = &PublishProperties{
 		PayloadFormat:          prop.PayloadFormat,
 		MessageExpiry:          prop.MessageExpiry,
@@ -54,7 +54,7 @@ func PublishFromPacketPublish(p *packets.Publish) *Publish {
 		Topic:   p.Topic,
 		Payload: p.Payload,
 	}
-	v.PropertiesFromPacketProperties(p.Properties)
+	v.InitProperties(p.Properties)
 
 	return v
 }

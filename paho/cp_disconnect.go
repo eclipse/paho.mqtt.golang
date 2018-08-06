@@ -17,10 +17,10 @@ type DisconnectProperties struct {
 	User                  map[string]string
 }
 
-// PropertiesFromPacketProperties is a function that takes a lower level
+// InitProperties is a function that takes a lower level
 // Properties struct and completes the properties of the Disconnect on
 // which it is called
-func (d *Disconnect) PropertiesFromPacketProperties(p *packets.Properties) {
+func (d *Disconnect) InitProperties(p *packets.Properties) {
 	d.Properties = &DisconnectProperties{
 		SessionExpiryInterval: p.SessionExpiryInterval,
 		ServerReference:       p.ServerReference,
@@ -33,7 +33,7 @@ func (d *Disconnect) PropertiesFromPacketProperties(p *packets.Properties) {
 // returns a paho library Disconnect
 func DisconnectFromPacketDisconnect(p *packets.Disconnect) *Disconnect {
 	v := &Disconnect{ReasonCode: p.ReasonCode}
-	v.PropertiesFromPacketProperties(p.Properties)
+	v.InitProperties(p.Properties)
 
 	return v
 }

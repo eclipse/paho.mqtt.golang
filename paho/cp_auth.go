@@ -17,10 +17,10 @@ type AuthProperties struct {
 	User         map[string]string
 }
 
-// PropertiesFromPacketProperties is a function that takes a lower level
+// InitProperties is a function that takes a lower level
 // Properties struct and completes the properties of the Auth on
 // which it is called
-func (a *Auth) PropertiesFromPacketProperties(p *packets.Properties) {
+func (a *Auth) InitProperties(p *packets.Properties) {
 	a.Properties = &AuthProperties{
 		AuthMethod:   p.AuthMethod,
 		AuthData:     p.AuthData,
@@ -33,7 +33,7 @@ func (a *Auth) PropertiesFromPacketProperties(p *packets.Properties) {
 // returns a paho library Auth
 func AuthFromPacketAuth(a *packets.Auth) *Auth {
 	v := &Auth{ReasonCode: a.ReasonCode}
-	v.PropertiesFromPacketProperties(a.Properties)
+	v.InitProperties(a.Properties)
 
 	return v
 }

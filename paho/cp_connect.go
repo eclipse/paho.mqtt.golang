@@ -32,10 +32,10 @@ type ConnectProperties struct {
 	User                  map[string]string
 }
 
-// PropertiesFromPacketProperties is a function that takes a lower level
+// InitProperties is a function that takes a lower level
 // Properties struct and completes the properties of the Connect on
 // which it is called
-func (c *Connect) PropertiesFromPacketProperties(p *packets.Properties) {
+func (c *Connect) InitProperties(p *packets.Properties) {
 	c.Properties = &ConnectProperties{
 		SessionExpiryInterval: p.SessionExpiryInterval,
 		AuthMethod:            p.AuthMethod,
@@ -58,10 +58,10 @@ func (c *Connect) PropertiesFromPacketProperties(p *packets.Properties) {
 	}
 }
 
-// WillPropertiesFromPacketProperties is a function that takes a lower level
+// InitWillProperties is a function that takes a lower level
 // Properties struct and completes the properties of the Will in the Connect on
 // which it is called
-func (c *Connect) WillPropertiesFromPacketProperties(p *packets.Properties) {
+func (c *Connect) InitWillProperties(p *packets.Properties) {
 	c.WillProperties = &WillProperties{
 		WillDelayInterval: p.WillDelayInterval,
 		PayloadFormat:     p.PayloadFormat,
@@ -85,7 +85,7 @@ func ConnectFromPacketConnect(p *packets.Connect) *Connect {
 		CleanStart:   p.CleanStart,
 		KeepAlive:    p.KeepAlive,
 	}
-	v.PropertiesFromPacketProperties(p.Properties)
+	v.InitProperties(p.Properties)
 	if p.WillFlag {
 		v.WillMessage = &WillMessage{
 			Retain:  p.WillRetain,
@@ -93,7 +93,7 @@ func ConnectFromPacketConnect(p *packets.Connect) *Connect {
 			Topic:   p.WillTopic,
 			Payload: p.WillMessage,
 		}
-		v.WillPropertiesFromPacketProperties(p.WillProperties)
+		v.InitWillProperties(p.WillProperties)
 	}
 
 	return v

@@ -20,7 +20,7 @@ const (
 // *CPContext that the MIDService has associated with that messageid
 // Free() takes a uint16 that is a messageid and instructs the MIDService
 // to mark that messageid as available for reuse
-// Clear() should reset the internal state of the MIDService
+// Clear() resets the internal state of the MIDService
 type MIDService interface {
 	Request(*CPContext) uint16
 	Get(uint16) *CPContext

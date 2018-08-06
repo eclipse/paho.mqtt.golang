@@ -23,10 +23,10 @@ type SubscribeProperties struct {
 	User                   map[string]string
 }
 
-// PropertiesFromPacketProperties is a function that takes a lower level
+// InitProperties is a function that takes a packet library
 // Properties struct and completes the properties of the Subscribe on
 // which it is called
-func (s *Subscribe) PropertiesFromPacketProperties(prop *packets.Properties) {
+func (s *Subscribe) InitProperties(prop *packets.Properties) {
 	s.Properties = &SubscribeProperties{
 		SubscriptionIdentifier: prop.SubscriptionIdentifier,
 		User: prop.User,

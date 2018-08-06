@@ -30,10 +30,10 @@ type ConnackProperties struct {
 	User                 map[string]string
 }
 
-// PropertiesFromPacketProperties is a function that takes a lower level
+// InitProperties is a function that takes a lower level
 // Properties struct and completes the properties of the Connack on
 // which it is called
-func (c *Connack) PropertiesFromPacketProperties(p *packets.Properties) {
+func (c *Connack) InitProperties(p *packets.Properties) {
 	c.Properties = &ConnackProperties{
 		AssignedClientID:     p.AssignedClientID,
 		ServerKeepAlive:      p.ServerKeepAlive,
@@ -74,7 +74,7 @@ func ConnackFromPacketConnack(c *packets.Connack) *Connack {
 		SessionPresent: c.SessionPresent,
 		ReasonCode:     c.ReasonCode,
 	}
-	v.PropertiesFromPacketProperties(c.Properties)
+	v.InitProperties(c.Properties)
 
 	return v
 }
