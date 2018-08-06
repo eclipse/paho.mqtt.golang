@@ -115,7 +115,7 @@ func TestNewControlPacketConnect(t *testing.T) {
 	sExpiryInterval := uint32(30)
 	x.Content.(*Connect).Properties.SessionExpiryInterval = &sExpiryInterval
 
-	err := x.Send(&b)
+	_, err := x.WriteTo(&b)
 
 	require.Nil(t, err)
 	assert.Len(t, b.Bytes(), 40)

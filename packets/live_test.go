@@ -2,7 +2,6 @@ package packets
 
 import (
 	"bufio"
-	"fmt"
 	"net"
 	"testing"
 
@@ -17,13 +16,13 @@ func TestLiveConnection(t *testing.T) {
 		KeepAlive(30),
 	)
 
-	sExpiryInterval := uint32(30)
-	x.Properties.SessionExpiryInterval = &sExpiryInterval
+	// sExpiryInterval := uint32(30)
+	// x.Properties.SessionExpiryInterval = &sExpiryInterval
 
 	conn, err := net.Dial("tcp", "127.0.0.1:1883")
 	require.Nil(t, err)
 
-	err = x.Send(conn)
+	_, err = x.WriteTo(conn)
 	require.Nil(t, err)
 
 	p, err := ReadPacket(bufio.NewReader(conn))
@@ -35,7 +34,7 @@ func TestLiveConnection(t *testing.T) {
 	)
 	s.PacketID = 1
 
-	err = s.Send(conn)
+	_, err = s.WriteTo(conn)
 	require.Nil(t, err)
 
 	sa, err := ReadPacket(bufio.NewReader(conn))
@@ -47,13 +46,12 @@ func TestLiveConnection(t *testing.T) {
 	)
 	pb.PacketID = 2
 
-	err = pb.Send(conn)
+	_, err = pb.WriteTo(conn)
 	require.Nil(t, err)
 
 	p, err = ReadPacket(bufio.NewReader(conn))
 	require.Nil(t, err)
 	assert.Equal(t, PUBLISH, p.Type)
-	fmt.Println(string(p.Content.(*Publish).Payload))
 
 	pb = NewPublish(
 		Message("testqos1", 1, false, []byte("Test message")),
@@ -61,7 +59,7 @@ func TestLiveConnection(t *testing.T) {
 
 	pb.PacketID = 3
 
-	err = pb.Send(conn)
+	_, err = pb.WriteTo(conn)
 	require.Nil(t, err)
 
 	p, err = ReadPacket(bufio.NewReader(conn))
@@ -73,7 +71,7 @@ func TestLiveConnection(t *testing.T) {
 	)
 	pb.PacketID = 4
 
-	err = pb.Send(conn)
+	_, err = pb.WriteTo(conn)
 	require.Nil(t, err)
 
 	p, err = ReadPacket(bufio.NewReader(conn))
@@ -83,7 +81,7 @@ func TestLiveConnection(t *testing.T) {
 	pr := NewControlPacket(PUBREL)
 	pr.Content.(*Pubrel).PacketID = 4
 
-	err = pr.Send(conn)
+	_, err = pr.WriteTo(conn)
 	require.Nil(t, err)
 
 	p, err = ReadPacket(bufio.NewReader(conn))

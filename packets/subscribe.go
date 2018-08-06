@@ -9,7 +9,7 @@ import (
 // Subscribe is the Variable Header definition for a Subscribe control packet
 type Subscribe struct {
 	PacketID      uint16
-	Properties    Properties
+	Properties    *Properties
 	Subscriptions map[string]SubOptions
 }
 
@@ -41,7 +41,7 @@ func (s *SubOptions) Pack() byte {
 func NewSubscribe(opts ...func(c *Subscribe)) *Subscribe {
 	s := &Subscribe{
 		Subscriptions: make(map[string]SubOptions),
-		Properties: Properties{
+		Properties: &Properties{
 			User: make(map[string]string),
 		},
 	}
@@ -78,7 +78,7 @@ func SubscribeMulti(subs map[string]SubOptions) func(*Subscribe) {
 // the Properties for the Subscribe packet
 func SubscribeProperties(p *Properties) func(*Subscribe) {
 	return func(s *Subscribe) {
-		s.Properties = *p
+		s.Properties = p
 	}
 }
 
@@ -112,10 +112,10 @@ func (s *Subscribe) Buffers() net.Buffers {
 	return net.Buffers{b.Bytes(), propLen, idvp, subs.Bytes()}
 }
 
-// Send is the implementation of the interface required function for a packet
-func (s *Subscribe) Send(w io.Writer) error {
+// WriteTo is the implementation of the interface required function for a packet
+func (s *Subscribe) WriteTo(w io.Writer) (int64, error) {
 	cp := &ControlPacket{FixedHeader: FixedHeader{Type: SUBSCRIBE, Flags: 2}}
 	cp.Content = s
 
-	return cp.Send(w)
+	return cp.WriteTo(w)
 }

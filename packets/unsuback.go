@@ -9,7 +9,7 @@ import (
 // Unsuback is the Variable Header definition for a Unsuback control packet
 type Unsuback struct {
 	PacketID   uint16
-	Properties Properties
+	Properties *Properties
 	Reasons    []byte
 }
 
@@ -51,12 +51,12 @@ func (u *Unsuback) Buffers() net.Buffers {
 	return net.Buffers{b.Bytes(), propLen, idvp, u.Reasons}
 }
 
-// Send is the implementation of the interface required function for a packet
-func (u *Unsuback) Send(w io.Writer) error {
+// WriteTo is the implementation of the interface required function for a packet
+func (u *Unsuback) WriteTo(w io.Writer) (int64, error) {
 	cp := &ControlPacket{FixedHeader: FixedHeader{Type: UNSUBACK}}
 	cp.Content = u
 
-	return cp.Send(w)
+	return cp.WriteTo(w)
 }
 
 // Reason returns a string representation of the meaning of the ReasonCode
@@ -86,7 +86,7 @@ func (u *Unsuback) Reason(index int) string {
 // provided/listed option functions to configure the packet
 func NewUnsuback(opts ...func(u *Unsuback)) *Unsuback {
 	u := &Unsuback{
-		Properties: Properties{
+		Properties: &Properties{
 			User: make(map[string]string),
 		},
 	}
@@ -110,6 +110,6 @@ func UnsubackReasons(r []byte) func(*Unsuback) {
 // the Properties for the Unsuback packet
 func UnsubackProperties(p *Properties) func(*Unsuback) {
 	return func(u *Unsuback) {
-		u.Properties = *p
+		u.Properties = p
 	}
 }

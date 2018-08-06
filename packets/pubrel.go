@@ -10,13 +10,14 @@ import (
 type Pubrel struct {
 	PacketID   uint16
 	ReasonCode byte
-	Properties Properties
+	Properties *Properties
 }
 
 //Unpack is the implementation of the interface required function for a packet
 func (p *Pubrel) Unpack(r *bytes.Buffer) error {
 	var err error
 	success := r.Len() == 2
+	noProps := r.Len() == 3
 	p.PacketID, err = readUint16(r)
 	if err != nil {
 		return err
@@ -27,9 +28,11 @@ func (p *Pubrel) Unpack(r *bytes.Buffer) error {
 			return err
 		}
 
-		err = p.Properties.Unpack(r, PUBACK)
-		if err != nil {
-			return err
+		if !noProps {
+			err = p.Properties.Unpack(r, PUBACK)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -45,19 +48,19 @@ func (p *Pubrel) Buffers() net.Buffers {
 	return net.Buffers{b.Bytes(), propLen, idvp}
 }
 
-// Send is the implementation of the interface required function for a packet
-func (p *Pubrel) Send(w io.Writer) error {
+// WriteTo is the implementation of the interface required function for a packet
+func (p *Pubrel) WriteTo(w io.Writer) (int64, error) {
 	cp := &ControlPacket{FixedHeader: FixedHeader{Type: PUBREL, Flags: 2}}
 	cp.Content = p
 
-	return cp.Send(w)
+	return cp.WriteTo(w)
 }
 
 // NewPubrel creates a new Pubrel packet and applies all the
 // provided/listed option functions to configure the packet
 func NewPubrel(opts ...func(p *Pubrel)) *Pubrel {
 	p := &Pubrel{
-		Properties: Properties{
+		Properties: &Properties{
 			User: make(map[string]string),
 		},
 	}
@@ -90,6 +93,6 @@ func PubrelReasonCode(r byte) func(*Pubrel) {
 // the Properties for the Pubrel packet
 func PubrelProperties(p *Properties) func(*Pubrel) {
 	return func(pr *Pubrel) {
-		pr.Properties = *p
+		pr.Properties = p
 	}
 }

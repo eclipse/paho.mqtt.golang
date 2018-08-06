@@ -2,15 +2,16 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"flag"
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"os"
 	"os/signal"
 	"syscall"
 
-	pk "github.com/eclipse/paho.mqtt.golang/packets"
 	"github.com/eclipse/paho.mqtt.golang/paho"
 )
 
@@ -27,27 +28,37 @@ func main() {
 	password := flag.String("password", "", "Password to match username")
 	flag.Parse()
 
-	c, err := paho.NewClient(paho.OpenTCPConn(*server))
+	conn, err := net.Dial("tcp", *server)
+	if err != nil {
+		log.Fatalf("Failed to connect to %s: %s", *server, err)
+	}
 
-	cp := &pk.Connect{
+	c := paho.NewClient()
+	c.Conn = conn
+
+	cp := &paho.Connect{
 		KeepAlive:  30,
 		ClientID:   *clientid,
 		CleanStart: true,
+		Username:   *username,
+		Password:   []byte(*password),
 	}
 
 	if *username != "" {
-		cp.Username = *username
+		cp.UsernameFlag = true
 	}
 	if *password != "" {
-		cp.Password = []byte(*password)
+		cp.PasswordFlag = true
 	}
 
-	ca, err := c.Connect(cp)
+	log.Println(cp.UsernameFlag, cp.PasswordFlag)
+
+	ca, err := c.Connect(context.Background(), cp)
 	if err != nil {
 		log.Fatalln(err)
 	}
 	if ca.ReasonCode != 0 {
-		log.Fatalf("Failed to connect to %s : %d - %s", *server, ca.ReasonCode, ca.Reason())
+		log.Fatalf("Failed to connect to %s : %d - %s", *server, ca.ReasonCode, ca.Properties.ReasonString)
 	}
 
 	fmt.Printf("Connected to %s\n", *server)
@@ -58,7 +69,7 @@ func main() {
 		<-ic
 		fmt.Println("signal received, exiting")
 		if c != nil {
-			d := pk.NewDisconnect(pk.DisconnectReason(0))
+			d := &paho.Disconnect{ReasonCode: 0}
 			c.Disconnect(d)
 		}
 		os.Exit(0)
@@ -70,7 +81,7 @@ func main() {
 			os.Exit(0)
 		}
 
-		if _, err = c.Publish(&pk.Publish{
+		if _, err = c.Publish(context.Background(), &paho.Publish{
 			Topic:   *topic,
 			QoS:     byte(*qos),
 			Retain:  *retained,
