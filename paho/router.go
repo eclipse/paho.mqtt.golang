@@ -31,6 +31,15 @@ type Router interface {
 type StandardRouter struct {
 	sync.RWMutex
 	subscriptions map[string][]MessageHandler
+	aliases       map[uint16]string
+}
+
+// NewStandardRouter instantiates and returns an instance of a StandardRouter
+func NewStandardRouter() *StandardRouter {
+	return &StandardRouter{
+		subscriptions: make(map[string][]MessageHandler),
+		aliases:       make(map[uint16]string),
+	}
 }
 
 // RegisterHandler is the library provided StandardRouter's
@@ -61,8 +70,22 @@ func (r *StandardRouter) Route(pb *packets.Publish) {
 	defer r.RUnlock()
 
 	m := PublishFromPacketPublish(pb)
+
+	var topic string
+	if pb.Properties.TopicAlias != nil {
+		if pb.Topic != "" {
+			//Register new alias
+			r.aliases[*pb.Properties.TopicAlias] = pb.Topic
+		}
+		if t, ok := r.aliases[*pb.Properties.TopicAlias]; ok {
+			topic = t
+		}
+	} else {
+		topic = m.Topic
+	}
+
 	for route, handlers := range r.subscriptions {
-		if match(route, m.Topic) {
+		if match(route, topic) {
 			for _, handler := range handlers {
 				handler(m)
 			}
@@ -127,7 +150,17 @@ func topicSplit(topic string) []string {
 // that stores only a single MessageHandler and invokes this MessageHandler
 // for all received Publishes
 type SingleHandlerRouter struct {
-	Handler MessageHandler
+	sync.Mutex
+	aliases map[uint16]string
+	handler MessageHandler
+}
+
+// NewSingleHandlerRouter instantiates and returns an instance of a SingleHandlerRouter
+func NewSingleHandlerRouter(h MessageHandler) *SingleHandlerRouter {
+	return &SingleHandlerRouter{
+		aliases: make(map[uint16]string),
+		handler: h,
+	}
 }
 
 // RegisterHandler is the library provided SingleHandlerRouter's
@@ -141,5 +174,16 @@ func (s *SingleHandlerRouter) UnregisterHandler(topic string) {}
 // Route is the library provided SingleHandlerRouter's
 // implementation of the required interface function()
 func (s *SingleHandlerRouter) Route(pb *packets.Publish) {
-	s.Handler(PublishFromPacketPublish(pb))
+	m := PublishFromPacketPublish(pb)
+
+	if pb.Properties.TopicAlias != nil {
+		if pb.Topic != "" {
+			//Register new alias
+			s.aliases[*pb.Properties.TopicAlias] = pb.Topic
+		}
+		if t, ok := s.aliases[*pb.Properties.TopicAlias]; ok {
+			m.Topic = t
+		}
+	}
+	s.handler(m)
 }

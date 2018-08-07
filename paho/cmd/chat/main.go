@@ -34,11 +34,9 @@ func main() {
 	}
 
 	c := paho.NewClient()
-	c.Router = &paho.SingleHandlerRouter{
-		Handler: func(m *paho.Publish) {
-			log.Printf("%s : %s", m.Properties.User["chatname"], string(m.Payload))
-		},
-	}
+	c.Router = paho.NewSingleHandlerRouter(func(m *paho.Publish) {
+		log.Printf("%s : %s", m.Properties.User["chatname"], string(m.Payload))
+	})
 	c.Conn = conn
 
 	cp := &paho.Connect{

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"strings"
 	"sync"
 	"time"
 
@@ -13,11 +14,17 @@ import (
 // Client is the struct representing an MQTT client
 type Client struct {
 	sync.Mutex
-	caCtx         *caContext
-	raCtx         *CPContext
-	stop          chan struct{}
+	// caCtx is used for synchronously handling the connect/connack
+	// flow, raCtx is used for handling the MQTTv5 authentication
+	// exchange.
+	caCtx       *caContext
+	raCtx       *CPContext
+	stop        chan struct{}
+	workers     sync.WaitGroup
+	serverProps CommsProperties
+	clientProps CommsProperties
+
 	ClientID      string
-	workers       sync.WaitGroup
 	Conn          net.Conn
 	MIDs          MIDService
 	AuthHandler   Auther
@@ -26,7 +33,6 @@ type Client struct {
 	Persistence   Persistence
 	PacketTimeout time.Duration
 	OnDisconnect  func(packets.Disconnect)
-	serverProps   CommsProperties
 }
 
 // CommsProperties is a struct of the communication properties that may
@@ -62,19 +68,23 @@ func NewClient() *Client {
 		serverProps: CommsProperties{
 			ReceiveMaximum:       65535,
 			MaximumQoS:           2,
-			MaximumPacketSize:    4294967295,
+			MaximumPacketSize:    0,
 			TopicAliasMaximum:    0,
 			RetainAvailable:      true,
 			WildcardSubAvailable: true,
 			SubIDAvailable:       true,
 			SharedSubAvailable:   true,
 		},
+		clientProps: CommsProperties{
+			ReceiveMaximum:    65535,
+			MaximumQoS:        2,
+			MaximumPacketSize: 0,
+			TopicAliasMaximum: 0,
+		},
 		Persistence:   &noopPersistence{},
 		MIDs:          &MIDs{index: make(map[uint16]*CPContext)},
 		PacketTimeout: 10 * time.Second,
-		Router: &StandardRouter{
-			subscriptions: make(map[string][]MessageHandler),
-		},
+		Router:        NewStandardRouter(),
 	}
 
 	c.PingHandler = &PingHandler{
@@ -94,16 +104,27 @@ func NewClient() *Client {
 // returned. Otherwise the failure Connack (if there is one) is returned
 // along with an error indicating the reason for the failure to connect.
 func (c *Client) Connect(ctx context.Context, cp *Connect) (*Connack, error) {
+	if c.Conn == nil {
+		return nil, fmt.Errorf("Client connection is nil")
+	}
+
 	debug.Println("Connecting")
 	c.Lock()
 	defer c.Unlock()
 
 	keepalive := cp.KeepAlive
-
 	c.ClientID = cp.ClientID
-
-	if c.Conn == nil {
-		return nil, fmt.Errorf("Client has no connection")
+	if cp.Properties.MaximumPacketSize != nil {
+		c.clientProps.MaximumPacketSize = *cp.Properties.MaximumPacketSize
+	}
+	if cp.Properties.MaximumQOS != nil {
+		c.clientProps.MaximumQoS = *cp.Properties.MaximumQOS
+	}
+	if cp.Properties.ReceiveMaximum != nil {
+		c.clientProps.ReceiveMaximum = *cp.Properties.ReceiveMaximum
+	}
+	if cp.Properties.TopicAliasMaximum != nil {
+		c.clientProps.TopicAliasMaximum = *cp.Properties.TopicAliasMaximum
 	}
 
 	debug.Println("Starting Incoming")
@@ -340,7 +361,27 @@ func (c *Client) Authenticate(ctx context.Context, a *Auth) (*AuthResponse, erro
 // a response Suback, or for the timeout to fire. Any reponse Suback
 // is returned from the function, along with any errors.
 func (c *Client) Subscribe(ctx context.Context, s *Subscribe) (*Suback, error) {
+	if !c.serverProps.WildcardSubAvailable {
+		for t := range s.Subscriptions {
+			if strings.IndexAny(t, "#+") > -1 {
+				// Using a wildcard in a subscription when not supported
+				return nil, fmt.Errorf("Cannot subscribe to %s, server does not support wildcards", t)
+			}
+		}
+	}
+	if !c.serverProps.SubIDAvailable && s.Properties.SubscriptionIdentifier != nil {
+		return nil, fmt.Errorf("Cannot send subscribe with subID set, server does not support subID")
+	}
+	if !c.serverProps.SharedSubAvailable {
+		for t := range s.Subscriptions {
+			if strings.HasPrefix(t, "$share") {
+				return nil, fmt.Errorf("Cannont subscribe to %s, server does not support shared subscriptions", t)
+			}
+		}
+	}
+
 	debug.Printf("Subscribing to %+v", s.Subscriptions)
+
 	subCtx, cf := context.WithTimeout(ctx, c.PacketTimeout)
 	defer cf()
 	cpCtx := &CPContext{make(chan packets.ControlPacket, 1), subCtx}
@@ -446,9 +487,19 @@ func (c *Client) Unsubscribe(ctx context.Context, u *Unsubscribe) (*Unsuback, er
 // the appropriate response, or for the timeout to fire.
 // Any reponse message is returned from the function, along with any errors.
 func (c *Client) Publish(ctx context.Context, p *Publish) (*PublishResponse, error) {
+	if p.QoS > c.serverProps.MaximumQoS {
+		return nil, fmt.Errorf("Cannot send Publish with QoS %d, server maximum QoS is %d", p.QoS, c.serverProps.MaximumQoS)
+	}
+	if p.Properties.TopicAlias != nil {
+		if c.serverProps.TopicAliasMaximum > 0 && *p.Properties.TopicAlias > c.serverProps.TopicAliasMaximum {
+			return nil, fmt.Errorf("Cannot send publish with TopicAlias %d, server topic alias maximum is %d", *p.Properties.TopicAlias, c.serverProps.TopicAliasMaximum)
+		}
+	}
+	if !c.serverProps.RetainAvailable && p.Retain {
+		return nil, fmt.Errorf("Cannot send Publish with retain flag set, server does not support retained messages")
+	}
+
 	debug.Printf("Sending message to %s", p.Topic)
-	c.Lock()
-	defer c.Unlock()
 
 	pb := p.Packet()
 

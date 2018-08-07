@@ -31,11 +31,9 @@ func main() {
 	}
 
 	c := paho.NewClient()
-	c.Router = &paho.SingleHandlerRouter{
-		Handler: func(m *paho.Publish) {
-			msgChan <- m
-		},
-	}
+	c.Router = paho.NewSingleHandlerRouter(func(m *paho.Publish) {
+		msgChan <- m
+	})
 	c.Conn = conn
 
 	cp := &paho.Connect{
