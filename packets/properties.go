@@ -43,59 +43,91 @@ const (
 // relvative to the packettype it was received in is provided by the
 // ValidateID function
 type Properties struct {
-	// PayloadFormat sets the payload format
+	// PayloadFormat indicates the format of the payload of the message
+	// 0 is unspecified bytes
+	// 1 is UTF8 encoded character data
 	PayloadFormat *byte
-	// MessageExpiry sets the pub expiry
+	// MessageExpiry is the lifetime of the message in seconds
 	MessageExpiry *uint32
-	// ContentType sets the content type
+	// ContentType is a UTF8 string describing the content of the message
+	// for example it could be a MIME type
 	ContentType string
-	// ResponseTopic sets the response topic
+	// ResponseTopic is a UTF8 string indicating the topic name to which any
+	// response to this message should be sent
 	ResponseTopic string
-	// CorrelationData sets the correlation data
+	// CorrelationData is binary data used to associate future response
+	// messages with the original request message
 	CorrelationData []byte
-	// SubscriptionIdentifier sets the subscription identifier
+	// SubscriptionIdentifier is an identifier of the subscription to which
+	// the Publish matched
 	SubscriptionIdentifier *uint32
-	// SessionExpiryInterval sets the session expiry interval
+	// SessionExpiryInterval is the time in seconds after a client disconnects
+	// that the server should retain the session information (subscriptions etc)
 	SessionExpiryInterval *uint32
-	// AssignedClientID sets the assigned client id
+	// AssignedClientID is the server assigned client identifier in the case
+	// that a client connected without specifying a clientID the server
+	// generates one and returns it in the Connack
 	AssignedClientID string
-	// ServerKeepAlive sets the server keep alive
+	// ServerKeepAlive allows the server to specify in the Connack packet
+	// the time in seconds to be used as the keep alive value
 	ServerKeepAlive *uint16
-	// AuthMethod sets the auth method
+	// AuthMethod is a UTF8 string containing the name of the authentication
+	// method to be used for extended authentication
 	AuthMethod string
-	// AuthData sets the auth data
+	// AuthData is binary data containing authentication data
 	AuthData []byte
-	// RequestProblemInfo sets the request problem info
+	// RequestProblemInfo is used by the Client to indicate to the server to
+	// include the Reason String and/or User Properties in case of failures
 	RequestProblemInfo *byte
-	// WillDelayInterval sets the will delay interval
+	// WillDelayInterval is the number of seconds the server waits after the
+	// point at which it would otherwise send the will message before sending
+	// it. The client reconnecting before that time expires causes the server
+	// to cancel sending the will
 	WillDelayInterval *uint32
-	// RequestResponseInfo sets the request response info
+	// RequestResponseInfo is used by the Client to request the Server provide
+	// Response Information in the Connack
 	RequestResponseInfo *byte
-	// ResponseInfo sets the response info
+	// ResponseInfo is a UTF8 encoded string that can be used as the basis for
+	// createing a Response Topic. The way in which the Client creates a
+	// Response Topic from the Response Information is not defined. A common
+	// use of this is to pass a globally unique portion of the topic tree which
+	// is reserved for this Client for at least the lifetime of its Session. This
+	// often cannot just be a random name as both the requesting Client and the
+	// responding Client need to be authorized to use it. It is normal to use this
+	// as the root of a topic tree for a particular Client. For the Server to
+	// return this information, it normally needs to be correctly configured.
+	// Using this mechanism allows this configuration to be done once in the
+	// Server rather than in each Client
 	ResponseInfo string
-	// ServerReference sets the server reference
+	// ServerReference is a UTF8 string indicating another server the client
+	// can use
 	ServerReference string
-	// ReasonString sets the reason string
+	// ReasonString is a UTF8 string representing the reason associated with
+	// this response, intended to be human readable for diagnostic purposes
 	ReasonString string
-	// ReceiveMaximum sets the receive maximum
+	// ReceiveMaximum is the maximum number of QOS1 & 2 messages allowed to be
+	// 'inflight' (not having received a PUBACK/PUBCOMP response for)
 	ReceiveMaximum *uint16
-	// TopicAliasMaximum sets the topic alias maximum
+	// TopicAliasMaximum is the highest value permitted as a Topic Alias
 	TopicAliasMaximum *uint16
-	// TopicAlias sets the topic alias
+	// TopicAlias is used in place of the topic string to reduce the size of
+	// packets for repeated messages on a topic
 	TopicAlias *uint16
-	// MaximumQOS sets the maximum qos
+	// MaximumQOS is the highest QOS level permitted for a Publish
 	MaximumQOS *byte
-	// RetainAvailable sets the retain available
+	// RetainAvailable indicates whether the server supports messages with the
+	// retain flag set
 	RetainAvailable *byte
 	// User is a map of user provided properties
 	User map[string]string
-	// MaximumPacketSize sets the maximum packet size
+	// MaximumPacketSize allows the client or server to specify the maximum packet
+	// size in bytes that they support
 	MaximumPacketSize *uint32
-	// WildcardSubAvailable sets the wildcard sub available
+	// WildcardSubAvailable indicates whether wildcard subscriptions are permitted
 	WildcardSubAvailable *byte
-	// SubIDAvailable sets the sub id available
+	// SubIDAvailable indicates whether subscription identifiers are supported
 	SubIDAvailable *byte
-	// SharedSubAvailable sets the shared sub available
+	// SharedSubAvailable indicates whether shared subscriptions are supported
 	SharedSubAvailable *byte
 }
 

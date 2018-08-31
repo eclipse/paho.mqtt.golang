@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/eclipse/paho.mqtt.golang/packets"
+	"golang.org/x/sync/semaphore"
 )
 
 // Client is the struct representing an MQTT client
@@ -17,12 +18,14 @@ type Client struct {
 	// caCtx is used for synchronously handling the connect/connack
 	// flow, raCtx is used for handling the MQTTv5 authentication
 	// exchange.
-	caCtx       *caContext
-	raCtx       *CPContext
-	stop        chan struct{}
-	workers     sync.WaitGroup
-	serverProps CommsProperties
-	clientProps CommsProperties
+	caCtx          *caContext
+	raCtx          *CPContext
+	stop           chan struct{}
+	workers        sync.WaitGroup
+	serverProps    CommsProperties
+	clientProps    CommsProperties
+	serverInflight *semaphore.Weighted
+	clientInflight *semaphore.Weighted
 
 	ClientID      string
 	Conn          net.Conn
@@ -114,17 +117,19 @@ func (c *Client) Connect(ctx context.Context, cp *Connect) (*Connack, error) {
 
 	keepalive := cp.KeepAlive
 	c.ClientID = cp.ClientID
-	if cp.Properties.MaximumPacketSize != nil {
-		c.clientProps.MaximumPacketSize = *cp.Properties.MaximumPacketSize
-	}
-	if cp.Properties.MaximumQOS != nil {
-		c.clientProps.MaximumQoS = *cp.Properties.MaximumQOS
-	}
-	if cp.Properties.ReceiveMaximum != nil {
-		c.clientProps.ReceiveMaximum = *cp.Properties.ReceiveMaximum
-	}
-	if cp.Properties.TopicAliasMaximum != nil {
-		c.clientProps.TopicAliasMaximum = *cp.Properties.TopicAliasMaximum
+	if cp.Properties != nil {
+		if cp.Properties.MaximumPacketSize != nil {
+			c.clientProps.MaximumPacketSize = *cp.Properties.MaximumPacketSize
+		}
+		if cp.Properties.MaximumQOS != nil {
+			c.clientProps.MaximumQoS = *cp.Properties.MaximumQOS
+		}
+		if cp.Properties.ReceiveMaximum != nil {
+			c.clientProps.ReceiveMaximum = *cp.Properties.ReceiveMaximum
+		}
+		if cp.Properties.TopicAliasMaximum != nil {
+			c.clientProps.TopicAliasMaximum = *cp.Properties.TopicAliasMaximum
+		}
 	}
 
 	debug.Println("Starting Incoming")
@@ -165,32 +170,41 @@ func (c *Client) Connect(ctx context.Context, cp *Connect) (*Connack, error) {
 	ca := ConnackFromPacketConnack(cap)
 
 	if ca.ReasonCode >= 0x80 {
+		var reason string
 		debug.Println("Received an error code in Connack:", ca.ReasonCode)
-		return ca, fmt.Errorf("Failed to connect to server: %s", ca.Properties.ReasonString)
+		if ca.Properties != nil {
+			reason = ca.Properties.ReasonString
+		}
+		return ca, fmt.Errorf("Failed to connect to server: %s", reason)
 	}
 
-	if ca.Properties.ServerKeepAlive != nil {
-		keepalive = *ca.Properties.ServerKeepAlive
+	if ca.Properties != nil {
+		if ca.Properties.ServerKeepAlive != nil {
+			keepalive = *ca.Properties.ServerKeepAlive
+		}
+		if ca.Properties.AssignedClientID != "" {
+			c.ClientID = ca.Properties.AssignedClientID
+		}
+		if ca.Properties.ReceiveMaximum != nil {
+			c.serverProps.ReceiveMaximum = *ca.Properties.ReceiveMaximum
+		}
+		if ca.Properties.MaximumQoS != nil {
+			c.serverProps.MaximumQoS = *ca.Properties.MaximumQoS
+		}
+		if ca.Properties.MaximumPacketSize != nil {
+			c.serverProps.MaximumPacketSize = *ca.Properties.MaximumPacketSize
+		}
+		if ca.Properties.TopicAliasMaximum != nil {
+			c.serverProps.TopicAliasMaximum = *ca.Properties.TopicAliasMaximum
+		}
+		c.serverProps.RetainAvailable = ca.Properties.RetainAvailable
+		c.serverProps.WildcardSubAvailable = ca.Properties.WildcardSubAvailable
+		c.serverProps.SubIDAvailable = ca.Properties.SubIDAvailable
+		c.serverProps.SharedSubAvailable = ca.Properties.SharedSubAvailable
 	}
-	if ca.Properties.AssignedClientID != "" {
-		c.ClientID = ca.Properties.AssignedClientID
-	}
-	if ca.Properties.ReceiveMaximum != nil {
-		c.serverProps.ReceiveMaximum = *ca.Properties.ReceiveMaximum
-	}
-	if ca.Properties.MaximumQoS != nil {
-		c.serverProps.MaximumQoS = *ca.Properties.MaximumQoS
-	}
-	if ca.Properties.MaximumPacketSize != nil {
-		c.serverProps.MaximumPacketSize = *ca.Properties.MaximumPacketSize
-	}
-	if ca.Properties.TopicAliasMaximum != nil {
-		c.serverProps.TopicAliasMaximum = *ca.Properties.TopicAliasMaximum
-	}
-	c.serverProps.RetainAvailable = ca.Properties.RetainAvailable
-	c.serverProps.WildcardSubAvailable = ca.Properties.WildcardSubAvailable
-	c.serverProps.SubIDAvailable = ca.Properties.SubIDAvailable
-	c.serverProps.SharedSubAvailable = ca.Properties.SharedSubAvailable
+
+	c.serverInflight = semaphore.NewWeighted(int64(c.serverProps.ReceiveMaximum))
+	c.clientInflight = semaphore.NewWeighted(int64(c.clientProps.ReceiveMaximum))
 
 	debug.Println("Received CONNACK, starting PingHandler")
 	c.workers.Add(1)
@@ -369,7 +383,7 @@ func (c *Client) Subscribe(ctx context.Context, s *Subscribe) (*Suback, error) {
 			}
 		}
 	}
-	if !c.serverProps.SubIDAvailable && s.Properties.SubscriptionIdentifier != nil {
+	if !c.serverProps.SubIDAvailable && s.Properties != nil && s.Properties.SubscriptionIdentifier != nil {
 		return nil, fmt.Errorf("Cannot send subscribe with subID set, server does not support subID")
 	}
 	if !c.serverProps.SharedSubAvailable {
@@ -414,8 +428,12 @@ func (c *Client) Subscribe(ctx context.Context, s *Subscribe) (*Suback, error) {
 	switch {
 	case len(sa.Reasons) == 1:
 		if sa.Reasons[0] >= 0x80 {
+			var reason string
 			debug.Println("Received an error code in Suback:", sa.Reasons[0])
-			return sa, fmt.Errorf("Failed to subscribe to topic: %s", sa.Properties.ReasonString)
+			if sa.Properties != nil {
+				reason = sa.Properties.ReasonString
+			}
+			return sa, fmt.Errorf("Failed to subscribe to topic: %s", reason)
 		}
 	default:
 		for _, code := range sa.Reasons {
@@ -467,8 +485,12 @@ func (c *Client) Unsubscribe(ctx context.Context, u *Unsubscribe) (*Unsuback, er
 	switch {
 	case len(ua.Reasons) == 1:
 		if ua.Reasons[0] >= 0x80 {
-			debug.Println("Received an error code in Suback:", ua.Reasons[0])
-			return ua, fmt.Errorf("Failed to unsubscribe from topic: %s", ua.Properties.ReasonString)
+			var reason string
+			debug.Println("Received an error code in Unsuback:", ua.Reasons[0])
+			if ua.Properties != nil {
+				reason = ua.Properties.ReasonString
+			}
+			return ua, fmt.Errorf("Failed to unsubscribe from topic: %s", reason)
 		}
 	default:
 		for _, code := range ua.Reasons {
@@ -490,7 +512,7 @@ func (c *Client) Publish(ctx context.Context, p *Publish) (*PublishResponse, err
 	if p.QoS > c.serverProps.MaximumQoS {
 		return nil, fmt.Errorf("Cannot send Publish with QoS %d, server maximum QoS is %d", p.QoS, c.serverProps.MaximumQoS)
 	}
-	if p.Properties.TopicAlias != nil {
+	if p.Properties != nil && p.Properties.TopicAlias != nil {
 		if c.serverProps.TopicAliasMaximum > 0 && *p.Properties.TopicAlias > c.serverProps.TopicAliasMaximum {
 			return nil, fmt.Errorf("Cannot send publish with TopicAlias %d, server topic alias maximum is %d", *p.Properties.TopicAlias, c.serverProps.TopicAliasMaximum)
 		}
@@ -518,9 +540,12 @@ func (c *Client) Publish(ctx context.Context, p *Publish) (*PublishResponse, err
 }
 
 func (c *Client) publishQoS12(ctx context.Context, pb *packets.Publish) (*PublishResponse, error) {
-	debug.Println("Sending QoS1 message")
+	debug.Println("Sending QoS12 message")
 	pubCtx, cf := context.WithTimeout(ctx, c.PacketTimeout)
 	defer cf()
+	if err := c.serverInflight.Acquire(pubCtx, 1); err != nil {
+		return nil, err
+	}
 	cpCtx := &CPContext{make(chan packets.ControlPacket, 1), pubCtx}
 
 	pb.PacketID = c.MIDs.Request(cpCtx)
@@ -544,6 +569,7 @@ func (c *Client) publishQoS12(ctx context.Context, pb *packets.Publish) (*Publis
 			return nil, fmt.Errorf("Received %d instead of PUBACK", resp.Type)
 		}
 		debug.Println("Received PUBACK for", pb.PacketID)
+		c.serverInflight.Release(1)
 
 		pr := PublishResponseFromPuback(resp.Content.(*packets.Puback))
 		if pr.ReasonCode >= 0x80 {
@@ -555,10 +581,12 @@ func (c *Client) publishQoS12(ctx context.Context, pb *packets.Publish) (*Publis
 		switch resp.Type {
 		case packets.PUBCOMP:
 			debug.Println("Received PUBCOMP for", pb.PacketID)
+			c.serverInflight.Release(1)
 			pr := PublishResponseFromPubcomp(resp.Content.(*packets.Pubcomp))
 			return pr, nil
 		case packets.PUBREC:
 			debug.Printf("Received PUBREC for %s (must have errored)", pb.PacketID)
+			c.serverInflight.Release(1)
 			pr := PublishResponseFromPubrec(resp.Content.(*packets.Pubrec))
 			return pr, nil
 		default:
