@@ -29,7 +29,7 @@ type SubscribeProperties struct {
 func (s *Subscribe) InitProperties(prop *packets.Properties) {
 	s.Properties = &SubscribeProperties{
 		SubscriptionIdentifier: prop.SubscriptionIdentifier,
-		User: prop.User,
+		User:                   prop.User,
 	}
 }
 
@@ -57,7 +57,7 @@ func (s *Subscribe) Packet() *packets.Subscribe {
 	if s.Properties != nil {
 		v.Properties = &packets.Properties{
 			SubscriptionIdentifier: s.Properties.SubscriptionIdentifier,
-			User: s.Properties.User,
+			User:                   s.Properties.User,
 		}
 	}
 

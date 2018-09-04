@@ -41,7 +41,7 @@ func (p *Publish) InitProperties(prop *packets.Properties) {
 		CorrelationData:        prop.CorrelationData,
 		TopicAlias:             prop.TopicAlias,
 		SubscriptionIdentifier: prop.SubscriptionIdentifier,
-		User: prop.User,
+		User:                   prop.User,
 	}
 }
 
@@ -77,7 +77,7 @@ func (p *Publish) Packet() *packets.Publish {
 			CorrelationData:        p.Properties.CorrelationData,
 			TopicAlias:             p.Properties.TopicAlias,
 			SubscriptionIdentifier: p.Properties.SubscriptionIdentifier,
-			User: p.Properties.User,
+			User:                   p.Properties.User,
 		}
 	}
 
