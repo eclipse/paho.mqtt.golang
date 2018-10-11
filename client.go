@@ -57,6 +57,9 @@ type Client interface {
 	// IsConnected returns a bool signifying whether
 	// the client is connected or not.
 	IsConnected() bool
+	// IsConnectionOpen return a bool signifying wether the client has an active
+	// connection to mqtt broker, i.e not in disconnected or reconnect mode
+	IsConnectionOpen() bool
 	// Connect will create a connection to the message broker, by default
 	// it will attempt to connect at v3.1.1 and auto retry at v3.1 if that
 	// fails
@@ -166,6 +169,21 @@ func (c *client) IsConnected() bool {
 		return false
 	}
 }
+
+// IsConnectionOpen return a bool signifying whether the client has an active
+// connection to mqtt broker, i.e not in disconnected or reconnect mode
+func (c *client) IsConnectionOpen() bool {
+	c.RLock()
+	defer c.RUnlock()
+	status := atomic.LoadUint32(&c.status)
+	switch {
+	case status == connected:
+		return true
+	default:
+		return false
+	}
+}
+
 
 func (c *client) connectionStatus() uint32 {
 	c.RLock()
