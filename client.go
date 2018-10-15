@@ -579,7 +579,13 @@ func (c *client) Publish(topic string, qos byte, retained bool, payload interfac
 		token.messageID = pub.MessageID
 	}
 	persistOutbound(c.persist, pub)
-	c.obound <- &PacketAndToken{p: pub, t: token}
+	select {
+	case c.obound <- &PacketAndToken{p: pub, t: token}:
+	default:
+		oldestPub := <-c.obound
+		oldestPub.t.setError(errors.New("The publish queue is full. This message will be cancelled"))
+		c.obound <- &PacketAndToken{p: pub, t: token}
+	}
 	return token
 }
 
