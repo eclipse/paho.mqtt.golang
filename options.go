@@ -60,7 +60,7 @@ type ClientOptions struct {
 	WillRetained            bool
 	ProtocolVersion         uint
 	protocolVersionExplicit bool
-	TLSConfig               tls.Config
+	TLSConfig               *tls.Config
 	KeepAlive               int64
 	PingTimeout             time.Duration
 	ConnectTimeout          time.Duration
@@ -100,7 +100,6 @@ func NewClientOptions() *ClientOptions {
 		WillRetained:            false,
 		ProtocolVersion:         0,
 		protocolVersionExplicit: false,
-		TLSConfig:               tls.Config{},
 		KeepAlive:               30,
 		PingTimeout:             10 * time.Second,
 		ConnectTimeout:          30 * time.Second,
@@ -205,7 +204,7 @@ func (o *ClientOptions) SetOrderMatters(order bool) *ClientOptions {
 // to an MQTT broker. Please read the official Go documentation for more
 // information.
 func (o *ClientOptions) SetTLSConfig(t *tls.Config) *ClientOptions {
-	o.TLSConfig = *t
+	o.TLSConfig = t
 	return o
 }
 

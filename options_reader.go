@@ -103,7 +103,7 @@ func (r *ClientOptionsReader) ProtocolVersion() uint {
 	return s
 }
 
-func (r *ClientOptionsReader) TLSConfig() tls.Config {
+func (r *ClientOptionsReader) TLSConfig() *tls.Config {
 	s := r.options.TLSConfig
 	return s
 }
