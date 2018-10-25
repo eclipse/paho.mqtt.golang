@@ -163,7 +163,7 @@ func (c *client) IsConnected() bool {
 	switch {
 	case status == connected:
 		return true
-	case c.options.AutoReconnect && status > disconnected:
+	case c.options.AutoReconnect && status > connecting:
 		return true
 	default:
 		return false
