@@ -13,6 +13,7 @@
 package mqtt
 
 import (
+	"net/url"
 	"testing"
 )
 
@@ -21,7 +22,7 @@ func Test_UsernamePassword(t *testing.T) {
 	options.Username = "username"
 	options.Password = "password"
 
-	m := newConnectMsgFromOptions(options)
+	m := newConnectMsgFromOptions(options, &url.URL{})
 
 	if m.Username != "username" {
 		t.Fatalf("Username not set correctly")
@@ -40,12 +41,25 @@ func Test_CredentialsProvider(t *testing.T) {
 		return "username", "password"
 	})
 
-	m := newConnectMsgFromOptions(options)
+	m := newConnectMsgFromOptions(options, &url.URL{})
 
 	if m.Username != "username" {
 		t.Fatalf("Username not set correctly")
 	}
 
+	if string(m.Password) != "password" {
+		t.Fatalf("Password not set correctly")
+	}
+}
+
+func Test_BrokerCredentials(t *testing.T) {
+	m := newConnectMsgFromOptions(
+		NewClientOptions(),
+		&url.URL{User: url.UserPassword("username", "password")},
+	)
+	if m.Username != "username" {
+		t.Fatalf("Username not set correctly")
+	}
 	if string(m.Password) != "password" {
 		t.Fatalf("Password not set correctly")
 	}

@@ -15,6 +15,8 @@
 package mqtt
 
 import (
+	"net/url"
+
 	"github.com/eclipse/paho.mqtt.golang/packets"
 )
 
@@ -74,7 +76,7 @@ func messageFromPublish(p *packets.PublishPacket) Message {
 	}
 }
 
-func newConnectMsgFromOptions(options *ClientOptions) *packets.ConnectPacket {
+func newConnectMsgFromOptions(options *ClientOptions, broker *url.URL) *packets.ConnectPacket {
 	m := packets.NewControlPacket(packets.Connect).(*packets.ConnectPacket)
 
 	m.CleanSession = options.CleanSession
@@ -90,6 +92,12 @@ func newConnectMsgFromOptions(options *ClientOptions) *packets.ConnectPacket {
 
 	username := options.Username
 	password := options.Password
+	if broker.User != nil {
+		username = broker.User.Username()
+		if pwd, ok := broker.User.Password(); ok {
+			password = pwd
+		}
+	}
 	if options.CredentialsProvider != nil {
 		username, password = options.CredentialsProvider()
 	}
