@@ -41,7 +41,9 @@ func signalError(c chan<- error, err error) {
 func openConnection(uri *url.URL, tlsc *tls.Config, timeout time.Duration, headers http.Header) (net.Conn, error) {
 	switch uri.Scheme {
 	case "ws":
-		conn, err := websocket.Dial(uri.String(), "mqtt", fmt.Sprintf("http://%s", uri.Host))
+		conn, err := websocket.NewConfig(uri.String(), fmt.Sprintf("http://%s", uri.Host))
+		config.Protocol = []string{"mqtt"}
+		config.Header = headers
 		if err != nil {
 			return nil, err
 		}
