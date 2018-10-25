@@ -16,6 +16,7 @@ package mqtt
 
 import (
 	"crypto/tls"
+	"net/http"
 	"net/url"
 	"time"
 )
@@ -140,4 +141,9 @@ func (r *ClientOptionsReader) WriteTimeout() time.Duration {
 func (r *ClientOptionsReader) MessageChannelDepth() uint {
 	s := r.options.MessageChannelDepth
 	return s
+}
+
+func (r *ClientOptionsReader) HTTPHeaders() http.Header {
+	h := r.options.HTTPHeaders
+	return h
 }

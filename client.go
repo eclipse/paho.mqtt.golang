@@ -12,6 +12,8 @@
  *    Mike Robertson
  */
 
+// Portions copyright © 2018 TIBCO Software Inc.
+
 // Package mqtt provides an MQTT v3.1.1 client library.
 package mqtt
 
@@ -55,6 +57,9 @@ type Client interface {
 	// IsConnected returns a bool signifying whether
 	// the client is connected or not.
 	IsConnected() bool
+	// IsConnectionOpen return a bool signifying wether the client has an active
+	// connection to mqtt broker, i.e not in disconnected or reconnect mode
+	IsConnectionOpen() bool
 	// Connect will create a connection to the message broker, by default
 	// it will attempt to connect at v3.1.1 and auto retry at v3.1 if that
 	// fails
@@ -123,6 +128,8 @@ func NewClient(o *ClientOptions) Client {
 	switch c.options.ProtocolVersion {
 	case 3, 4:
 		c.options.protocolVersionExplicit = true
+	case 0x83, 0x84:
+		c.options.protocolVersionExplicit = true
 	default:
 		c.options.ProtocolVersion = 4
 		c.options.protocolVersionExplicit = false
@@ -163,6 +170,21 @@ func (c *client) IsConnected() bool {
 	}
 }
 
+// IsConnectionOpen return a bool signifying whether the client has an active
+// connection to mqtt broker, i.e not in disconnected or reconnect mode
+func (c *client) IsConnectionOpen() bool {
+	c.RLock()
+	defer c.RUnlock()
+	status := atomic.LoadUint32(&c.status)
+	switch {
+	case status == connected:
+		return true
+	default:
+		return false
+	}
+}
+
+
 func (c *client) connectionStatus() uint32 {
 	c.RLock()
 	defer c.RUnlock()
@@ -196,15 +218,23 @@ func (c *client) Connect() Token {
 		c.persist.Open()
 
 		c.setConnected(connecting)
+		c.errors = make(chan error, 1)
+		c.stop = make(chan struct{})
+
 		var rc byte
 		cm := newConnectMsgFromOptions(&c.options)
 		protocolVersion := c.options.ProtocolVersion
+
+		if len(c.options.Servers) == 0 {
+			t.setError(fmt.Errorf("No servers defined to connect to"))
+			return
+		}
 
 		for _, broker := range c.options.Servers {
 			c.options.ProtocolVersion = protocolVersion
 		CONN:
 			DEBUG.Println(CLI, "about to write new connect msg")
-			c.conn, err = openConnection(broker, &c.options.TLSConfig, c.options.ConnectTimeout)
+			c.conn, err = openConnection(broker, &c.options.TLSConfig, c.options.ConnectTimeout, c.options.HTTPHeaders)
 			if err == nil {
 				DEBUG.Println(CLI, "socket connected to broker")
 				switch c.options.ProtocolVersion {
@@ -212,6 +242,14 @@ func (c *client) Connect() Token {
 					DEBUG.Println(CLI, "Using MQTT 3.1 protocol")
 					cm.ProtocolName = "MQIsdp"
 					cm.ProtocolVersion = 3
+				case 0x83:
+					DEBUG.Println(CLI, "Using MQTT 3.1b protocol")
+					cm.ProtocolName = "MQIsdp"
+					cm.ProtocolVersion = 0x83
+				case 0x84:
+					DEBUG.Println(CLI, "Using MQTT 3.1.1b protocol")
+					cm.ProtocolName = "MQTT"
+					cm.ProtocolVersion = 0x84
 				default:
 					DEBUG.Println(CLI, "Using MQTT 3.1.1 protocol")
 					c.options.ProtocolVersion = 4
@@ -247,22 +285,18 @@ func (c *client) Connect() Token {
 
 		if c.conn == nil {
 			ERROR.Println(CLI, "Failed to connect to a broker")
-			t.returnCode = rc
-			if rc != packets.ErrNetworkError {
-				t.err = packets.ConnErrors[rc]
-			} else {
-				t.err = fmt.Errorf("%s : %s", packets.ConnErrors[rc], err)
-			}
 			c.setConnected(disconnected)
 			c.persist.Close()
-			t.flowComplete()
+			t.returnCode = rc
+			if rc != packets.ErrNetworkError {
+				t.setError(packets.ConnErrors[rc])
+			} else {
+				t.setError(fmt.Errorf("%s : %s", packets.ConnErrors[rc], err))
+			}
 			return
 		}
 
 		c.options.protocolVersionExplicit = true
-
-		c.errors = make(chan error, 1)
-		c.stop = make(chan struct{})
 
 		if c.options.KeepAlive != 0 {
 			atomic.StoreInt32(&c.pingOutstanding, 0)
@@ -315,10 +349,18 @@ func (c *client) reconnect() {
 
 		for _, broker := range c.options.Servers {
 			DEBUG.Println(CLI, "about to write new connect msg")
-			c.conn, err = openConnection(broker, &c.options.TLSConfig, c.options.ConnectTimeout)
+			c.conn, err = openConnection(broker, &c.options.TLSConfig, c.options.ConnectTimeout, c.options.HTTPHeaders)
 			if err == nil {
 				DEBUG.Println(CLI, "socket connected to broker")
 				switch c.options.ProtocolVersion {
+				case 0x83:
+					DEBUG.Println(CLI, "Using MQTT 3.1b protocol")
+					cm.ProtocolName = "MQIsdp"
+					cm.ProtocolVersion = 0x83
+				case 0x84:
+					DEBUG.Println(CLI, "Using MQTT 3.1.1b protocol")
+					cm.ProtocolName = "MQTT"
+					cm.ProtocolVersion = 0x84
 				case 3:
 					DEBUG.Println(CLI, "Using MQTT 3.1 protocol")
 					cm.ProtocolName = "MQIsdp"

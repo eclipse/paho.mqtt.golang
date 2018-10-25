@@ -88,13 +88,19 @@ func newConnectMsgFromOptions(options *ClientOptions) *packets.ConnectPacket {
 		m.WillMessage = options.WillPayload
 	}
 
-	if options.Username != "" {
+	username := options.Username
+	password := options.Password
+	if options.CredentialsProvider != nil {
+		username, password = options.CredentialsProvider()
+	}
+
+	if username != "" {
 		m.UsernameFlag = true
-		m.Username = options.Username
+		m.Username = username
 		//mustn't have password without user as well
-		if options.Password != "" {
+		if password != "" {
 			m.PasswordFlag = true
-			m.Password = []byte(options.Password)
+			m.Password = []byte(password)
 		}
 	}
 

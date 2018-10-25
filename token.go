@@ -34,11 +34,15 @@ type Token interface {
 	Wait() bool
 	WaitTimeout(time.Duration) bool
 	Error() error
+}
+
+type TokenErrorSetter interface {
 	setError(error)
 }
 
 type tokenCompletor interface {
 	Token
+	TokenErrorSetter
 	flowComplete()
 }
 
@@ -93,8 +97,6 @@ func (b *baseToken) Error() error {
 }
 
 func (b *baseToken) setError(e error) {
-	b.m.Lock()
-	defer b.m.Unlock()
 	b.err = e
 	b.flowComplete()
 }

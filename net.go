@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/http"
 	"net/url"
 	"os"
 	"reflect"
@@ -37,7 +38,7 @@ func signalError(c chan<- error, err error) {
 	}
 }
 
-func openConnection(uri *url.URL, tlsc *tls.Config, timeout time.Duration) (net.Conn, error) {
+func openConnection(uri *url.URL, tlsc *tls.Config, timeout time.Duration, headers http.Header) (net.Conn, error) {
 	switch uri.Scheme {
 	case "ws":
 		conn, err := websocket.Dial(uri.String(), "mqtt", fmt.Sprintf("http://%s", uri.Host))
@@ -50,6 +51,7 @@ func openConnection(uri *url.URL, tlsc *tls.Config, timeout time.Duration) (net.
 		config, _ := websocket.NewConfig(uri.String(), fmt.Sprintf("https://%s", uri.Host))
 		config.Protocol = []string{"mqtt"}
 		config.TlsConfig = tlsc
+		config.Header = headers
 		conn, err := websocket.DialConfig(config)
 		if err != nil {
 			return nil, err
@@ -199,7 +201,9 @@ func outgoing(c *client) {
 			DEBUG.Println(NET, "obound priority msg to write, type", reflect.TypeOf(msg.p))
 			if err := msg.p.Write(c.conn); err != nil {
 				ERROR.Println(NET, "outgoing stopped with error", err)
-				msg.t.setError(err)
+				if msg.t != nil {
+					msg.t.setError(err)
+				}
 				signalError(c.errors, err)
 				return
 			}
