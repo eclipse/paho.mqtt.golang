@@ -257,7 +257,7 @@ func (c *client) Connect() Token {
 				}
 				cm.Write(c.conn)
 
-				rc = c.connect()
+				rc, t.sessionPresent = c.connect()
 				if rc != packets.Accepted {
 					if c.conn != nil {
 						c.conn.Close()
@@ -371,7 +371,7 @@ func (c *client) reconnect() {
 				}
 				cm.Write(c.conn)
 
-				rc = c.connect()
+				rc, _ = c.connect()
 				if rc != packets.Accepted {
 					c.conn.Close()
 					c.conn = nil
@@ -435,27 +435,27 @@ func (c *client) reconnect() {
 // when the connection is first started.
 // This prevents receiving incoming data while resume
 // is in progress if clean session is false.
-func (c *client) connect() byte {
+func (c *client) connect() (byte, bool) {
 	DEBUG.Println(NET, "connect started")
 
 	ca, err := packets.ReadPacket(c.conn)
 	if err != nil {
 		ERROR.Println(NET, "connect got error", err)
-		return packets.ErrNetworkError
+		return packets.ErrNetworkError, false
 	}
 	if ca == nil {
 		ERROR.Println(NET, "received nil packet")
-		return packets.ErrNetworkError
+		return packets.ErrNetworkError, false
 	}
 
 	msg, ok := ca.(*packets.ConnackPacket)
 	if !ok {
 		ERROR.Println(NET, "received msg that was not CONNACK")
-		return packets.ErrNetworkError
+		return packets.ErrNetworkError, false
 	}
 
 	DEBUG.Println(NET, "received connack")
-	return msg.ReturnCode
+	return msg.ReturnCode, msg.SessionPresent
 }
 
 // Disconnect will end the connection with the server, but not before waiting
