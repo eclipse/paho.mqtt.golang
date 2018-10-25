@@ -18,6 +18,7 @@ import (
 	"net/url"
 
 	"github.com/eclipse/paho.mqtt.golang/packets"
+	"sync"
 )
 
 // Message defines the externals that a message implementation must support
@@ -30,6 +31,7 @@ type Message interface {
 	Topic() string
 	MessageID() uint16
 	Payload() []byte
+	Ack()
 }
 
 type message struct {
@@ -39,6 +41,8 @@ type message struct {
 	topic     string
 	messageID uint16
 	payload   []byte
+	once      sync.Once
+	ack       func()
 }
 
 func (m *message) Duplicate() bool {
@@ -65,7 +69,11 @@ func (m *message) Payload() []byte {
 	return m.payload
 }
 
-func messageFromPublish(p *packets.PublishPacket) Message {
+func (m *message) Ack() {
+	m.once.Do(m.ack)
+}
+
+func messageFromPublish(p *packets.PublishPacket, ack func()) Message {
 	return &message{
 		duplicate: p.Dup,
 		qos:       p.Qos,
@@ -73,6 +81,7 @@ func messageFromPublish(p *packets.PublishPacket) Message {
 		topic:     p.TopicName,
 		messageID: p.MessageID,
 		payload:   p.Payload,
+		ack:       ack,
 	}
 }
 
