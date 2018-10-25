@@ -475,6 +475,7 @@ func (c *client) Disconnect(quiesce uint) {
 	} else {
 		WARN.Println(CLI, "Disconnect() called but not connected (disconnected/reconnecting)")
 		c.setConnected(disconnected)
+		return
 	}
 
 	c.disconnect()
