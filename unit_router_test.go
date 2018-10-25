@@ -35,9 +35,7 @@ func Test_newRouter(t *testing.T) {
 
 func Test_AddRoute(t *testing.T) {
 	router, _ := newRouter()
-	calledback := false
 	cb := func(client Client, msg Message) {
-		calledback = true
 	}
 	router.addRoute("/alpha", cb)
 

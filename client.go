@@ -184,7 +184,6 @@ func (c *client) IsConnectionOpen() bool {
 	}
 }
 
-
 func (c *client) connectionStatus() uint32 {
 	c.RLock()
 	defer c.RUnlock()
@@ -407,6 +406,8 @@ func (c *client) reconnect() {
 		return
 	}
 
+	c.stop = make(chan struct{})
+
 	if c.options.KeepAlive != 0 {
 		atomic.StoreInt32(&c.pingOutstanding, 0)
 		atomic.StoreInt64(&c.lastReceived, time.Now().Unix())
@@ -414,8 +415,6 @@ func (c *client) reconnect() {
 		c.workers.Add(1)
 		go keepalive(c)
 	}
-
-	c.stop = make(chan struct{})
 
 	c.setConnected(connected)
 	DEBUG.Println(CLI, "client is reconnected")
