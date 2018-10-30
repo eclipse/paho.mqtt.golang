@@ -521,7 +521,9 @@ func (c *client) closeStop() {
 	case <-c.stop:
 		DEBUG.Println("In disconnect and stop channel is already closed")
 	default:
-		close(c.stop)
+		if c.stop != nil {
+			close(c.stop)
+		}
 	}
 }
 
