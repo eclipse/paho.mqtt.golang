@@ -70,13 +70,21 @@ func (b *baseToken) Wait() bool {
 // returns false if the timeout occurred. In the case of a timeout the Token
 // does not have an error set in case the caller wishes to wait again
 func (b *baseToken) WaitTimeout(d time.Duration) bool {
+	timer := time.NewTimer(d)
+
 	b.m.Lock()
-	defer b.m.Unlock()
+	defer func() {
+		b.m.Unlock()
+		if !timer.Stop() {
+			<-timer.C
+		}
+	}()
+
 	if !b.ready {
 		select {
 		case <-b.complete:
 			b.ready = true
-		case <-time.After(d):
+		case <-timer.C:
 		}
 	}
 	return b.ready
