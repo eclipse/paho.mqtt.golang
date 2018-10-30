@@ -44,6 +44,7 @@ func openConnection(uri *url.URL, tlsc *tls.Config, timeout time.Duration, heade
 		config, _ := websocket.NewConfig(uri.String(), fmt.Sprintf("http://%s", uri.Host))
 		config.Protocol = []string{"mqtt"}
 		config.Header = headers
+		config.Dialer = &net.Dialer{Timeout: timeout}
 		conn, err := websocket.DialConfig(config)
 		if err != nil {
 			return nil, err
@@ -55,6 +56,7 @@ func openConnection(uri *url.URL, tlsc *tls.Config, timeout time.Duration, heade
 		config.Protocol = []string{"mqtt"}
 		config.TlsConfig = tlsc
 		config.Header = headers
+		config.Dialer = &net.Dialer{Timeout: timeout}
 		conn, err := websocket.DialConfig(config)
 		if err != nil {
 			return nil, err
