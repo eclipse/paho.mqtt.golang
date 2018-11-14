@@ -153,10 +153,10 @@ func (r *router) matchAndDispatch(messages <-chan *packets.PublishPacket, order 
 						if order {
 							handlers = append(handlers, e.Value.(*route).callback)
 						} else {
-							go func() {
-								e.Value.(*route).callback(client, m)
+							go func(element *list.Element) {
+								element.Value.(*route).callback(client, m)
 								m.Ack()
-							}()
+							}(e)
 						}
 						sent = true
 					}
