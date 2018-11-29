@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -609,6 +610,10 @@ func (c *client) Subscribe(topic string, qos byte, callback MessageHandler) Toke
 	sub.Topics = append(sub.Topics, topic)
 	sub.Qoss = append(sub.Qoss, qos)
 	DEBUG.Println(CLI, sub.String())
+
+	if strings.HasPrefix(topic, "$share") {
+		topic = strings.Join(strings.Split(topic, "/")[2:], "/")
+	}
 
 	if callback != nil {
 		c.msgRouter.addRoute(topic, callback)
