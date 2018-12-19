@@ -17,8 +17,9 @@ package mqtt
 import (
 	"net/url"
 
-	"github.com/eclipse/paho.mqtt.golang/packets"
 	"sync"
+
+	"github.com/eclipse/paho.mqtt.golang/packets"
 )
 
 // Message defines the externals that a message implementation must support

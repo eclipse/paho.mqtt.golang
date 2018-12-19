@@ -34,6 +34,9 @@ const (
 	connecting
 	reconnecting
 	connected
+
+	protoMQTT   = "MQTT"
+	protoMQIsdp = "MQIsdp"
 )
 
 // Client is the interface definition for a Client as used by this
@@ -240,20 +243,20 @@ func (c *client) Connect() Token {
 				switch c.options.ProtocolVersion {
 				case 3:
 					DEBUG.Println(CLI, "Using MQTT 3.1 protocol")
-					cm.ProtocolName = "MQIsdp"
+					cm.ProtocolName = protoMQIsdp
 					cm.ProtocolVersion = 3
 				case 0x83:
 					DEBUG.Println(CLI, "Using MQTT 3.1b protocol")
-					cm.ProtocolName = "MQIsdp"
+					cm.ProtocolName = protoMQIsdp
 					cm.ProtocolVersion = 0x83
 				case 0x84:
 					DEBUG.Println(CLI, "Using MQTT 3.1.1b protocol")
-					cm.ProtocolName = "MQTT"
+					cm.ProtocolName = protoMQTT
 					cm.ProtocolVersion = 0x84
 				default:
 					DEBUG.Println(CLI, "Using MQTT 3.1.1 protocol")
 					c.options.ProtocolVersion = 4
-					cm.ProtocolName = "MQTT"
+					cm.ProtocolName = protoMQTT
 					cm.ProtocolVersion = 4
 				}
 				cm.Write(c.conn)
@@ -354,19 +357,19 @@ func (c *client) reconnect() {
 				switch c.options.ProtocolVersion {
 				case 0x83:
 					DEBUG.Println(CLI, "Using MQTT 3.1b protocol")
-					cm.ProtocolName = "MQIsdp"
+					cm.ProtocolName = protoMQIsdp
 					cm.ProtocolVersion = 0x83
 				case 0x84:
 					DEBUG.Println(CLI, "Using MQTT 3.1.1b protocol")
-					cm.ProtocolName = "MQTT"
+					cm.ProtocolName = protoMQTT
 					cm.ProtocolVersion = 0x84
 				case 3:
 					DEBUG.Println(CLI, "Using MQTT 3.1 protocol")
-					cm.ProtocolName = "MQIsdp"
+					cm.ProtocolName = protoMQIsdp
 					cm.ProtocolVersion = 3
 				default:
 					DEBUG.Println(CLI, "Using MQTT 3.1.1 protocol")
-					cm.ProtocolName = "MQTT"
+					cm.ProtocolName = protoMQTT
 					cm.ProtocolVersion = 4
 				}
 				cm.Write(c.conn)
