@@ -427,8 +427,6 @@ func (c *client) reconnect() {
 	go alllogic(c)
 	go outgoing(c)
 	go incoming(c)
-
-	c.resume(false)
 }
 
 // This function is only used for receiving a connack
@@ -530,6 +528,19 @@ func (c *client) closeStop() {
 	}
 }
 
+func (c *client) closeStopRouter() {
+	c.Lock()
+	defer c.Unlock()
+	select {
+	case <-c.stopRouter:
+		DEBUG.Println("In disconnect and stop channel is already closed")
+	default:
+		if c.stopRouter != nil {
+			close(c.stopRouter)
+		}
+	}
+}
+
 func (c *client) closeConn() {
 	c.Lock()
 	defer c.Unlock()
@@ -543,7 +554,7 @@ func (c *client) disconnect() {
 	c.closeConn()
 	c.workers.Wait()
 	c.messageIds.cleanUp()
-	close(c.stopRouter)
+	c.closeStopRouter()
 	DEBUG.Println(CLI, "disconnected")
 	c.persist.Close()
 }
