@@ -74,6 +74,7 @@ type ClientOptions struct {
 	MessageChannelDepth     uint
 	ResumeSubs              bool
 	HTTPHeaders             http.Header
+	ConnectionRetry         bool
 }
 
 // NewClientOptions will create a new ClientClientOptions type with some
@@ -112,6 +113,7 @@ func NewClientOptions() *ClientOptions {
 		MessageChannelDepth:     100,
 		ResumeSubs:              false,
 		HTTPHeaders:             make(map[string][]string),
+		ConnectionRetry:         false,
 	}
 	return o
 }
@@ -336,5 +338,11 @@ func (o *ClientOptions) SetMessageChannelDepth(s uint) *ClientOptions {
 // opening handshake.
 func (o *ClientOptions) SetHTTPHeaders(h http.Header) *ClientOptions {
 	o.HTTPHeaders = h
+	return o
+}
+
+// SetConnectionRetry retries the Connect() call until the client registers the token.
+func (o *ClientOptions) SetConnectionRetry(retry bool) *ClientOptions {
+	o.ConnectionRetry = retry
 	return o
 }

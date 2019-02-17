@@ -214,7 +214,6 @@ func (c *client) Connect() Token {
 	c.ibound = make(chan packets.ControlPacket)
 
 	go func() {
-		c.persist.Open()
 
 		c.setConnected(connecting)
 		c.errors = make(chan error, 1)
@@ -222,6 +221,9 @@ func (c *client) Connect() Token {
 
 		var rc byte
 		protocolVersion := c.options.ProtocolVersion
+	RECONN:
+
+		c.persist.Open()
 
 		if len(c.options.Servers) == 0 {
 			t.setError(fmt.Errorf("No servers defined to connect to"))
@@ -284,6 +286,13 @@ func (c *client) Connect() Token {
 
 		if c.conn == nil {
 			ERROR.Println(CLI, "Failed to connect to a broker")
+			if c.options.ConnectionRetry {
+				time.Sleep(5 * time.Second)
+				c.setConnected(reconnecting)
+				c.persist.Close()
+				goto RECONN
+			}
+
 			c.setConnected(disconnected)
 			c.persist.Close()
 			t.returnCode = rc
@@ -554,7 +563,7 @@ func (c *client) Publish(topic string, qos byte, retained bool, payload interfac
 	token := newToken(packets.Publish).(*PublishToken)
 	DEBUG.Println(CLI, "enter Publish")
 	switch {
-	case !c.IsConnected():
+	case !c.IsConnected() && !c.options.ConnectionRetry:
 		token.err = ErrNotConnected
 		token.flowComplete()
 		return token
@@ -578,13 +587,17 @@ func (c *client) Publish(topic string, qos byte, retained bool, payload interfac
 	}
 
 	if pub.Qos != 0 && pub.MessageID == 0 {
-		pub.MessageID = c.getID(token)
+		if !c.options.CleanSession && c.options.ConnectionRetry {
+			pub.MessageID = c.getAsyncID(token, uint16(len(c.persist.All())+1))
+		} else {
+			pub.MessageID = c.getID(token)
+		}
 		token.messageID = pub.MessageID
 	}
 	persistOutbound(c.persist, pub)
 	if c.connectionStatus() == reconnecting {
 		DEBUG.Println(CLI, "storing publish message (reconnecting), topic:", topic)
-	} else {
+	} else if c.IsConnected() {
 		DEBUG.Println(CLI, "sending publish message, topic:", topic)
 		c.obound <- &PacketAndToken{p: pub, t: token}
 	}

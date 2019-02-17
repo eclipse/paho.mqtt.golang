@@ -85,6 +85,18 @@ func (mids *messageIds) getID(t tokenCompletor) uint16 {
 	return 0
 }
 
+func (mids *messageIds) getAsyncID(t tokenCompletor, min uint16) uint16 {
+	mids.Lock()
+	defer mids.Unlock()
+	for i := min; i < midMax; i++ {
+		if _, ok := mids.index[i]; !ok {
+			mids.index[i] = t
+			return i
+		}
+	}
+	return 0
+}
+
 func (mids *messageIds) getToken(id uint16) tokenCompletor {
 	mids.RLock()
 	defer mids.RUnlock()
