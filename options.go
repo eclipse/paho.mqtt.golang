@@ -305,6 +305,13 @@ func (o *ClientOptions) SetConnectionLostHandler(onLost ConnectionLostHandler) *
 	return o
 }
 
+// SetWillReconnectHandler will set the OnWillReconnect callback to be executed prior
+// to the client attempting a reconnect to the MQTT brokers.
+func (o *ClientOptions) SetWillReconnectHandler(onWillReconnect WillReconnectHandler) *ClientOptions {
+	o.OnWillReconnect = onWillReconnect
+	return o
+}
+
 // SetWriteTimeout puts a limit on how long a mqtt publish should block until it unblocks with a
 // timeout error. A duration of 0 never times out. Default 30 seconds
 func (o *ClientOptions) SetWriteTimeout(t time.Duration) *ClientOptions {
