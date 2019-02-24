@@ -44,6 +44,17 @@ type ConnectionLostHandler func(Client, error)
 // at initial connection and on reconnection
 type OnConnectHandler func(Client)
 
+// WillReconnectArgs contains parameters relating to reconnection
+type WillReconnectArgs struct {
+	// Options points to the current client options. You may want
+	// to update authentication credentials etc prior to reconnection attempt
+	Options *ClientOptions
+}
+
+// WillReconnectHandler is invoked prior to a reconnecting after
+// the initial connection is lost
+type WillReconnectHandler func(Client, WillReconnectArgs)
+
 // ClientOptions contains configurable options for an Client.
 type ClientOptions struct {
 	Servers                 []*url.URL
@@ -70,6 +81,7 @@ type ClientOptions struct {
 	DefaultPublishHandler   MessageHandler
 	OnConnect               OnConnectHandler
 	OnConnectionLost        ConnectionLostHandler
+	OnWillReconnect         WillReconnectHandler
 	WriteTimeout            time.Duration
 	MessageChannelDepth     uint
 	ResumeSubs              bool
