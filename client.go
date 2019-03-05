@@ -566,8 +566,7 @@ func (c *client) Publish(topic string, qos byte, retained bool, payload interfac
 	DEBUG.Println(CLI, "enter Publish")
 	switch {
 	case !c.IsConnected():
-		token.err = ErrNotConnected
-		token.flowComplete()
+		token.setError(ErrNotConnected)
 		return token
 	case c.connectionStatus() == reconnecting && qos == 0:
 		token.flowComplete()
@@ -583,8 +582,7 @@ func (c *client) Publish(topic string, qos byte, retained bool, payload interfac
 	case []byte:
 		pub.Payload = payload.([]byte)
 	default:
-		token.err = errors.New("Unknown payload type")
-		token.flowComplete()
+		token.setError(fmt.Errorf("Unknown payload type"))
 		return token
 	}
 
@@ -608,13 +606,12 @@ func (c *client) Subscribe(topic string, qos byte, callback MessageHandler) Toke
 	token := newToken(packets.Subscribe).(*SubscribeToken)
 	DEBUG.Println(CLI, "enter Subscribe")
 	if !c.IsConnected() {
-		token.err = ErrNotConnected
-		token.flowComplete()
+		token.setError(ErrNotConnected)
 		return token
 	}
 	sub := packets.NewControlPacket(packets.Subscribe).(*packets.SubscribePacket)
 	if err := validateTopicAndQos(topic, qos); err != nil {
-		token.err = err
+		token.setError(err)
 		return token
 	}
 	sub.Topics = append(sub.Topics, topic)
@@ -642,13 +639,12 @@ func (c *client) SubscribeMultiple(filters map[string]byte, callback MessageHand
 	token := newToken(packets.Subscribe).(*SubscribeToken)
 	DEBUG.Println(CLI, "enter SubscribeMultiple")
 	if !c.IsConnected() {
-		token.err = ErrNotConnected
-		token.flowComplete()
+		token.setError(ErrNotConnected)
 		return token
 	}
 	sub := packets.NewControlPacket(packets.Subscribe).(*packets.SubscribePacket)
 	if sub.Topics, sub.Qoss, err = validateSubscribeMap(filters); err != nil {
-		token.err = err
+		token.setError(err)
 		return token
 	}
 
@@ -726,8 +722,7 @@ func (c *client) Unsubscribe(topics ...string) Token {
 	token := newToken(packets.Unsubscribe).(*UnsubscribeToken)
 	DEBUG.Println(CLI, "enter Unsubscribe")
 	if !c.IsConnected() {
-		token.err = ErrNotConnected
-		token.flowComplete()
+		token.setError(ErrNotConnected)
 		return token
 	}
 	unsub := packets.NewControlPacket(packets.Unsubscribe).(*packets.UnsubscribePacket)
