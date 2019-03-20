@@ -344,11 +344,13 @@ func (c *client) reconnect() {
 		sleep = time.Duration(1 * time.Second)
 	)
 
-	for rc != 0 && c.status != disconnected {
+	for rc != 0 && atomic.LoadUint32(&c.status) != disconnected {
 		for _, broker := range c.options.Servers {
 			cm := newConnectMsgFromOptions(&c.options, broker)
 			DEBUG.Println(CLI, "about to write new connect msg")
+			c.Lock()
 			c.conn, err = openConnection(broker, c.options.TLSConfig, c.options.ConnectTimeout, c.options.HTTPHeaders)
+			c.Unlock()
 			if err == nil {
 				DEBUG.Println(CLI, "socket connected to broker")
 				switch c.options.ProtocolVersion {
