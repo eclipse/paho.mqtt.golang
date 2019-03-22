@@ -429,6 +429,8 @@ func (c *client) reconnect() {
 	go alllogic(c)
 	go outgoing(c)
 	go incoming(c)
+
+	c.resume(false)
 }
 
 // This function is only used for receiving a connack
