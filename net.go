@@ -252,6 +252,13 @@ func alllogic(c *client) {
 				case *SubscribeToken:
 					DEBUG.Println(NET, "granted qoss", m.ReturnCodes)
 					for i, qos := range m.ReturnCodes {
+						// ReturnCodes not only contain qoss,
+						// ReturnCode == 0x80 indicates failure,
+						// see http://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html#_Toc398718068
+						if qos == 0x80 {
+							t.setError(fmt.Errorf("Subscribe topic %s failed", t.subs[i]))
+							break
+						}
 						t.subResult[t.subs[i]] = qos
 					}
 				}
