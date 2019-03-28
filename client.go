@@ -424,6 +424,8 @@ func (c *client) reconnect() {
 		go c.options.OnConnect(c)
 	}
 
+	c.msgRouter.recoverRoute(c.oboundP)
+
 	c.workers.Add(4)
 	go errorWatch(c)
 	go alllogic(c)
