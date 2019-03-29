@@ -430,6 +430,8 @@ func (c *client) reconnect() {
 	go outgoing(c)
 	go incoming(c)
 
+	c.msgRouter.recoverRoute(c.oboundP)
+
 	c.resume(false)
 }
 

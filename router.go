@@ -114,6 +114,24 @@ func (r *router) addRoute(topic string, callback MessageHandler) {
 	r.routes.PushBack(&route{topic: topic, callback: callback})
 }
 
+// recoverRoute starts recover all of subscription to mosquitto when reconnected mqtt-broker.
+func (r *router) recoverRoute(c chan *PacketAndToken) {
+	r.Lock()
+	defer r.Unlock()
+	for e := r.routes.Front(); e != nil; e = e.Next() {
+		r := e.Value.(*route)
+
+		token := newToken(packets.Subscribe).(*SubscribeToken)
+		token.subs = append(token.subs, r.topic)
+
+		sub := packets.NewControlPacket(packets.Subscribe).(*packets.SubscribePacket)
+		sub.Topics = append(sub.Topics, r.topic)
+		sub.Qoss = append(sub.Qoss, 0)
+
+		c <- &PacketAndToken{p: sub, t: token}
+	}
+}
+
 // deleteRoute takes a route string, looks for a matching Route in the list of Routes. If
 // found it removes the Route from the list.
 func (r *router) deleteRoute(topic string) {
