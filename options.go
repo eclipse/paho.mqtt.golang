@@ -74,6 +74,7 @@ type ClientOptions struct {
 	MessageChannelDepth     uint
 	ResumeSubs              bool
 	HTTPHeaders             http.Header
+	ForcePersist            bool
 }
 
 // NewClientOptions will create a new ClientClientOptions type with some
@@ -112,6 +113,7 @@ func NewClientOptions() *ClientOptions {
 		MessageChannelDepth:     100,
 		ResumeSubs:              false,
 		HTTPHeaders:             make(map[string][]string),
+		ForcePersist:            false,
 	}
 	return o
 }
@@ -336,5 +338,14 @@ func (o *ClientOptions) SetMessageChannelDepth(s uint) *ClientOptions {
 // opening handshake.
 func (o *ClientOptions) SetHTTPHeaders(h http.Header) *ClientOptions {
 	o.HTTPHeaders = h
+	return o
+}
+
+// SetForcePersist sets whether any messages in the store should persisted regardless
+// of whether or not we start with a CleanSession. Any persisted messages can be
+// resumed by calling ForceResume on the client. Persisted messages may be overwritten
+// if they are not resumed before any Publish or Subscribe calls are made.
+func (o *ClientOptions) SetForcePersist(f bool) *ClientOptions {
+	o.ForcePersist = f
 	return o
 }
