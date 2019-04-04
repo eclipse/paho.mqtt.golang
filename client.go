@@ -503,7 +503,7 @@ func (c *client) internalConnLost(err error) {
 		c.closeStop()
 		c.conn.Close()
 		c.workers.Wait()
-		if c.options.CleanSession {
+		if c.options.CleanSession && !c.options.AutoReconnect {
 			c.messageIds.cleanUp()
 		}
 		if c.options.AutoReconnect {
