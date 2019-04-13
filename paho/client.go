@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/eclipse/paho.mqtt.golang/packets"
@@ -15,6 +16,7 @@ type Client struct {
 	sync.Mutex
 	serverProps   CommsProperties
 	Stop          chan struct{}
+	stopping      int32
 	ClientID      string
 	Workers       sync.WaitGroup
 	Conn          net.Conn
@@ -47,6 +49,7 @@ func NewClient(opts ...func(*Client) error) (*Client, error) {
 	debug.Println("Creating new client")
 	c := &Client{
 		Stop: make(chan struct{}),
+		stopping:0,
 		serverProps: CommsProperties{
 			ReceiveMaximum:       65535,
 			MaximumQoS:           2,
@@ -188,7 +191,9 @@ func (c *Client) Incoming() {
 		default:
 			recv, err := packets.ReadPacket(c.Conn)
 			if err != nil {
-				c.Error(err)
+				if atomic.LoadInt32(&c.stopping) == 0 {
+					c.Error(err)
+				}
 				return
 			}
 			debug.Println("Received a control packet:", recv.Type)
@@ -448,6 +453,9 @@ func (c *Client) Disconnect(d *Disconnect) error {
 	c.Lock()
 	defer c.Unlock()
 	defer c.Conn.Close()
+
+	atomic.CompareAndSwapInt32(&c.stopping, 0, 1)
+	close(c.Stop)
 
 	_, err := d.Packet().WriteTo(c.Conn)
 
