@@ -137,7 +137,7 @@ func incoming(c *client) {
 		case c.ibound <- cp:
 			// Notify keepalive logic that we recently received a packet
 			if c.options.KeepAlive != 0 {
-				atomic.StoreInt64(&c.lastReceived, time.Now().Unix())
+				c.lastReceived.Store(time.Now())
 			}
 		case <-c.stop:
 			// This avoids a deadlock should a message arrive while shutting down.
@@ -221,7 +221,7 @@ func outgoing(c *client) {
 		}
 		// Reset ping timer after sending control packet.
 		if c.options.KeepAlive != 0 {
-			atomic.StoreInt64(&c.lastSent, time.Now().Unix())
+			c.lastSent.Store(time.Now())
 		}
 	}
 }
