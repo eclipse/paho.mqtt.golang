@@ -95,8 +95,8 @@ type Client interface {
 
 // client implements the Client interface
 type client struct {
-	lastSent        int64
-	lastReceived    int64
+	lastSent        atomic.Value
+	lastReceived    atomic.Value
 	pingOutstanding int32
 	status          uint32
 	sync.RWMutex
@@ -300,8 +300,8 @@ func (c *client) Connect() Token {
 
 		if c.options.KeepAlive != 0 {
 			atomic.StoreInt32(&c.pingOutstanding, 0)
-			atomic.StoreInt64(&c.lastReceived, time.Now().Unix())
-			atomic.StoreInt64(&c.lastSent, time.Now().Unix())
+			c.lastReceived.Store(time.Now())
+			c.lastSent.Store(time.Now())
 			c.workers.Add(1)
 			go keepalive(c)
 		}
@@ -412,8 +412,8 @@ func (c *client) reconnect() {
 
 	if c.options.KeepAlive != 0 {
 		atomic.StoreInt32(&c.pingOutstanding, 0)
-		atomic.StoreInt64(&c.lastReceived, time.Now().Unix())
-		atomic.StoreInt64(&c.lastSent, time.Now().Unix())
+		c.lastReceived.Store(time.Now())
+		c.lastSent.Store(time.Now())
 		c.workers.Add(1)
 		go keepalive(c)
 	}
