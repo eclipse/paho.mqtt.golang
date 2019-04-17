@@ -125,7 +125,7 @@ type ConnectToken struct {
 	sessionPresent bool
 }
 
-// ReturnCode returns the acknowlegement code in the connack sent
+// ReturnCode returns the acknowledgement code in the connack sent
 // in response to a Connect()
 func (c *ConnectToken) ReturnCode() byte {
 	c.m.RLock()

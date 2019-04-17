@@ -149,7 +149,7 @@ func (o *ClientOptions) SetResumeSubs(resume bool) *ClientOptions {
 
 // SetClientID will set the client id to be used by this client when
 // connecting to the MQTT broker. According to the MQTT v3.1 specification,
-// a client id mus be no longer than 23 characters.
+// a client id must be no longer than 23 characters.
 func (o *ClientOptions) SetClientID(id string) *ClientOptions {
 	o.ClientID = id
 	return o
@@ -157,7 +157,7 @@ func (o *ClientOptions) SetClientID(id string) *ClientOptions {
 
 // SetUsername will set the username to be used by this client when connecting
 // to the MQTT broker. Note: without the use of SSL/TLS, this information will
-// be sent in plaintext accross the wire.
+// be sent in plaintext across the wire.
 func (o *ClientOptions) SetUsername(u string) *ClientOptions {
 	o.Username = u
 	return o
@@ -165,7 +165,7 @@ func (o *ClientOptions) SetUsername(u string) *ClientOptions {
 
 // SetPassword will set the password to be used by this client when connecting
 // to the MQTT broker. Note: without the use of SSL/TLS, this information will
-// be sent in plaintext accross the wire.
+// be sent in plaintext across the wire.
 func (o *ClientOptions) SetPassword(p string) *ClientOptions {
 	o.Password = p
 	return o
@@ -174,7 +174,7 @@ func (o *ClientOptions) SetPassword(p string) *ClientOptions {
 // SetCredentialsProvider will set a method to be called by this client when
 // connecting to the MQTT broker that provide the current username and password.
 // Note: without the use of SSL/TLS, this information will be sent
-// in plaintext accross the wire.
+// in plaintext across the wire.
 func (o *ClientOptions) SetCredentialsProvider(p CredentialsProvider) *ClientOptions {
 	o.CredentialsProvider = p
 	return o
@@ -301,7 +301,7 @@ func (o *ClientOptions) SetWriteTimeout(t time.Duration) *ClientOptions {
 }
 
 // SetConnectTimeout limits how long the client will wait when trying to open a connection
-// to an MQTT server before timeing out and erroring the attempt. A duration of 0 never times out.
+// to an MQTT server before timing out and erroring the attempt. A duration of 0 never times out.
 // Default 30 seconds. Currently only operational on TCP/TLS connections.
 func (o *ClientOptions) SetConnectTimeout(t time.Duration) *ClientOptions {
 	o.ConnectTimeout = t
@@ -324,7 +324,7 @@ func (o *ClientOptions) SetAutoReconnect(a bool) *ClientOptions {
 }
 
 // SetMessageChannelDepth sets the size of the internal queue that holds messages while the
-// client is temporairily offline, allowing the application to publish when the client is
+// client is temporarily offline, allowing the application to publish when the client is
 // reconnecting. This setting is only valid if AutoReconnect is set to true, it is otherwise
 // ignored.
 func (o *ClientOptions) SetMessageChannelDepth(s uint) *ClientOptions {

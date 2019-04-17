@@ -46,7 +46,7 @@ var ErrInvalidTopicMultilevel = errors.New("Invalid Topic; multi-level wildcard 
 // - A TopicName may not contain a wildcard.
 // - A TopicFilter may only have a # (multi-level) wildcard as the last level.
 // - A TopicFilter may contain any number of + (single-level) wildcards.
-// - A TopicFilter with a # will match the absense of a level
+// - A TopicFilter with a # will match the absence of a level
 //     Example:  a subscription to "foo/#" will match messages published to "foo".
 
 func validateSubscribeMap(subs map[string]byte) ([]string, []byte, error) {

@@ -124,7 +124,7 @@ func (store *FileStore) Get(key string) packets.ControlPacket {
 }
 
 // All will provide a list of all of the keys associated with messages
-// currenly residing in the FileStore.
+// currently residing in the FileStore.
 func (store *FileStore) All() []string {
 	store.RLock()
 	defer store.RUnlock()

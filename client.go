@@ -58,7 +58,7 @@ type Client interface {
 	// IsConnected returns a bool signifying whether
 	// the client is connected or not.
 	IsConnected() bool
-	// IsConnectionOpen return a bool signifying wether the client has an active
+	// IsConnectionOpen return a bool signifying whether the client has an active
 	// connection to mqtt broker, i.e not in disconnected or reconnect mode
 	IsConnectionOpen() bool
 	// Connect will create a connection to the message broker, by default
