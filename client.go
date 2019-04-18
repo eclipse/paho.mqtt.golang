@@ -671,6 +671,9 @@ func (c *client) resume(subscription bool) {
 	storedKeys := c.persist.All()
 	for _, key := range storedKeys {
 		packet := c.persist.Get(key)
+		if packet == nil {
+			continue
+		}
 		details := packet.Details()
 		if isKeyOutbound(key) {
 			switch packet.(type) {
