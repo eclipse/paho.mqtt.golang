@@ -29,7 +29,7 @@ func keepalive(c *client) {
 	var pingSent time.Time
 
 	if c.options.KeepAlive > 10 {
-		checkInterval = 5
+		checkInterval = 2.5
 	} else {
 		checkInterval = c.options.KeepAlive / 4
 	}
