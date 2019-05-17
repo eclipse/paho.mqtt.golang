@@ -31,7 +31,7 @@ func keepalive(c *client) {
 	if c.options.KeepAlive > 10 {
 		checkInterval = 5
 	} else {
-		checkInterval = c.options.KeepAlive / 2
+		checkInterval = c.options.KeepAlive / 4
 	}
 
 	intervalTicker := time.NewTicker(time.Duration(checkInterval * int64(time.Second)))
@@ -47,7 +47,7 @@ func keepalive(c *client) {
 			lastReceived := c.lastReceived.Load().(time.Time)
 
 			DEBUG.Println(PNG, "ping check", time.Since(lastSent).Seconds())
-			if time.Since(lastSent) >= time.Duration(c.options.KeepAlive*int64(time.Second)) || time.Since(lastReceived) >= time.Duration(c.options.KeepAlive*int64(time.Second)) {
+			if time.Since(lastSent) >= time.Duration(c.options.KeepAlive*int64(time.Second)-checkInterval*int64(time.Second)) || time.Since(lastReceived) >= time.Duration(c.options.KeepAlive*int64(time.Second)-checkInterval*int64(time.Second)) {
 				if atomic.LoadInt32(&c.pingOutstanding) == 0 {
 					DEBUG.Println(PNG, "keepalive sending ping")
 					ping := packets.NewControlPacket(packets.Pingreq).(*packets.PingreqPacket)
