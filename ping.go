@@ -31,7 +31,7 @@ func keepalive(c *client) {
 	if c.options.KeepAlive > 10 {
 		checkInterval = 2
 	} else {
-		checkInterval = c.options.KeepAlive / 4
+		checkInterval = c.options.KeepAlive / 5
 	}
 
 	intervalTicker := time.NewTicker(time.Duration(checkInterval * int64(time.Second)))
