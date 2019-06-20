@@ -27,6 +27,10 @@ func NewWebsocket(host string, tlsc *tls.Config, timeout time.Duration, requestH
 	host = strings.Replace(host, "wss2", "wss", -1)
 	ws, _, err := dialer.Dial(host, requestHeader)
 
+	if err != nil {
+		panic(err)
+	}
+
 	wrapper := &websocketConnector{
 		Conn: ws,
 	}
