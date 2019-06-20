@@ -22,11 +22,11 @@ This client is designed to work with the standard Go tools, so installation is a
 go get github.com/eclipse/paho.mqtt.golang
 ```
 
-The client depends on Google's [websockets](https://godoc.org/golang.org/x/net/websocket) and [proxy](https://godoc.org/golang.org/x/net/proxy) package, 
+The client depends on Google's [proxy](https://godoc.org/golang.org/x/net/proxy) package and the [websockets](https://godoc.org/github.com/gorilla/websocket) package, 
 also easily installed with the commands:
 
 ```
-go get golang.org/x/net/websocket
+go get github.com/gorilla/websocket
 go get golang.org/x/net/proxy
 ```
 
@@ -43,6 +43,10 @@ import "github.com/eclipse/paho.mqtt.golang"
 ```
 
 Samples are available in the `cmd` directory for reference.
+
+Note:
+
+The library also supports using MQTT over websockets by using the `ws://` (unsecure) or `wss://` (secure) prefix in the URI. If the client is running behind a corporate http/https proxy then the following environment variables `HTTP_PROXY`, `HTTPS_PROXY` and `NO_PROXY` are taken into account when establishing the connection.
 
 
 Runtime tracing
