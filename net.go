@@ -165,14 +165,33 @@ func incoming(c *client) {
 func outgoing(c *client) {
 	defer c.workers.Done()
 	DEBUG.Println(NET, "outgoing started")
+	var ticks <-chan time.Time
+	var throttleTicker *time.Ticker
+
+	obound, oboundP := c.obound, c.oboundP
+
+	if c.options.PublishThrottle > 0 {
+		throttleTicker = time.NewTicker(time.Duration(int64(time.Millisecond) * int64(1000/c.options.PublishThrottle)))
+		defer throttleTicker.Stop()
+		ticks = throttleTicker.C
+	}
 
 	for {
 		DEBUG.Println(NET, "outgoing waiting for an outbound message")
 		select {
+		case <-ticks:
+			obound = c.obound
+			oboundP = c.oboundP
+			ticks = nil
 		case <-c.stop:
 			DEBUG.Println(NET, "outgoing stopped")
 			return
-		case pub := <-c.obound:
+		case pub := <-obound:
+			if c.options.PublishThrottle > 0 {
+				obound = nil
+				oboundP = nil
+				ticks = throttleTicker.C
+			}
 			msg := pub.p.(*packets.PublishPacket)
 
 			if c.options.WriteTimeout > 0 {
@@ -196,7 +215,12 @@ func outgoing(c *client) {
 				pub.t.flowComplete()
 			}
 			DEBUG.Println(NET, "obound wrote msg, id:", msg.MessageID)
-		case msg := <-c.oboundP:
+		case msg := <-oboundP:
+			if c.options.PublishThrottle > 0 {
+				obound = nil
+				oboundP = nil
+				ticks = throttleTicker.C
+			}
 			switch msg.p.(type) {
 			case *packets.SubscribePacket:
 				msg.p.(*packets.SubscribePacket).MessageID = c.getID(msg.t)

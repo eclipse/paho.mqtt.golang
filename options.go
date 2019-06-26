@@ -74,6 +74,7 @@ type ClientOptions struct {
 	MessageChannelDepth     uint
 	ResumeSubs              bool
 	HTTPHeaders             http.Header
+	PublishThrottle         uint
 }
 
 // NewClientOptions will create a new ClientClientOptions type with some
@@ -112,6 +113,7 @@ func NewClientOptions() *ClientOptions {
 		MessageChannelDepth:     100,
 		ResumeSubs:              false,
 		HTTPHeaders:             make(map[string][]string),
+		PublishThrottle:         0, // 0 represents no throttling
 	}
 	return o
 }
@@ -336,5 +338,11 @@ func (o *ClientOptions) SetMessageChannelDepth(s uint) *ClientOptions {
 // opening handshake.
 func (o *ClientOptions) SetHTTPHeaders(h http.Header) *ClientOptions {
 	o.HTTPHeaders = h
+	return o
+}
+
+// SetPublishThrottle sets maximum number of messages published per second.
+func (o *ClientOptions) SetPublishThrottle(s uint) *ClientOptions {
+	o.PublishThrottle = s
 	return o
 }
