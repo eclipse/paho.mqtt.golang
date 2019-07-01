@@ -599,7 +599,11 @@ func (c *client) Publish(topic string, qos byte, retained bool, payload interfac
 		DEBUG.Println(CLI, "storing publish message (reconnecting), topic:", topic)
 	} else {
 		DEBUG.Println(CLI, "sending publish message, topic:", topic)
-		c.obound <- &PacketAndToken{p: pub, t: token}
+		select {
+		case c.obound <- &PacketAndToken{p: pub, t: token}:
+		case <-time.After(c.options.WriteTimeout):
+			token.setError(errors.New("publish was broken by timeout"))
+		}
 	}
 	return token
 }
