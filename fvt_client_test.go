@@ -22,6 +22,8 @@ import (
 	"io/ioutil"
 	"testing"
 	"time"
+
+	"github.com/eclipse/paho.mqtt.golang/packets"
 )
 
 func Test_Start(t *testing.T) {
@@ -1078,4 +1080,103 @@ func Test_cleanUpMids_2(t *testing.T) {
 		t.Fatal("token should have received an error on connection loss")
 	}
 	fmt.Println(token.Error())
+}
+
+func Test_ConnectRetry(t *testing.T) {
+	// Connect for publish - initially use invalid server
+	cops := NewClientOptions().AddBroker("256.256.256.256").SetClientID("cr-pub").
+		SetConnectRetry(true).SetConnectRetryInterval(time.Second / 2)
+	c := NewClient(cops).(*client)
+	connectToken := c.Connect()
+
+	time.Sleep(time.Second) // Wait a second to ensure we are past SetConnectRetryInterval
+	if connectToken.Error() != nil {
+		t.Fatalf("Connect returned error (should be retrying) (%v)", connectToken.Error())
+	}
+	c.options.AddBroker(FVTTCP) // note this is not threadsafe but should be OK for test
+	if connectToken.Wait() && connectToken.Error() != nil {
+		t.Fatalf("Error connecting after valid broker added: %v", connectToken.Error())
+	}
+	c.Disconnect(250)
+}
+
+func Test_ConnectRetryPublish(t *testing.T) {
+	topic := "/test/connectRetry"
+	payload := "sample Payload"
+	choke := make(chan bool)
+
+	// subscribe to topic and wait for expected message (only received after connection successful)
+	sops := NewClientOptions().AddBroker(FVTTCP).SetClientID("crp-sub")
+	var f MessageHandler = func(client Client, msg Message) {
+		if msg.Topic() != topic || string(msg.Payload()) != payload {
+			t.Fatalf("Received unexpected message: %v, %v", msg.Topic(), msg.Payload())
+		}
+		choke <- true
+	}
+	sops.SetDefaultPublishHandler(f)
+
+	s := NewClient(sops)
+	if token := s.Connect(); token.Wait() && token.Error() != nil {
+		t.Fatalf("Error on Client.Connect(): %v", token.Error())
+	}
+
+	if token := s.Subscribe(topic, 0, nil); token.Wait() && token.Error() != nil {
+		t.Fatalf("Error on Client.Subscribe(): %v", token.Error())
+	}
+
+	// Connect for publish - initially use invalid server
+	memStore := NewMemoryStore()
+	memStore.Open()
+	pops := NewClientOptions().AddBroker("256.256.256.256").SetClientID("crp-pub").
+		SetStore(memStore).SetConnectRetry(true).SetConnectRetryInterval(time.Second / 2)
+	p := NewClient(pops).(*client)
+	connectToken := p.Connect()
+	p.Publish(topic, 1, false, payload)
+	// Check publish packet in the memorystore
+	ids := memStore.All()
+	if len(ids) == 0 {
+		t.Fatalf("Expected published message to be in store")
+	} else if len(ids) != 1 {
+		t.Fatalf("Expected 1 message to be in store")
+	}
+	packet := memStore.Get(ids[0])
+	if packet == nil {
+		t.Fatal("Failed to retrieve packet from store")
+	}
+	pp, ok := packet.(*packets.PublishPacket)
+	if !ok {
+		t.Fatalf("Message in store not of the expected type (%T)", packet)
+	}
+	if pp.TopicName != topic || string(pp.Payload) != payload {
+		t.Fatalf("Stored message Packet contents not as expected (%v, %v)", pp.TopicName, pp.Payload)
+	}
+	time.Sleep(time.Second) // Wait a second to ensure we are past SetConnectRetryInterval
+	if connectToken.Error() != nil {
+		t.Fatalf("Connect returned error (should be retrying) (%v)", connectToken.Error())
+	}
+
+	// disconnecting closes the store (both in disconnect and in Connect which runs as a goRoutine).
+	// As such we duplicate the store
+	memStore2 := NewMemoryStore()
+	memStore2.Open()
+	memStore2.Put(ids[0], packet)
+
+	// disconnect and then reconnect with correct server
+	p.Disconnect(250)
+	
+	pops = NewClientOptions().AddBroker(FVTTCP).SetClientID("crp-pub").SetCleanSession(false).
+		SetStore(memStore2).SetConnectRetry(true).SetConnectRetryInterval(time.Second / 2)
+	p = NewClient(pops).(*client)
+	if token := p.Connect(); token.Wait() && token.Error() != nil {
+		t.Fatalf("Error on valid Publish.Connect(): %v", token.Error())
+	}
+
+	if connectToken.Wait() && connectToken.Error() == nil {
+		t.Fatalf("Expected connection error - got nil")
+	}
+	wait(choke)
+
+	p.Disconnect(250)
+	s.Disconnect(250)
+	memStore.Close()
 }

@@ -66,6 +66,8 @@ type ClientOptions struct {
 	ConnectTimeout          time.Duration
 	MaxReconnectInterval    time.Duration
 	AutoReconnect           bool
+	ConnectRetryInterval    time.Duration
+	ConnectRetry            bool
 	Store                   Store
 	DefaultPublishHandler   MessageHandler
 	OnConnect               OnConnectHandler
@@ -105,6 +107,8 @@ func NewClientOptions() *ClientOptions {
 		ConnectTimeout:          30 * time.Second,
 		MaxReconnectInterval:    10 * time.Minute,
 		AutoReconnect:           true,
+		ConnectRetryInterval:    30 * time.Second,
+		ConnectRetry:            false,
 		Store:                   nil,
 		OnConnect:               nil,
 		OnConnectionLost:        DefaultConnectionLostHandler,
@@ -320,6 +324,23 @@ func (o *ClientOptions) SetMaxReconnectInterval(t time.Duration) *ClientOptions 
 // called
 func (o *ClientOptions) SetAutoReconnect(a bool) *ClientOptions {
 	o.AutoReconnect = a
+	return o
+}
+
+// SetConnectRetryInterval sets the time that will be waited between connection attempts
+// when initially connecting if ConnectRetry is TRUE
+func (o *ClientOptions) SetConnectRetryInterval(t time.Duration) *ClientOptions {
+	o.ConnectRetryInterval = t
+	return o
+}
+
+// SetConnectRetry sets whether the connect function will automatically retry the connection
+// in the event of a failure (when true the token returned by the Connect function will
+// not complete until the connection is up or it is cancelled)
+// If ConnectRetry is true then subscriptions should be requested in OnConnect handler
+// Setting this to TRUE permits mesages to be published before the connection is established
+func (o *ClientOptions) SetConnectRetry(a bool) *ClientOptions {
+	o.ConnectRetry = a
 	return o
 }
 
