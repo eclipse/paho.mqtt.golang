@@ -76,6 +76,7 @@ type ClientOptions struct {
 	MessageChannelDepth     uint
 	ResumeSubs              bool
 	HTTPHeaders             http.Header
+	AutoAck                 bool
 }
 
 // NewClientOptions will create a new ClientClientOptions type with some
@@ -114,6 +115,7 @@ func NewClientOptions() *ClientOptions {
 		MessageChannelDepth:     100,
 		ResumeSubs:              false,
 		HTTPHeaders:             make(map[string][]string),
+		AutoAck:                 true,
 	}
 	return o
 }
@@ -340,5 +342,12 @@ func (o *ClientOptions) SetMessageChannelDepth(s uint) *ClientOptions {
 // opening handshake.
 func (o *ClientOptions) SetHTTPHeaders(h http.Header) *ClientOptions {
 	o.HTTPHeaders = h
+	return o
+}
+
+// Enable automated Ack after receiving message from server
+// Disabling automated Ack requires application to handle message acknowledgement
+func (o *ClientOptions) SetAutoAck(a bool) *ClientOptions {
+	o.AutoAck = a
 	return o
 }
