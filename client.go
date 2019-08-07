@@ -18,6 +18,7 @@
 package mqtt
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"net"
@@ -585,6 +586,8 @@ func (c *client) Publish(topic string, qos byte, retained bool, payload interfac
 		pub.Payload = []byte(payload.(string))
 	case []byte:
 		pub.Payload = payload.([]byte)
+	case bytes.Buffer:
+		pub.Payload = (payload.(bytes.Buffer)).Bytes()
 	default:
 		token.setError(fmt.Errorf("Unknown payload type"))
 		return token
