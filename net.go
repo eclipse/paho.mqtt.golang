@@ -226,6 +226,7 @@ func alllogic(c *client) {
 			case *packets.PingrespPacket:
 				DEBUG.Println(NET, "received pingresp")
 				atomic.StoreInt32(&c.pingOutstanding, 0)
+				c.pingLastReceived.Store(time.Now())
 			case *packets.SubackPacket:
 				DEBUG.Println(NET, "received suback, id:", m.MessageID)
 				token := c.getToken(m.MessageID)

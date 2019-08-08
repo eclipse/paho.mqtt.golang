@@ -45,6 +45,10 @@ func keepalive(c *client) {
 		case <-intervalTicker.C:
 			lastSent := c.lastSent.Load().(time.Time)
 			lastReceived := c.lastReceived.Load().(time.Time)
+			if c.options.ForcePingEnabled == true {
+				lastSent = c.pingLastSent.Load().(time.Time)
+				lastReceived = c.pingLastReceived.Load().(time.Time)
+			}
 
 			DEBUG.Println(PNG, "ping check", time.Since(lastSent).Seconds())
 			if time.Since(lastSent) >= time.Duration(c.options.KeepAlive*int64(time.Second)) || time.Since(lastReceived) >= time.Duration(c.options.KeepAlive*int64(time.Second)) {

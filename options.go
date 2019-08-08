@@ -55,6 +55,7 @@ type ClientOptions struct {
 	CredentialsProvider     CredentialsProvider
 	CleanSession            bool
 	Order                   bool
+	ForcePingEnabled        bool
 	WillEnabled             bool
 	WillTopic               string
 	WillPayload             []byte
@@ -245,6 +246,17 @@ func (o *ClientOptions) SetProtocolVersion(pv uint) *ClientOptions {
 		o.ProtocolVersion = pv
 		o.protocolVersionExplicit = true
 	}
+	return o
+}
+
+// SetForcePing will change pinging behaviour of the MQTT client.
+// If set to false, the client will not send ping if there are other
+// mqtt messages sent or received within the keepalive second(s).
+// If set to true, the client will send ping every keepalive second(s),
+// even there are the other mqtt messages sent or received within the
+// keepalive second(s).
+func (o *ClientOptions) SetForcePing(force bool) *ClientOptions {
+	o.ForcePingEnabled = force
 	return o
 }
 
