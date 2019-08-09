@@ -60,6 +60,7 @@ func keepalive(c *client) {
 					atomic.StoreInt32(&c.pingOutstanding, 1)
 					ping.Write(c.conn)
 					c.lastSent.Store(time.Now())
+					c.pingLastSent.Store(time.Now())
 					pingSent = time.Now()
 				}
 			}
