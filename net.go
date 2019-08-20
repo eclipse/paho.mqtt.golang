@@ -17,7 +17,6 @@ package mqtt
 import (
 	"crypto/tls"
 	"errors"
-	"fmt"
 	"net"
 	"net/http"
 	"net/url"
@@ -28,7 +27,6 @@ import (
 
 	"github.com/eclipse/paho.mqtt.golang/packets"
 	"golang.org/x/net/proxy"
-	"golang.org/x/net/websocket"
 )
 
 func signalError(c chan<- error, err error) {
@@ -41,27 +39,10 @@ func signalError(c chan<- error, err error) {
 func openConnection(uri *url.URL, tlsc *tls.Config, timeout time.Duration, headers http.Header) (net.Conn, error) {
 	switch uri.Scheme {
 	case "ws":
-		config, _ := websocket.NewConfig(uri.String(), fmt.Sprintf("http://%s", uri.Host))
-		config.Protocol = []string{"mqtt"}
-		config.Header = headers
-		config.Dialer = &net.Dialer{Timeout: timeout}
-		conn, err := websocket.DialConfig(config)
-		if err != nil {
-			return nil, err
-		}
-		conn.PayloadType = websocket.BinaryFrame
+		conn, err := NewWebsocket(uri.String(), nil, timeout, headers)
 		return conn, err
 	case "wss":
-		config, _ := websocket.NewConfig(uri.String(), fmt.Sprintf("https://%s", uri.Host))
-		config.Protocol = []string{"mqtt"}
-		config.TlsConfig = tlsc
-		config.Header = headers
-		config.Dialer = &net.Dialer{Timeout: timeout}
-		conn, err := websocket.DialConfig(config)
-		if err != nil {
-			return nil, err
-		}
-		conn.PayloadType = websocket.BinaryFrame
+		conn, err := NewWebsocket(uri.String(), tlsc, timeout, headers)
 		return conn, err
 	case "tcp":
 		allProxy := os.Getenv("all_proxy")
@@ -137,7 +118,7 @@ func incoming(c *client) {
 		case c.ibound <- cp:
 			// Notify keepalive logic that we recently received a packet
 			if c.options.KeepAlive != 0 {
-				atomic.StoreInt64(&c.lastReceived, time.Now().Unix())
+				c.lastReceived.Store(time.Now())
 			}
 		case <-c.stop:
 			// This avoids a deadlock should a message arrive while shutting down.
@@ -221,7 +202,7 @@ func outgoing(c *client) {
 		}
 		// Reset ping timer after sending control packet.
 		if c.options.KeepAlive != 0 {
-			atomic.StoreInt64(&c.lastSent, time.Now().Unix())
+			c.lastSent.Store(time.Now())
 		}
 	}
 }

@@ -95,8 +95,8 @@ type Client interface {
 
 // client implements the Client interface
 type client struct {
-	lastSent        int64
-	lastReceived    int64
+	lastSent        atomic.Value
+	lastReceived    atomic.Value
 	pingOutstanding int32
 	status          uint32
 	sync.RWMutex
@@ -300,8 +300,8 @@ func (c *client) Connect() Token {
 
 		if c.options.KeepAlive != 0 {
 			atomic.StoreInt32(&c.pingOutstanding, 0)
-			atomic.StoreInt64(&c.lastReceived, time.Now().Unix())
-			atomic.StoreInt64(&c.lastSent, time.Now().Unix())
+			c.lastReceived.Store(time.Now())
+			c.lastSent.Store(time.Now())
 			c.workers.Add(1)
 			go keepalive(c)
 		}
@@ -344,14 +344,16 @@ func (c *client) reconnect() {
 		sleep = time.Duration(1 * time.Second)
 	)
 
-	for rc != 0 && c.status != disconnected {
+	for rc != 0 && atomic.LoadUint32(&c.status) != disconnected {
 		if nil != c.options.OnReconnecting {
 			c.options.OnReconnecting(c, &c.options)
 		}
 		for _, broker := range c.options.Servers {
 			cm := newConnectMsgFromOptions(&c.options, broker)
 			DEBUG.Println(CLI, "about to write new connect msg")
+			c.Lock()
 			c.conn, err = openConnection(broker, c.options.TLSConfig, c.options.ConnectTimeout, c.options.HTTPHeaders)
+			c.Unlock()
 			if err == nil {
 				DEBUG.Println(CLI, "socket connected to broker")
 				switch c.options.ProtocolVersion {
@@ -413,8 +415,8 @@ func (c *client) reconnect() {
 
 	if c.options.KeepAlive != 0 {
 		atomic.StoreInt32(&c.pingOutstanding, 0)
-		atomic.StoreInt64(&c.lastReceived, time.Now().Unix())
-		atomic.StoreInt64(&c.lastSent, time.Now().Unix())
+		c.lastReceived.Store(time.Now())
+		c.lastSent.Store(time.Now())
 		c.workers.Add(1)
 		go keepalive(c)
 	}
@@ -430,6 +432,8 @@ func (c *client) reconnect() {
 	go alllogic(c)
 	go outgoing(c)
 	go incoming(c)
+
+	c.resume(false)
 }
 
 // This function is only used for receiving a connack
@@ -502,7 +506,7 @@ func (c *client) internalConnLost(err error) {
 		c.closeStop()
 		c.conn.Close()
 		c.workers.Wait()
-		if c.options.CleanSession {
+		if c.options.CleanSession && !c.options.AutoReconnect {
 			c.messageIds.cleanUp()
 		}
 		if c.options.AutoReconnect {
@@ -569,8 +573,7 @@ func (c *client) Publish(topic string, qos byte, retained bool, payload interfac
 	DEBUG.Println(CLI, "enter Publish")
 	switch {
 	case !c.IsConnected():
-		token.err = ErrNotConnected
-		token.flowComplete()
+		token.setError(ErrNotConnected)
 		return token
 	case c.connectionStatus() == reconnecting && qos == 0:
 		token.flowComplete()
@@ -586,8 +589,7 @@ func (c *client) Publish(topic string, qos byte, retained bool, payload interfac
 	case []byte:
 		pub.Payload = payload.([]byte)
 	default:
-		token.err = errors.New("Unknown payload type")
-		token.flowComplete()
+		token.setError(fmt.Errorf("Unknown payload type"))
 		return token
 	}
 
@@ -600,7 +602,15 @@ func (c *client) Publish(topic string, qos byte, retained bool, payload interfac
 		DEBUG.Println(CLI, "storing publish message (reconnecting), topic:", topic)
 	} else {
 		DEBUG.Println(CLI, "sending publish message, topic:", topic)
-		c.obound <- &PacketAndToken{p: pub, t: token}
+		publishWaitTimeout := c.options.WriteTimeout
+		if publishWaitTimeout == 0 {
+			publishWaitTimeout = time.Second * 30
+		}
+		select {
+		case c.obound <- &PacketAndToken{p: pub, t: token}:
+		case <-time.After(publishWaitTimeout):
+			token.setError(errors.New("publish was broken by timeout"))
+		}
 	}
 	return token
 }
@@ -611,13 +621,12 @@ func (c *client) Subscribe(topic string, qos byte, callback MessageHandler) Toke
 	token := newToken(packets.Subscribe).(*SubscribeToken)
 	DEBUG.Println(CLI, "enter Subscribe")
 	if !c.IsConnected() {
-		token.err = ErrNotConnected
-		token.flowComplete()
+		token.setError(ErrNotConnected)
 		return token
 	}
 	sub := packets.NewControlPacket(packets.Subscribe).(*packets.SubscribePacket)
 	if err := validateTopicAndQos(topic, qos); err != nil {
-		token.err = err
+		token.setError(err)
 		return token
 	}
 	sub.Topics = append(sub.Topics, topic)
@@ -645,13 +654,12 @@ func (c *client) SubscribeMultiple(filters map[string]byte, callback MessageHand
 	token := newToken(packets.Subscribe).(*SubscribeToken)
 	DEBUG.Println(CLI, "enter SubscribeMultiple")
 	if !c.IsConnected() {
-		token.err = ErrNotConnected
-		token.flowComplete()
+		token.setError(ErrNotConnected)
 		return token
 	}
 	sub := packets.NewControlPacket(packets.Subscribe).(*packets.SubscribePacket)
 	if sub.Topics, sub.Qoss, err = validateSubscribeMap(filters); err != nil {
-		token.err = err
+		token.setError(err)
 		return token
 	}
 
@@ -674,6 +682,9 @@ func (c *client) resume(subscription bool) {
 	storedKeys := c.persist.All()
 	for _, key := range storedKeys {
 		packet := c.persist.Get(key)
+		if packet == nil {
+			continue
+		}
 		details := packet.Details()
 		if isKeyOutbound(key) {
 			switch packet.(type) {
@@ -681,13 +692,19 @@ func (c *client) resume(subscription bool) {
 				if subscription {
 					DEBUG.Println(STR, fmt.Sprintf("loaded pending subscribe (%d)", details.MessageID))
 					token := newToken(packets.Subscribe).(*SubscribeToken)
-					c.oboundP <- &PacketAndToken{p: packet, t: token}
+					select {
+					case c.oboundP <- &PacketAndToken{p: packet, t: token}:
+					case <-c.stop:
+					}
 				}
 			case *packets.UnsubscribePacket:
 				if subscription {
 					DEBUG.Println(STR, fmt.Sprintf("loaded pending unsubscribe (%d)", details.MessageID))
 					token := newToken(packets.Unsubscribe).(*UnsubscribeToken)
-					c.oboundP <- &PacketAndToken{p: packet, t: token}
+					select {
+					case c.oboundP <- &PacketAndToken{p: packet, t: token}:
+					case <-c.stop:
+					}
 				}
 			case *packets.PubrelPacket:
 				DEBUG.Println(STR, fmt.Sprintf("loaded pending pubrel (%d)", details.MessageID))
@@ -701,7 +718,10 @@ func (c *client) resume(subscription bool) {
 				c.claimID(token, details.MessageID)
 				DEBUG.Println(STR, fmt.Sprintf("loaded pending publish (%d)", details.MessageID))
 				DEBUG.Println(STR, details)
-				c.obound <- &PacketAndToken{p: packet, t: token}
+				select {
+				case c.obound <- &PacketAndToken{p: packet, t: token}:
+				case <-c.stop:
+				}
 			default:
 				ERROR.Println(STR, "invalid message type in store (discarded)")
 				c.persist.Del(key)
@@ -729,8 +749,7 @@ func (c *client) Unsubscribe(topics ...string) Token {
 	token := newToken(packets.Unsubscribe).(*UnsubscribeToken)
 	DEBUG.Println(CLI, "enter Unsubscribe")
 	if !c.IsConnected() {
-		token.err = ErrNotConnected
-		token.flowComplete()
+		token.setError(ErrNotConnected)
 		return token
 	}
 	unsub := packets.NewControlPacket(packets.Unsubscribe).(*packets.UnsubscribePacket)

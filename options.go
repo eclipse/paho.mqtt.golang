@@ -10,6 +10,7 @@
  *    Seth Hoenig
  *    Allan Stockdill-Mander
  *    Mike Robertson
+ *    Måns Ansgariusson
  */
 
 // Portions copyright © 2018 TIBCO Software Inc.
@@ -20,6 +21,7 @@ import (
 	"crypto/tls"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -130,12 +132,14 @@ func NewClientOptions() *ClientOptions {
 //
 // An example broker URI would look like: tcp://foobar.com:1883
 func (o *ClientOptions) AddBroker(server string) *ClientOptions {
+	re := regexp.MustCompile(`%(25)?`)
 	if len(server) > 0 && server[0] == ':' {
 		server = "127.0.0.1" + server
 	}
 	if !strings.Contains(server, "://") {
 		server = "tcp://" + server
 	}
+	server = re.ReplaceAllLiteralString(server, "%25")
 	brokerURI, err := url.Parse(server)
 	if err != nil {
 		ERROR.Println(CLI, "Failed to parse %q broker address: %s", server, err)

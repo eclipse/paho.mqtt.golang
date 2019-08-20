@@ -49,20 +49,14 @@ type tokenCompletor interface {
 type baseToken struct {
 	m        sync.RWMutex
 	complete chan struct{}
-	ready    bool
 	err      error
 }
 
 // Wait will wait indefinitely for the Token to complete, ie the Publish
 // to be sent and confirmed receipt from the broker
 func (b *baseToken) Wait() bool {
-	b.m.Lock()
-	defer b.m.Unlock()
-	if !b.ready {
-		<-b.complete
-		b.ready = true
-	}
-	return b.ready
+	<-b.complete
+	return true
 }
 
 // WaitTimeout takes a time.Duration to wait for the flow associated with the
@@ -73,18 +67,17 @@ func (b *baseToken) WaitTimeout(d time.Duration) bool {
 	b.m.Lock()
 	defer b.m.Unlock()
 
-	if !b.ready {
-		timer := time.NewTimer(d)
-		select {
-		case <-b.complete:
-			b.ready = true
-			if !timer.Stop() {
-				<-timer.C
-			}
-		case <-timer.C:
+	timer := time.NewTimer(d)
+	select {
+	case <-b.complete:
+		if !timer.Stop() {
+			<-timer.C
 		}
+		return true
+	case <-timer.C:
 	}
-	return b.ready
+
+	return false
 }
 
 func (b *baseToken) flowComplete() {
@@ -102,8 +95,10 @@ func (b *baseToken) Error() error {
 }
 
 func (b *baseToken) setError(e error) {
+	b.m.Lock()
 	b.err = e
 	b.flowComplete()
+	b.m.Unlock()
 }
 
 func newToken(tType byte) tokenCompletor {
