@@ -345,8 +345,8 @@ func (c *client) reconnect() {
 	)
 
 	for rc != 0 && c.status != disconnected {
-		if nil != c.options.OnWillReconnect {
-			c.options.OnWillReconnect(c, WillReconnectArgs{&c.options})
+		if nil != c.options.OnReconnecting {
+			c.options.OnReconnecting(c, &c.options)
 		}
 		for _, broker := range c.options.Servers {
 			cm := newConnectMsgFromOptions(&c.options, broker)
