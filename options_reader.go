@@ -133,6 +133,18 @@ func (r *ClientOptionsReader) AutoReconnect() bool {
 	return s
 }
 
+//ConnectRetryInterval returns the delay between retries on the initial connection (if ConnectRetry true)
+func (r *ClientOptionsReader) ConnectRetryInterval() time.Duration {
+	s := r.options.ConnectRetryInterval
+	return s
+}
+
+//ConnectRetry returns whether the initial connection request will be retried until connection established
+func (r *ClientOptionsReader) ConnectRetry() bool {
+	s := r.options.ConnectRetry
+	return s
+}
+
 func (r *ClientOptionsReader) WriteTimeout() time.Duration {
 	s := r.options.WriteTimeout
 	return s

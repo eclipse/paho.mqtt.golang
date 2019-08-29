@@ -156,6 +156,8 @@ func (c *client) AddRoute(topic string, callback MessageHandler) {
 
 // IsConnected returns a bool signifying whether
 // the client is connected or not.
+// connected means that the connection is up now OR it will
+// be established/reestablished automatically when possible
 func (c *client) IsConnected() bool {
 	c.RLock()
 	defer c.RUnlock()
@@ -164,6 +166,8 @@ func (c *client) IsConnected() bool {
 	case status == connected:
 		return true
 	case c.options.AutoReconnect && status > connecting:
+		return true
+	case c.options.ConnectRetry && status == connecting:
 		return true
 	default:
 		return false
@@ -209,14 +213,27 @@ func (c *client) Connect() Token {
 	t := newToken(packets.Connect).(*ConnectToken)
 	DEBUG.Println(CLI, "Connect()")
 
+	if c.options.ConnectRetry && atomic.LoadUint32(&c.status) != disconnected {
+		// if in any state other than disconnected and ConnectRetry is
+		// enabled then the connection will come up automatically
+		// client can assume connection is up
+		WARN.Println(CLI, "Connect() called but not disconnected")
+		t.returnCode = packets.Accepted
+		t.flowComplete()
+		return t
+	}
+
 	c.obound = make(chan *PacketAndToken)
 	c.oboundP = make(chan *PacketAndToken)
 	c.ibound = make(chan packets.ControlPacket)
 
-	go func() {
-		c.persist.Open()
+	c.persist.Open()
+	if c.options.ConnectRetry {
+		c.reserveStoredPublishIDs() // Reserve IDs to allow publish before connect complete
+	}
+	c.setConnected(connecting)
 
-		c.setConnected(connecting)
+	go func() {
 		c.errors = make(chan error, 1)
 		c.stop = make(chan struct{})
 
@@ -228,12 +245,16 @@ func (c *client) Connect() Token {
 			return
 		}
 
+	RETRYCONN:
 		for _, broker := range c.options.Servers {
 			cm := newConnectMsgFromOptions(&c.options, broker)
 			c.options.ProtocolVersion = protocolVersion
 		CONN:
 			DEBUG.Println(CLI, "about to write new connect msg")
-			c.conn, err = openConnection(broker, c.options.TLSConfig, c.options.ConnectTimeout, c.options.HTTPHeaders)
+			c.Lock()
+			c.conn, err = openConnection(broker, c.options.TLSConfig, c.options.ConnectTimeout,
+				c.options.HTTPHeaders)
+			c.Unlock()
 			if err == nil {
 				DEBUG.Println(CLI, "socket connected to broker")
 				switch c.options.ProtocolVersion {
@@ -259,10 +280,12 @@ func (c *client) Connect() Token {
 
 				rc, t.sessionPresent = c.connect()
 				if rc != packets.Accepted {
+					c.Lock()
 					if c.conn != nil {
 						c.conn.Close()
 						c.conn = nil
 					}
+					c.Unlock()
 					//if the protocol version was explicitly set don't do any fallback
 					if c.options.protocolVersionExplicit {
 						ERROR.Println(CLI, "Connecting to", broker, "CONNACK was not CONN_ACCEPTED, but rather", packets.ConnackReturnCodes[rc])
@@ -283,6 +306,14 @@ func (c *client) Connect() Token {
 		}
 
 		if c.conn == nil {
+			if c.options.ConnectRetry {
+				DEBUG.Println(CLI, "Connect failed, sleeping for", int(c.options.ConnectRetryInterval.Seconds()), "seconds and will then retry")
+				time.Sleep(c.options.ConnectRetryInterval)
+
+				if atomic.LoadUint32(&c.status) == connecting {
+					goto RETRYCONN
+				}
+			}
 			ERROR.Println(CLI, "Failed to connect to a broker")
 			c.setConnected(disconnected)
 			c.persist.Close()
@@ -596,9 +627,12 @@ func (c *client) Publish(topic string, qos byte, retained bool, payload interfac
 		token.messageID = pub.MessageID
 	}
 	persistOutbound(c.persist, pub)
-	if c.connectionStatus() == reconnecting {
+	switch c.connectionStatus() {
+	case connecting:
+		DEBUG.Println(CLI, "storing publish message (connecting), topic:", topic)
+	case reconnecting:
 		DEBUG.Println(CLI, "storing publish message (reconnecting), topic:", topic)
-	} else {
+	default:
 		DEBUG.Println(CLI, "sending publish message, topic:", topic)
 		publishWaitTimeout := c.options.WriteTimeout
 		if publishWaitTimeout == 0 {
@@ -671,6 +705,28 @@ func (c *client) SubscribeMultiple(filters map[string]byte, callback MessageHand
 	c.oboundP <- &PacketAndToken{p: sub, t: token}
 	DEBUG.Println(CLI, "exit SubscribeMultiple")
 	return token
+}
+
+// reserveStoredPublishIDs reserves the ids for publish packets in the persistant store to ensure these are not duplicated
+func (c *client) reserveStoredPublishIDs() {
+	// The resume function sets the stored id for publish packets only (some other packets
+	// will get new ids in net code). This means that the only keys we need to ensure are
+	// unique are the publish ones (and these will completed/replaced in resume() )
+	if c.options.CleanSession == false {
+		storedKeys := c.persist.All()
+		for _, key := range storedKeys {
+			packet := c.persist.Get(key)
+			if packet == nil {
+				continue
+			}
+			switch packet.(type) {
+			case *packets.PublishPacket:
+				details := packet.Details()
+				token := &PlaceHolderToken{id: details.MessageID}
+				c.claimID(token, details.MessageID)
+			}
+		}
+	}
 }
 
 // Load all stored messages and resend them
