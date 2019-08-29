@@ -581,13 +581,13 @@ func (c *client) Publish(topic string, qos byte, retained bool, payload interfac
 	pub.Qos = qos
 	pub.TopicName = topic
 	pub.Retain = retained
-	switch payload.(type) {
+	switch p := payload.(type) {
 	case string:
-		pub.Payload = []byte(payload.(string))
+		pub.Payload = []byte(p)
 	case []byte:
-		pub.Payload = payload.([]byte)
+		pub.Payload = p
 	case bytes.Buffer:
-		pub.Payload = (payload.(bytes.Buffer)).Bytes()
+		pub.Payload = p.Bytes()
 	default:
 		token.setError(fmt.Errorf("Unknown payload type"))
 		return token
