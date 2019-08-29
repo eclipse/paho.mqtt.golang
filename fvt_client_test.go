@@ -142,6 +142,24 @@ func Test_Publish_3(t *testing.T) {
 	c.Disconnect(250)
 }
 
+func Test_Publish_BytesBuffer(t *testing.T) {
+	ops := NewClientOptions()
+	ops.AddBroker(FVTTCP)
+	ops.SetClientID("Publish_BytesBuffer")
+
+	c := NewClient(ops)
+	token := c.Connect()
+	if token.Wait() && token.Error() != nil {
+		t.Fatalf("Error on Client.Connect(): %v", token.Error())
+	}
+
+	payload := bytes.NewBufferString("Publish qos0")
+
+	c.Publish("test/Publish", 0, false, payload)
+
+	c.Disconnect(250)
+}
+
 func Test_Subscribe(t *testing.T) {
 	pops := NewClientOptions()
 	pops.AddBroker(FVTTCP)
