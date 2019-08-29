@@ -405,8 +405,10 @@ func (c *client) reconnect() {
 
 				rc, _ = c.connect()
 				if rc != packets.Accepted {
-					c.conn.Close()
-					c.conn = nil
+					if c.conn != nil {
+						c.conn.Close()
+						c.conn = nil
+					}
 					//if the protocol version was explicitly set don't do any fallback
 					if c.options.protocolVersionExplicit {
 						ERROR.Println(CLI, "Connecting to", broker, "CONNACK was not Accepted, but rather", packets.ConnackReturnCodes[rc])
