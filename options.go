@@ -111,7 +111,6 @@ func NewClientOptions() *ClientOptions {
 		OnConnect:               nil,
 		OnConnectionLost:        DefaultConnectionLostHandler,
 		WriteTimeout:            0, // 0 represents timeout disabled
-		MessageChannelDepth:     100,
 		ResumeSubs:              false,
 		HTTPHeaders:             make(map[string][]string),
 	}
@@ -327,10 +326,8 @@ func (o *ClientOptions) SetAutoReconnect(a bool) *ClientOptions {
 	return o
 }
 
-// SetMessageChannelDepth sets the size of the internal queue that holds messages while the
-// client is temporairily offline, allowing the application to publish when the client is
-// reconnecting. This setting is only valid if AutoReconnect is set to true, it is otherwise
-// ignored.
+// SetMessageChannelDepth DEPRECATED The value set here no longer has any effect, this function
+// remains so the API is not altered.
 func (o *ClientOptions) SetMessageChannelDepth(s uint) *ClientOptions {
 	o.MessageChannelDepth = s
 	return o
