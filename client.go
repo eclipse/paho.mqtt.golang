@@ -670,8 +670,12 @@ func (c *client) Subscribe(topic string, qos byte, callback MessageHandler) Toke
 	sub.Qoss = append(sub.Qoss, qos)
 	DEBUG.Println(CLI, sub.String())
 
-	if strings.HasPrefix(topic, "$share") {
+	if strings.HasPrefix(topic, "$share/") {
 		topic = strings.Join(strings.Split(topic, "/")[2:], "/")
+	}
+
+	if strings.HasPrefix(topic, "$queue/") {
+		topic = strings.TrimPrefix(topic, "$queue/")
 	}
 
 	if callback != nil {
