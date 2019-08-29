@@ -46,6 +46,10 @@ type ConnectionLostHandler func(Client, error)
 // at initial connection and on reconnection
 type OnConnectHandler func(Client)
 
+// ReconnectHandler is invoked prior to reconnecting after
+// the initial connection is lost
+type ReconnectHandler func(Client, *ClientOptions)
+
 // ClientOptions contains configurable options for an Client.
 type ClientOptions struct {
 	Servers                 []*url.URL
@@ -74,6 +78,7 @@ type ClientOptions struct {
 	DefaultPublishHandler   MessageHandler
 	OnConnect               OnConnectHandler
 	OnConnectionLost        ConnectionLostHandler
+	OnReconnecting          ReconnectHandler
 	WriteTimeout            time.Duration
 	MessageChannelDepth     uint
 	ResumeSubs              bool
@@ -297,6 +302,13 @@ func (o *ClientOptions) SetOnConnectHandler(onConn OnConnectHandler) *ClientOpti
 // in the case where the client unexpectedly loses connection with the MQTT broker.
 func (o *ClientOptions) SetConnectionLostHandler(onLost ConnectionLostHandler) *ClientOptions {
 	o.OnConnectionLost = onLost
+	return o
+}
+
+// SetReconnectingHandler sets the OnReconnecting callback to be executed prior
+// to the client attempting a reconnect to the MQTT broker.
+func (o *ClientOptions) SetReconnectingHandler(cb ReconnectHandler) *ClientOptions {
+	o.OnReconnecting = cb
 	return o
 }
 
