@@ -27,7 +27,7 @@ func NewWebsocket(host string, tlsc *tls.Config, timeout time.Duration, requestH
 	ws, _, err := dialer.Dial(host, requestHeader)
 
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	wrapper := &websocketConnector{
