@@ -1026,7 +1026,7 @@ func Test_cleanUpMids(t *testing.T) {
 	c.(*client).messageIds.Unlock()
 	c.(*client).internalConnLost(fmt.Errorf("cleanup test"))
 
-	time.Sleep(5 * time.Second)
+	time.Sleep(1 * time.Second)
 	if !c.IsConnected() {
 		t.Fail()
 	}

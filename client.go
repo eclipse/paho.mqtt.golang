@@ -140,9 +140,7 @@ func NewClient(o *ClientOptions) Client {
 	c.messageIds = messageIds{index: make(map[uint16]tokenCompletor)}
 	c.msgRouter, c.stopRouter = newRouter()
 	c.msgRouter.setDefaultHandler(c.options.DefaultPublishHandler)
-	if !c.options.AutoReconnect {
-		c.options.MessageChannelDepth = 0
-	}
+
 	return c
 }
 
@@ -210,8 +208,8 @@ func (c *client) Connect() Token {
 	t := newToken(packets.Connect).(*ConnectToken)
 	DEBUG.Println(CLI, "Connect()")
 
-	c.obound = make(chan *PacketAndToken, c.options.MessageChannelDepth)
-	c.oboundP = make(chan *PacketAndToken, c.options.MessageChannelDepth)
+	c.obound = make(chan *PacketAndToken)
+	c.oboundP = make(chan *PacketAndToken)
 	c.ibound = make(chan packets.ControlPacket)
 
 	go func() {
@@ -306,7 +304,7 @@ func (c *client) Connect() Token {
 			go keepalive(c)
 		}
 
-		c.incomingPubChan = make(chan *packets.PublishPacket, c.options.MessageChannelDepth)
+		c.incomingPubChan = make(chan *packets.PublishPacket)
 		c.msgRouter.matchAndDispatch(c.incomingPubChan, c.options.Order, c)
 
 		c.setConnected(connected)
@@ -322,7 +320,7 @@ func (c *client) Connect() Token {
 		go incoming(c)
 
 		// Take care of any messages in the store
-		if c.options.CleanSession == false {
+		if !c.options.CleanSession {
 			c.resume(c.options.ResumeSubs)
 		} else {
 			c.persist.Reset()
