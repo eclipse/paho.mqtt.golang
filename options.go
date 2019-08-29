@@ -10,6 +10,7 @@
  *    Seth Hoenig
  *    Allan Stockdill-Mander
  *    Mike Robertson
+ *    Måns Ansgariusson
  */
 
 // Portions copyright © 2018 TIBCO Software Inc.
@@ -20,6 +21,7 @@ import (
 	"crypto/tls"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -113,7 +115,6 @@ func NewClientOptions() *ClientOptions {
 		OnConnect:               nil,
 		OnConnectionLost:        DefaultConnectionLostHandler,
 		WriteTimeout:            0, // 0 represents timeout disabled
-		MessageChannelDepth:     100,
 		ResumeSubs:              false,
 		HTTPHeaders:             make(map[string][]string),
 	}
@@ -129,12 +130,14 @@ func NewClientOptions() *ClientOptions {
 //
 // An example broker URI would look like: tcp://foobar.com:1883
 func (o *ClientOptions) AddBroker(server string) *ClientOptions {
+	re := regexp.MustCompile(`%(25)?`)
 	if len(server) > 0 && server[0] == ':' {
 		server = "127.0.0.1" + server
 	}
 	if !strings.Contains(server, "://") {
 		server = "tcp://" + server
 	}
+	server = re.ReplaceAllLiteralString(server, "%25")
 	brokerURI, err := url.Parse(server)
 	if err != nil {
 		ERROR.Println(CLI, "Failed to parse %q broker address: %s", server, err)
@@ -344,10 +347,8 @@ func (o *ClientOptions) SetConnectRetry(a bool) *ClientOptions {
 	return o
 }
 
-// SetMessageChannelDepth sets the size of the internal queue that holds messages while the
-// client is temporairily offline, allowing the application to publish when the client is
-// reconnecting. This setting is only valid if AutoReconnect is set to true, it is otherwise
-// ignored.
+// SetMessageChannelDepth DEPRECATED The value set here no longer has any effect, this function
+// remains so the API is not altered.
 func (o *ClientOptions) SetMessageChannelDepth(s uint) *ClientOptions {
 	o.MessageChannelDepth = s
 	return o

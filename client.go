@@ -18,6 +18,7 @@
 package mqtt
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"net"
@@ -140,9 +141,7 @@ func NewClient(o *ClientOptions) Client {
 	c.messageIds = messageIds{index: make(map[uint16]tokenCompletor)}
 	c.msgRouter, c.stopRouter = newRouter()
 	c.msgRouter.setDefaultHandler(c.options.DefaultPublishHandler)
-	if !c.options.AutoReconnect {
-		c.options.MessageChannelDepth = 0
-	}
+
 	return c
 }
 
@@ -224,8 +223,8 @@ func (c *client) Connect() Token {
 		return t
 	}
 
-	c.obound = make(chan *PacketAndToken, c.options.MessageChannelDepth)
-	c.oboundP = make(chan *PacketAndToken, c.options.MessageChannelDepth)
+	c.obound = make(chan *PacketAndToken)
+	c.oboundP = make(chan *PacketAndToken)
 	c.ibound = make(chan packets.ControlPacket)
 
 	c.persist.Open()
@@ -337,7 +336,7 @@ func (c *client) Connect() Token {
 			go keepalive(c)
 		}
 
-		c.incomingPubChan = make(chan *packets.PublishPacket, c.options.MessageChannelDepth)
+		c.incomingPubChan = make(chan *packets.PublishPacket)
 		c.msgRouter.matchAndDispatch(c.incomingPubChan, c.options.Order, c)
 
 		c.setConnected(connected)
@@ -353,7 +352,7 @@ func (c *client) Connect() Token {
 		go incoming(c)
 
 		// Take care of any messages in the store
-		if c.options.CleanSession == false {
+		if !c.options.CleanSession {
 			c.resume(c.options.ResumeSubs)
 		} else {
 			c.persist.Reset()
@@ -611,11 +610,13 @@ func (c *client) Publish(topic string, qos byte, retained bool, payload interfac
 	pub.Qos = qos
 	pub.TopicName = topic
 	pub.Retain = retained
-	switch payload.(type) {
+	switch p := payload.(type) {
 	case string:
-		pub.Payload = []byte(payload.(string))
+		pub.Payload = []byte(p)
 	case []byte:
-		pub.Payload = payload.([]byte)
+		pub.Payload = p
+	case bytes.Buffer:
+		pub.Payload = p.Bytes()
 	default:
 		token.setError(fmt.Errorf("Unknown payload type"))
 		return token
@@ -633,9 +634,13 @@ func (c *client) Publish(topic string, qos byte, retained bool, payload interfac
 		DEBUG.Println(CLI, "storing publish message (reconnecting), topic:", topic)
 	default:
 		DEBUG.Println(CLI, "sending publish message, topic:", topic)
+		publishWaitTimeout := c.options.WriteTimeout
+		if publishWaitTimeout == 0 {
+			publishWaitTimeout = time.Second * 30
+		}
 		select {
 		case c.obound <- &PacketAndToken{p: pub, t: token}:
-		case <-time.After(c.options.WriteTimeout):
+		case <-time.After(publishWaitTimeout):
 			token.setError(errors.New("publish was broken by timeout"))
 		}
 	}

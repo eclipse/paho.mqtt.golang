@@ -113,7 +113,7 @@ func main() {
 	c.Subscribe("/go-mqtt/sample", 0, nil)
 
 	i := 0
-	for _ = range time.Tick(time.Duration(1) * time.Second) {
+	for range time.Tick(time.Duration(1) * time.Second) {
 		if i == 5 {
 			break
 		}
