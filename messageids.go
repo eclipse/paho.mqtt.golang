@@ -114,4 +114,28 @@ func (d *DummyToken) Error() error {
 	return nil
 }
 
-func (d *DummyToken) setError(e error) {}
+func (p *DummyToken) setError(e error) {}
+
+// PlaceHolderToken does nothing and was implemented to allow a messageid to be reserved
+// it differs from DummyToken in that calling flowComplete does not generate an error (it
+// is expected that flowComplete will be called when the token is overwritten with a real token)
+type PlaceHolderToken struct {
+	id uint16
+}
+
+func (p *PlaceHolderToken) Wait() bool {
+	return true
+}
+
+func (p *PlaceHolderToken) WaitTimeout(t time.Duration) bool {
+	return true
+}
+
+func (p *PlaceHolderToken) flowComplete() {
+}
+
+func (p *PlaceHolderToken) Error() error {
+	return nil
+}
+
+func (p *PlaceHolderToken) setError(e error) {}

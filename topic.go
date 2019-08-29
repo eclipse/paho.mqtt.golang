@@ -75,7 +75,7 @@ func validateTopicAndQos(topic string, qos byte) error {
 		}
 	}
 
-	if qos < 0 || qos > 2 {
+	if qos > 2 {
 		return ErrInvalidQos
 	}
 	return nil

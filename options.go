@@ -10,6 +10,7 @@
  *    Seth Hoenig
  *    Allan Stockdill-Mander
  *    Mike Robertson
+ *    Måns Ansgariusson
  */
 
 // Portions copyright © 2018 TIBCO Software Inc.
@@ -20,6 +21,7 @@ import (
 	"crypto/tls"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -66,6 +68,8 @@ type ClientOptions struct {
 	ConnectTimeout          time.Duration
 	MaxReconnectInterval    time.Duration
 	AutoReconnect           bool
+	ConnectRetryInterval    time.Duration
+	ConnectRetry            bool
 	Store                   Store
 	DefaultPublishHandler   MessageHandler
 	OnConnect               OnConnectHandler
@@ -105,11 +109,12 @@ func NewClientOptions() *ClientOptions {
 		ConnectTimeout:          30 * time.Second,
 		MaxReconnectInterval:    10 * time.Minute,
 		AutoReconnect:           true,
+		ConnectRetryInterval:    30 * time.Second,
+		ConnectRetry:            false,
 		Store:                   nil,
 		OnConnect:               nil,
 		OnConnectionLost:        DefaultConnectionLostHandler,
 		WriteTimeout:            0, // 0 represents timeout disabled
-		MessageChannelDepth:     100,
 		ResumeSubs:              false,
 		HTTPHeaders:             make(map[string][]string),
 	}
@@ -125,12 +130,14 @@ func NewClientOptions() *ClientOptions {
 //
 // An example broker URI would look like: tcp://foobar.com:1883
 func (o *ClientOptions) AddBroker(server string) *ClientOptions {
+	re := regexp.MustCompile(`%(25)?`)
 	if len(server) > 0 && server[0] == ':' {
 		server = "127.0.0.1" + server
 	}
 	if !strings.Contains(server, "://") {
 		server = "tcp://" + server
 	}
+	server = re.ReplaceAllLiteralString(server, "%25")
 	brokerURI, err := url.Parse(server)
 	if err != nil {
 		ERROR.Println(CLI, "Failed to parse %q broker address: %s", server, err)
@@ -323,10 +330,25 @@ func (o *ClientOptions) SetAutoReconnect(a bool) *ClientOptions {
 	return o
 }
 
-// SetMessageChannelDepth sets the size of the internal queue that holds messages while the
-// client is temporarily offline, allowing the application to publish when the client is
-// reconnecting. This setting is only valid if AutoReconnect is set to true, it is otherwise
-// ignored.
+// SetConnectRetryInterval sets the time that will be waited between connection attempts
+// when initially connecting if ConnectRetry is TRUE
+func (o *ClientOptions) SetConnectRetryInterval(t time.Duration) *ClientOptions {
+	o.ConnectRetryInterval = t
+	return o
+}
+
+// SetConnectRetry sets whether the connect function will automatically retry the connection
+// in the event of a failure (when true the token returned by the Connect function will
+// not complete until the connection is up or it is cancelled)
+// If ConnectRetry is true then subscriptions should be requested in OnConnect handler
+// Setting this to TRUE permits mesages to be published before the connection is established
+func (o *ClientOptions) SetConnectRetry(a bool) *ClientOptions {
+	o.ConnectRetry = a
+	return o
+}
+
+// SetMessageChannelDepth DEPRECATED The value set here no longer has any effect, this function
+// remains so the API is not altered.
 func (o *ClientOptions) SetMessageChannelDepth(s uint) *ClientOptions {
 	o.MessageChannelDepth = s
 	return o

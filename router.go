@@ -37,17 +37,11 @@ type route struct {
 // and returns a boolean of the outcome
 func match(route []string, topic []string) bool {
 	if len(route) == 0 {
-		if len(topic) == 0 {
-			return true
-		}
-		return false
+		return len(topic) == 0
 	}
 
 	if len(topic) == 0 {
-		if route[0] == "#" {
-			return true
-		}
-		return false
+		return route[0] == "#"
 	}
 
 	if route[0] == "#" {
