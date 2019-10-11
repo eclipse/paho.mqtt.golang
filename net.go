@@ -178,12 +178,6 @@ func outgoing(c *client) {
 			}
 			DEBUG.Println(NET, "obound wrote msg, id:", msg.MessageID)
 		case msg := <-c.oboundP:
-			switch msg.p.(type) {
-			case *packets.SubscribePacket:
-				msg.p.(*packets.SubscribePacket).MessageID = c.getID(msg.t)
-			case *packets.UnsubscribePacket:
-				msg.p.(*packets.UnsubscribePacket).MessageID = c.getID(msg.t)
-			}
 			DEBUG.Println(NET, "obound priority msg to write, type", reflect.TypeOf(msg.p))
 			if err := msg.p.Write(c.conn); err != nil {
 				ERROR.Println(NET, "outgoing stopped with error", err)

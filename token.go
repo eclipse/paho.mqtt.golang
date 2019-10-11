@@ -160,6 +160,7 @@ type SubscribeToken struct {
 	baseToken
 	subs      []string
 	subResult map[string]byte
+	messageID uint16
 }
 
 // Result returns a map of topics that were subscribed to along with

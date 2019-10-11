@@ -1181,7 +1181,7 @@ func Test_ConnectRetryPublish(t *testing.T) {
 
 	// disconnect and then reconnect with correct server
 	p.Disconnect(250)
-	
+
 	pops = NewClientOptions().AddBroker(FVTTCP).SetClientID("crp-pub").SetCleanSession(false).
 		SetStore(memStore2).SetConnectRetry(true).SetConnectRetryInterval(time.Second / 2)
 	p = NewClient(pops).(*client)
@@ -1197,4 +1197,90 @@ func Test_ConnectRetryPublish(t *testing.T) {
 	p.Disconnect(250)
 	s.Disconnect(250)
 	memStore.Close()
+}
+
+func Test_ResumeSubs(t *testing.T) {
+	topic := "/test/ResumeSubs"
+	var qos byte = 1
+	payload := "sample Payload"
+	choke := make(chan bool)
+
+	// subscribe to topic before establishing a connection, and publish a message after the publish client has connected successfully
+	subMemStore := NewMemoryStore()
+	subMemStore.Open()
+	sops := NewClientOptions().AddBroker("256.256.256.256").SetClientID("resumesubs-sub").SetConnectRetry(true).
+		SetConnectRetryInterval(time.Second / 2).SetResumeSubs(true).SetStore(subMemStore)
+
+	s := NewClient(sops)
+	sConnToken := s.Connect()
+
+	subToken := s.Subscribe(topic, qos, nil)
+
+	// Verify the subscribe packet exists in the memorystore
+	ids := subMemStore.All()
+	if len(ids) == 0 {
+		t.Fatalf("Expected subscribe packet to be in store")
+	} else if len(ids) != 1 {
+		t.Fatalf("Expected 1 packet to be in store")
+	}
+	packet := subMemStore.Get(ids[0])
+	if packet == nil {
+		t.Fatal("Failed to retrieve packet from store")
+	}
+	sp, ok := packet.(*packets.SubscribePacket)
+	if !ok {
+		t.Fatalf("Packet in store not of the expected type (%T)", packet)
+	}
+	if len(sp.Topics) != 1 || sp.Topics[0] != topic || len(sp.Qoss) != 1 || sp.Qoss[0] != qos {
+		t.Fatalf("Stored Subscribe Packet contents not as expected (%v, %v)", sp.Topics, sp.Qoss)
+	}
+
+	time.Sleep(time.Second) // Wait a second to ensure we are past SetConnectRetryInterval
+	if sConnToken.Error() != nil {
+		t.Fatalf("Connect returned error (should be retrying) (%v)", sConnToken.Error())
+	}
+	if subToken.Error() != nil {
+		t.Fatalf("Subscribe returned error (should be persisted) (%v)", sConnToken.Error())
+	}
+
+	// test that the stored subscribe packet gets sent to the broker after connecting
+	subMemStore2 := NewMemoryStore()
+	subMemStore2.Open()
+	subMemStore2.Put(ids[0], packet)
+
+	s.Disconnect(250)
+
+	// Connect to broker and test that subscription was resumed
+	sops = NewClientOptions().AddBroker(FVTTCP).SetClientID("resumesubs-sub").
+		SetStore(subMemStore2).SetResumeSubs(true).SetCleanSession(false).SetConnectRetry(true).
+		SetConnectRetryInterval(time.Second / 2)
+
+	var f MessageHandler = func(client Client, msg Message) {
+		if msg.Topic() != topic || string(msg.Payload()) != payload {
+			t.Fatalf("Received unexpected message: %v, %v", msg.Topic(), msg.Payload())
+		}
+		choke <- true
+	}
+	sops.SetDefaultPublishHandler(f)
+	s = NewClient(sops).(*client)
+	if sConnToken = s.Connect(); sConnToken.Wait() && sConnToken.Error() != nil {
+		t.Fatalf("Error on valid subscribe Connect(): %v", sConnToken.Error())
+	}
+
+	// publish message to subscribed topic to verify subscription
+	pops := NewClientOptions().AddBroker(FVTTCP).SetClientID("resumesubs-pub").SetCleanSession(true).
+		SetConnectRetry(true).SetConnectRetryInterval(time.Second / 2)
+	p := NewClient(pops).(*client)
+	if pConnToken := p.Connect(); pConnToken.Wait() && pConnToken.Error() != nil {
+		t.Fatalf("Error on valid Publish.Connect(): %v", pConnToken.Error())
+	}
+
+	if pubToken := p.Publish(topic, 1, false, payload); pubToken.Wait() && pubToken.Error() != nil {
+		t.Fatalf("Error on valid Client.Publish(): %v", pubToken.Error())
+	}
+
+	wait(choke)
+
+	s.Disconnect(250)
+	p.Disconnect(250)
 }

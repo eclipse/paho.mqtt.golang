@@ -668,7 +668,6 @@ func (c *client) Subscribe(topic string, qos byte, callback MessageHandler) Toke
 	}
 	sub.Topics = append(sub.Topics, topic)
 	sub.Qoss = append(sub.Qoss, qos)
-	DEBUG.Println(CLI, sub.String())
 
 	if strings.HasPrefix(topic, "$share/") {
 		topic = strings.Join(strings.Split(topic, "/")[2:], "/")
@@ -683,7 +682,31 @@ func (c *client) Subscribe(topic string, qos byte, callback MessageHandler) Toke
 	}
 
 	token.subs = append(token.subs, topic)
-	c.oboundP <- &PacketAndToken{p: sub, t: token}
+
+	if sub.MessageID == 0 {
+		sub.MessageID = c.getID(token)
+		token.messageID = sub.MessageID
+	}
+	DEBUG.Println(CLI, sub.String())
+
+	persistOutbound(c.persist, sub)
+	switch c.connectionStatus() {
+	case connecting:
+		DEBUG.Println(CLI, "storing subscribe message (connecting), topic:", topic)
+	case reconnecting:
+		DEBUG.Println(CLI, "storing subscribe message (reconnecting), topic:", topic)
+	default:
+		DEBUG.Println(CLI, "sending subscribe message, topic:", topic)
+		subscribeWaitTimeout := c.options.WriteTimeout
+		if subscribeWaitTimeout == 0 {
+			subscribeWaitTimeout = time.Second * 30
+		}
+		select {
+		case c.oboundP <- &PacketAndToken{p: sub, t: token}:
+		case <-time.After(subscribeWaitTimeout):
+			token.setError(errors.New("subscribe was broken by timeout"))
+		}
+	}
 	DEBUG.Println(CLI, "exit Subscribe")
 	return token
 }
@@ -711,7 +734,29 @@ func (c *client) SubscribeMultiple(filters map[string]byte, callback MessageHand
 	}
 	token.subs = make([]string, len(sub.Topics))
 	copy(token.subs, sub.Topics)
-	c.oboundP <- &PacketAndToken{p: sub, t: token}
+
+	if sub.MessageID == 0 {
+		sub.MessageID = c.getID(token)
+		token.messageID = sub.MessageID
+	}
+	persistOutbound(c.persist, sub)
+	switch c.connectionStatus() {
+	case connecting:
+		DEBUG.Println(CLI, "storing subscribe message (connecting), topics:", sub.Topics)
+	case reconnecting:
+		DEBUG.Println(CLI, "storing subscribe message (reconnecting), topics:", sub.Topics)
+	default:
+		DEBUG.Println(CLI, "sending subscribe message, topics:", sub.Topics)
+		subscribeWaitTimeout := c.options.WriteTimeout
+		if subscribeWaitTimeout == 0 {
+			subscribeWaitTimeout = time.Second * 30
+		}
+		select {
+		case c.oboundP <- &PacketAndToken{p: sub, t: token}:
+		case <-time.After(subscribeWaitTimeout):
+			token.setError(errors.New("subscribe was broken by timeout"))
+		}
+	}
 	DEBUG.Println(CLI, "exit SubscribeMultiple")
 	return token
 }
@@ -754,7 +799,11 @@ func (c *client) resume(subscription bool) {
 			case *packets.SubscribePacket:
 				if subscription {
 					DEBUG.Println(STR, fmt.Sprintf("loaded pending subscribe (%d)", details.MessageID))
+					subPacket := packet.(*packets.SubscribePacket)
 					token := newToken(packets.Subscribe).(*SubscribeToken)
+					token.messageID = details.MessageID
+					token.subs = append(token.subs, subPacket.Topics...)
+					c.claimID(token, details.MessageID)
 					select {
 					case c.oboundP <- &PacketAndToken{p: packet, t: token}:
 					case <-c.stop:
