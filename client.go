@@ -114,6 +114,7 @@ type client struct {
 	persist         Store
 	options         ClientOptions
 	workers         sync.WaitGroup
+	addBroker       chan string // to enable tests to add brokers without stopping go routines
 }
 
 // NewClient will create an MQTT v3.1.1 client with all of the options specified
@@ -141,7 +142,7 @@ func NewClient(o *ClientOptions) Client {
 	c.messageIds = messageIds{index: make(map[uint16]tokenCompletor)}
 	c.msgRouter, c.stopRouter = newRouter()
 	c.msgRouter.setDefaultHandler(c.options.DefaultPublishHandler)
-
+	c.addBroker = make(chan string)
 	return c
 }
 
@@ -246,6 +247,11 @@ func (c *client) Connect() Token {
 		}
 
 	RETRYCONN:
+		select {
+		case newBroker := <-c.addBroker:
+			c.options.AddBroker(newBroker) // for testing only
+		default:
+		}
 		for _, broker := range c.options.Servers {
 			cm := newConnectMsgFromOptions(&c.options, broker)
 			c.options.ProtocolVersion = protocolVersion
@@ -353,6 +359,7 @@ func (c *client) Connect() Token {
 
 		// Take care of any messages in the store
 		if !c.options.CleanSession {
+			c.workers.Add(1) // disconnect during resume can lead to reconnect being called before resume completes
 			c.resume(c.options.ResumeSubs)
 		} else {
 			c.persist.Reset()
@@ -377,6 +384,11 @@ func (c *client) reconnect() {
 	for rc != 0 && atomic.LoadUint32(&c.status) != disconnected {
 		if nil != c.options.OnReconnecting {
 			c.options.OnReconnecting(c, &c.options)
+		}
+		select {
+		case newBroker := <-c.addBroker:
+			c.options.AddBroker(newBroker) // for testing only
+		default:
 		}
 		for _, broker := range c.options.Servers {
 			cm := newConnectMsgFromOptions(&c.options, broker)
@@ -465,6 +477,7 @@ func (c *client) reconnect() {
 	go outgoing(c)
 	go incoming(c)
 
+	c.workers.Add(1) // disconnect during resume can lead to reconnect being called before resume completes
 	c.resume(false)
 }
 
@@ -741,6 +754,7 @@ func (c *client) reserveStoredPublishIDs() {
 // Load all stored messages and resend them
 // Call this to ensure QOS > 1,2 even after an application crash
 func (c *client) resume(subscription bool) {
+	defer c.workers.Done() // resume must complete before any attempt to reconnect is made
 
 	storedKeys := c.persist.All()
 	for _, key := range storedKeys {
@@ -758,6 +772,7 @@ func (c *client) resume(subscription bool) {
 					select {
 					case c.oboundP <- &PacketAndToken{p: packet, t: token}:
 					case <-c.stop:
+						return
 					}
 				}
 			case *packets.UnsubscribePacket:
@@ -767,6 +782,7 @@ func (c *client) resume(subscription bool) {
 					select {
 					case c.oboundP <- &PacketAndToken{p: packet, t: token}:
 					case <-c.stop:
+						return
 					}
 				}
 			case *packets.PubrelPacket:
@@ -774,6 +790,7 @@ func (c *client) resume(subscription bool) {
 				select {
 				case c.oboundP <- &PacketAndToken{p: packet, t: nil}:
 				case <-c.stop:
+					return
 				}
 			case *packets.PublishPacket:
 				token := newToken(packets.Publish).(*PublishToken)
@@ -784,6 +801,7 @@ func (c *client) resume(subscription bool) {
 				select {
 				case c.obound <- &PacketAndToken{p: packet, t: token}:
 				case <-c.stop:
+					return
 				}
 			default:
 				ERROR.Println(STR, "invalid message type in store (discarded)")
@@ -796,6 +814,7 @@ func (c *client) resume(subscription bool) {
 				select {
 				case c.ibound <- packet:
 				case <-c.stop:
+					return
 				}
 			default:
 				ERROR.Println(STR, "invalid message type in store (discarded)")
