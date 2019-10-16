@@ -44,6 +44,8 @@ func openConnection(uri *url.URL, tlsc *tls.Config, timeout time.Duration, heade
 	case "wss":
 		conn, err := NewWebsocket(uri.String(), tlsc, timeout, headers)
 		return conn, err
+	case "mqtt":
+		fallthrough
 	case "tcp":
 		allProxy := os.Getenv("all_proxy")
 		if len(allProxy) == 0 {
@@ -69,6 +71,10 @@ func openConnection(uri *url.URL, tlsc *tls.Config, timeout time.Duration, heade
 	case "ssl":
 		fallthrough
 	case "tls":
+		fallthrough
+	case "mqtts":
+		fallthrough
+	case "mqtt+ssl":
 		fallthrough
 	case "tcps":
 		allProxy := os.Getenv("all_proxy")
