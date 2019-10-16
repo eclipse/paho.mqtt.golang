@@ -1,9 +1,12 @@
 FVT Instructions
 ================
 
-The FVT tests are currenly only supported by [IBM MessageSight](http://www-03.ibm.com/software/products/us/en/messagesight/).
+The FVT tests are supported by:
 
-Support for [mosquitto](http://mosquitto.org/) and [IBM Really Small Message Broker](https://www.ibm.com/developerworks/community/groups/service/html/communityview?communityUuid=d5bedadd-e46f-4c97-af89-22d65ffee070) might be added in the future.
+* [IBM MessageSight](http://www-03.ibm.com/software/products/us/en/messagesight/).
+* [Mosquitto](http://mosquitto.org/)
+
+Support for [IBM Really Small Message Broker](https://www.ibm.com/developerworks/community/groups/service/html/communityview?communityUuid=d5bedadd-e46f-4c97-af89-22d65ffee070) might be added in the future.
 
 
 IBM MessageSight Configuration
@@ -68,6 +71,7 @@ Launch mosquitto from the fvt directory, specifiying mosquitto.cfg as config fil
 Note: Mosquitto requires SSL 1.1 or better, while Go 1.1.2 supports
 only SSL v1.0. However, Go 1.2+ supports SSL v1.1 and SSL v1.2.
 
+If you prefer to use Docker to run Mosquitto for the tests then the docker folder contains everything needed (assuming you use docker-compose).
 
 Other Notes
 -----------

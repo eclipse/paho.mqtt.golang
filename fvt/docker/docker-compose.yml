@@ -1,0 +1,19 @@
+version: '3.6'
+services:
+    mosquitto:
+        container_name: mosquitto-test
+        image: eclipse-mosquitto:latest
+        ports:
+        - target: 1883
+          published: 1883
+          protocol: tcp
+          mode: host
+        volumes:
+        - type: bind
+          source: ./mosquitto.conf
+          target: /mosquitto/config/mosquitto.conf
+          read_only: true
+          volume:
+            nocopy: true
+
+
