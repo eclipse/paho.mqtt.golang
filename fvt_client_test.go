@@ -38,18 +38,18 @@ func Test_Start(t *testing.T) {
 }
 
 /* uncomment this if you have connection policy disallowing FailClientID
-func Test_InvalidConnRc(t *testing.T) {
-	ops := NewClientOptions().SetClientID("FailClientID").
-		AddBroker("tcp://" + FVT_IP + ":17003").
-		SetStore(NewFileStore("/tmp/fvt/InvalidConnRc"))
+ func Test_InvalidConnRc(t *testing.T) {
+	 ops := NewClientOptions().SetClientID("FailClientID").
+		 AddBroker("tcp://" + FVT_IP + ":17003").
+		 SetStore(NewFileStore("/tmp/fvt/InvalidConnRc"))
 
-	c := NewClient(ops)
-	_, err := c.Connect()
-	if err != ErrNotAuthorized {
-		t.Fatalf("Did not receive error as expected, got %v", err)
-	}
-	c.Disconnect(250)
-}
+	 c := NewClient(ops)
+	 _, err := c.Connect()
+	 if err != ErrNotAuthorized {
+		 t.Fatalf("Did not receive error as expected, got %v", err)
+	 }
+	 c.Disconnect(250)
+ }
 */
 
 // Helper function for Test_Start_Ssl
@@ -75,22 +75,22 @@ func NewTLSConfig() *tls.Config {
 }
 
 /* uncomment this if you have ssl setup
-func Test_Start_Ssl(t *testing.T) {
-	tlsconfig := NewTlsConfig()
-	ops := NewClientOptions().SetClientID("StartSsl").
-		AddBroker(FVT_SSL).
-		SetStore(NewFileStore("/tmp/fvt/Start_Ssl")).
-		SetTlsConfig(tlsconfig)
+ func Test_Start_Ssl(t *testing.T) {
+	 tlsconfig := NewTlsConfig()
+	 ops := NewClientOptions().SetClientID("StartSsl").
+		 AddBroker(FVT_SSL).
+		 SetStore(NewFileStore("/tmp/fvt/Start_Ssl")).
+		 SetTlsConfig(tlsconfig)
 
-	c := NewClient(ops)
+	 c := NewClient(ops)
 
-	_, err := c.Connect()
-	if err != nil {
-		t.Fatalf("Error on Client.Connect(): %v", err)
-	}
+	 _, err := c.Connect()
+	 if err != nil {
+		 t.Fatalf("Error on Client.Connect(): %v", err)
+	 }
 
-	c.Disconnect(250)
-}
+	 c.Disconnect(250)
+ }
 */
 
 func Test_Publish_1(t *testing.T) {
@@ -1057,9 +1057,16 @@ func Test_cleanUpMids(t *testing.T) {
 	}
 	c.(*client).messageIds.Unlock()
 
-	if token.Error() == nil {
-		t.Fatal("token should have received an error on connection loss")
-	}
+	// This test used to check that token.Error() was not nil. However this is not something that can
+	// be done reliably - it is likely to work with a remote broker but less so with a local one.
+	// This is because:
+	// - If the publish fails in net.go while transmitting then an error will be generated
+	// - If the transmit succeeds (regardless of whether the handshake completes then no error is generated)
+	// If the intention is that an error should always be returned if the publish is incomplete upon disconnedt then
+	// internalConnLost needs to be altered (if c.options.CleanSession && !c.options.AutoReconnect)
+	//if token.Error() == nil {
+	//t.Fatal("token should have received an error on connection loss")
+	//}
 	fmt.Println(token.Error())
 
 	c.Disconnect(250)
@@ -1181,7 +1188,7 @@ func Test_ConnectRetryPublish(t *testing.T) {
 
 	// disconnect and then reconnect with correct server
 	p.Disconnect(250)
-	
+
 	pops = NewClientOptions().AddBroker(FVTTCP).SetClientID("crp-pub").SetCleanSession(false).
 		SetStore(memStore2).SetConnectRetry(true).SetConnectRetryInterval(time.Second / 2)
 	p = NewClient(pops).(*client)
