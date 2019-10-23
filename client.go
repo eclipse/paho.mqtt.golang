@@ -791,7 +791,7 @@ func (c *client) resume(subscription bool) {
 			}
 		} else {
 			switch packet.(type) {
-			case *packets.PubrelPacket, *packets.PublishPacket:
+			case *packets.PubrelPacket:
 				DEBUG.Println(STR, fmt.Sprintf("loaded pending incomming (%d)", details.MessageID))
 				select {
 				case c.ibound <- packet:
