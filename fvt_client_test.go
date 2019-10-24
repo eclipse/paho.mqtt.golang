@@ -1118,7 +1118,9 @@ func Test_ConnectRetry(t *testing.T) {
 	if connectToken.Error() != nil {
 		t.Fatalf("Connect returned error (should be retrying) (%v)", connectToken.Error())
 	}
-	c.options.AddBroker(FVTTCP) // note this is not threadsafe but should be OK for test
+	c.optionsMu.Lock() // Protect c.options.Servers so that servers can be added in test cases
+	c.options.AddBroker(FVTTCP)
+	c.optionsMu.Unlock()
 	if connectToken.Wait() && connectToken.Error() != nil {
 		t.Fatalf("Error connecting after valid broker added: %v", connectToken.Error())
 	}

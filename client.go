@@ -113,6 +113,7 @@ type client struct {
 	stop            chan struct{}
 	persist         Store
 	options         ClientOptions
+	optionsMu       sync.Mutex // Protects the options in a few limited cases where needed for testing
 	workers         sync.WaitGroup
 }
 
@@ -141,7 +142,6 @@ func NewClient(o *ClientOptions) Client {
 	c.messageIds = messageIds{index: make(map[uint16]tokenCompletor)}
 	c.msgRouter, c.stopRouter = newRouter()
 	c.msgRouter.setDefaultHandler(c.options.DefaultPublishHandler)
-
 	return c
 }
 
@@ -246,7 +246,11 @@ func (c *client) Connect() Token {
 		}
 
 	RETRYCONN:
-		for _, broker := range c.options.Servers {
+		c.optionsMu.Lock() // Protect c.options.Servers so that servers can be added in test cases
+		brokers := c.options.Servers
+		c.optionsMu.Unlock()
+
+		for _, broker := range brokers {
 			cm := newConnectMsgFromOptions(&c.options, broker)
 			c.options.ProtocolVersion = protocolVersion
 		CONN:
@@ -353,6 +357,7 @@ func (c *client) Connect() Token {
 
 		// Take care of any messages in the store
 		if !c.options.CleanSession {
+			c.workers.Add(1) // disconnect during resume can lead to reconnect being called before resume completes
 			c.resume(c.options.ResumeSubs)
 		} else {
 			c.persist.Reset()
@@ -378,7 +383,10 @@ func (c *client) reconnect() {
 		if nil != c.options.OnReconnecting {
 			c.options.OnReconnecting(c, &c.options)
 		}
-		for _, broker := range c.options.Servers {
+		c.optionsMu.Lock() // Protect c.options.Servers so that servers can be added in test cases
+		brokers := c.options.Servers
+		c.optionsMu.Unlock()
+		for _, broker := range brokers {
 			cm := newConnectMsgFromOptions(&c.options, broker)
 			DEBUG.Println(CLI, "about to write new connect msg")
 			c.Lock()
@@ -465,6 +473,7 @@ func (c *client) reconnect() {
 	go outgoing(c)
 	go incoming(c)
 
+	c.workers.Add(1) // disconnect during resume can lead to reconnect being called before resume completes
 	c.resume(false)
 }
 
@@ -786,6 +795,7 @@ func (c *client) reserveStoredPublishIDs() {
 // Load all stored messages and resend them
 // Call this to ensure QOS > 1,2 even after an application crash
 func (c *client) resume(subscription bool) {
+	defer c.workers.Done() // resume must complete before any attempt to reconnect is made
 
 	storedKeys := c.persist.All()
 	for _, key := range storedKeys {
@@ -807,6 +817,7 @@ func (c *client) resume(subscription bool) {
 					select {
 					case c.oboundP <- &PacketAndToken{p: packet, t: token}:
 					case <-c.stop:
+						return
 					}
 				}
 			case *packets.UnsubscribePacket:
@@ -816,6 +827,7 @@ func (c *client) resume(subscription bool) {
 					select {
 					case c.oboundP <- &PacketAndToken{p: packet, t: token}:
 					case <-c.stop:
+						return
 					}
 				}
 			case *packets.PubrelPacket:
@@ -823,6 +835,7 @@ func (c *client) resume(subscription bool) {
 				select {
 				case c.oboundP <- &PacketAndToken{p: packet, t: nil}:
 				case <-c.stop:
+					return
 				}
 			case *packets.PublishPacket:
 				token := newToken(packets.Publish).(*PublishToken)
@@ -833,6 +846,7 @@ func (c *client) resume(subscription bool) {
 				select {
 				case c.obound <- &PacketAndToken{p: packet, t: token}:
 				case <-c.stop:
+					return
 				}
 			default:
 				ERROR.Println(STR, "invalid message type in store (discarded)")
@@ -845,6 +859,7 @@ func (c *client) resume(subscription bool) {
 				select {
 				case c.ibound <- packet:
 				case <-c.stop:
+					return
 				}
 			default:
 				ERROR.Println(STR, "invalid message type in store (discarded)")
