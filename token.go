@@ -176,6 +176,7 @@ func (s *SubscribeToken) Result() map[string]byte {
 // required to provide information about calls to Unsubscribe()
 type UnsubscribeToken struct {
 	baseToken
+	messageID uint16
 }
 
 // DisconnectToken is an extension of Token containing the extra fields

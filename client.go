@@ -868,9 +868,32 @@ func (c *client) Unsubscribe(topics ...string) Token {
 	unsub.Topics = make([]string, len(topics))
 	copy(unsub.Topics, topics)
 
-	c.oboundP <- &PacketAndToken{p: unsub, t: token}
-	for _, topic := range topics {
-		c.msgRouter.deleteRoute(topic)
+	if unsub.MessageID == 0 {
+		unsub.MessageID = c.getID(token)
+		token.messageID = unsub.MessageID
+	}
+
+	persistOutbound(c.persist, unsub)
+
+	switch c.connectionStatus() {
+	case connecting:
+		DEBUG.Println(CLI, "storing unsubscribe message (connecting), topics:", topics)
+	case reconnecting:
+		DEBUG.Println(CLI, "storing unsubscribe message (reconnecting), topics:", topics)
+	default:
+		DEBUG.Println(CLI, "sending unsubscribe message, topics:", topics)
+		subscribeWaitTimeout := c.options.WriteTimeout
+		if subscribeWaitTimeout == 0 {
+			subscribeWaitTimeout = time.Second * 30
+		}
+		select {
+		case c.oboundP <- &PacketAndToken{p: unsub, t: token}:
+			for _, topic := range topics {
+				c.msgRouter.deleteRoute(topic)
+			}
+		case <-time.After(subscribeWaitTimeout):
+			token.setError(errors.New("unsubscribe was broken by timeout"))
+		}
 	}
 
 	DEBUG.Println(CLI, "exit Unsubscribe")
