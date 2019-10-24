@@ -113,8 +113,8 @@ type client struct {
 	stop            chan struct{}
 	persist         Store
 	options         ClientOptions
+	optionsMu       sync.Mutex // Protects the options in a few limited cases where needed for testing
 	workers         sync.WaitGroup
-	addBroker       chan string // to enable tests to add brokers without stopping go routines
 }
 
 // NewClient will create an MQTT v3.1.1 client with all of the options specified
@@ -142,7 +142,6 @@ func NewClient(o *ClientOptions) Client {
 	c.messageIds = messageIds{index: make(map[uint16]tokenCompletor)}
 	c.msgRouter, c.stopRouter = newRouter()
 	c.msgRouter.setDefaultHandler(c.options.DefaultPublishHandler)
-	c.addBroker = make(chan string)
 	return c
 }
 
@@ -247,12 +246,11 @@ func (c *client) Connect() Token {
 		}
 
 	RETRYCONN:
-		select {
-		case newBroker := <-c.addBroker:
-			c.options.AddBroker(newBroker) // for testing only
-		default:
-		}
-		for _, broker := range c.options.Servers {
+		c.optionsMu.Lock() // Protect c.options.Servers so that servers can be added in test cases
+		brokers := c.options.Servers
+		c.optionsMu.Unlock()
+
+		for _, broker := range brokers {
 			cm := newConnectMsgFromOptions(&c.options, broker)
 			c.options.ProtocolVersion = protocolVersion
 		CONN:
@@ -385,12 +383,10 @@ func (c *client) reconnect() {
 		if nil != c.options.OnReconnecting {
 			c.options.OnReconnecting(c, &c.options)
 		}
-		select {
-		case newBroker := <-c.addBroker:
-			c.options.AddBroker(newBroker) // for testing only
-		default:
-		}
-		for _, broker := range c.options.Servers {
+		c.optionsMu.Lock() // Protect c.options.Servers so that servers can be added in test cases
+		brokers := c.options.Servers
+		c.optionsMu.Unlock()
+		for _, broker := range brokers {
 			cm := newConnectMsgFromOptions(&c.options, broker)
 			DEBUG.Println(CLI, "about to write new connect msg")
 			c.Lock()
