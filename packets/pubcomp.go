@@ -13,10 +13,7 @@ type PubcompPacket struct {
 }
 
 func (pc *PubcompPacket) String() string {
-	str := fmt.Sprintf("%s", pc.FixedHeader)
-	str += " "
-	str += fmt.Sprintf("MessageID: %d", pc.MessageID)
-	return str
+	return fmt.Sprintf("%s MessageID: %d", pc.FixedHeader, pc.MessageID)
 }
 
 func (pc *PubcompPacket) Write(w io.Writer) error {

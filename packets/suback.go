@@ -15,10 +15,7 @@ type SubackPacket struct {
 }
 
 func (sa *SubackPacket) String() string {
-	str := fmt.Sprintf("%s", sa.FixedHeader)
-	str += " "
-	str += fmt.Sprintf("MessageID: %d", sa.MessageID)
-	return str
+	return fmt.Sprintf("%s MessageID: %d", sa.FixedHeader, sa.MessageID)
 }
 
 func (sa *SubackPacket) Write(w io.Writer) error {

@@ -16,10 +16,7 @@ type SubscribePacket struct {
 }
 
 func (s *SubscribePacket) String() string {
-	str := fmt.Sprintf("%s", s.FixedHeader)
-	str += " "
-	str += fmt.Sprintf("MessageID: %d topics: %s", s.MessageID, s.Topics)
-	return str
+	return fmt.Sprintf("%s MessageID: %d topics: %s", s.FixedHeader, s.MessageID, s.Topics)
 }
 
 func (s *SubscribePacket) Write(w io.Writer) error {

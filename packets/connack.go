@@ -15,10 +15,7 @@ type ConnackPacket struct {
 }
 
 func (ca *ConnackPacket) String() string {
-	str := fmt.Sprintf("%s", ca.FixedHeader)
-	str += " "
-	str += fmt.Sprintf("sessionpresent: %t returncode: %d", ca.SessionPresent, ca.ReturnCode)
-	return str
+	return fmt.Sprintf("%s sessionpresent: %t returncode: %d", ca.FixedHeader, ca.SessionPresent, ca.ReturnCode)
 }
 
 func (ca *ConnackPacket) Write(w io.Writer) error {
