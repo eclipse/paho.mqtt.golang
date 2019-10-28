@@ -474,7 +474,7 @@ func (c *client) reconnect() {
 	go incoming(c)
 
 	c.workers.Add(1) // disconnect during resume can lead to reconnect being called before resume completes
-	c.resume(false)
+	c.resume(c.options.ResumeSubs)
 }
 
 // This function is only used for receiving a connack
@@ -670,6 +670,18 @@ func (c *client) Subscribe(topic string, qos byte, callback MessageHandler) Toke
 		token.setError(ErrNotConnected)
 		return token
 	}
+	if !c.IsConnectionOpen() {
+		switch {
+		case !c.options.ResumeSubs:
+			// if not connected and resumesubs not set this sub will be thrown away
+			token.setError(fmt.Errorf("not currently connected and ResumeSubs not set"))
+			return token
+		case c.options.CleanSession && c.connectionStatus() == reconnecting:
+			// if reconnecting and cleansession is true this sub will be thrown away
+			token.setError(fmt.Errorf("reconnecting state and cleansession is true"))
+			return token
+		}
+	}
 	sub := packets.NewControlPacket(packets.Subscribe).(*packets.SubscribePacket)
 	if err := validateTopicAndQos(topic, qos); err != nil {
 		token.setError(err)
@@ -729,6 +741,18 @@ func (c *client) SubscribeMultiple(filters map[string]byte, callback MessageHand
 	if !c.IsConnected() {
 		token.setError(ErrNotConnected)
 		return token
+	}
+	if !c.IsConnectionOpen() {
+		switch {
+		case !c.options.ResumeSubs:
+			// if not connected and resumesubs not set this sub will be thrown away
+			token.setError(fmt.Errorf("not currently connected and ResumeSubs not set"))
+			return token
+		case c.options.CleanSession && c.connectionStatus() == reconnecting:
+			// if reconnecting and cleansession is true this sub will be thrown away
+			token.setError(fmt.Errorf("reconnecting state and cleansession is true"))
+			return token
+		}
 	}
 	sub := packets.NewControlPacket(packets.Subscribe).(*packets.SubscribePacket)
 	if sub.Topics, sub.Qoss, err = validateSubscribeMap(filters); err != nil {
@@ -878,6 +902,18 @@ func (c *client) Unsubscribe(topics ...string) Token {
 	if !c.IsConnected() {
 		token.setError(ErrNotConnected)
 		return token
+	}
+	if !c.IsConnectionOpen() {
+		switch {
+		case !c.options.ResumeSubs:
+			// if not connected and resumesubs not set this unsub will be thrown away
+			token.setError(fmt.Errorf("not currently connected and ResumeSubs not set"))
+			return token
+		case c.options.CleanSession && c.connectionStatus() == reconnecting:
+			// if reconnecting and cleansession is true this unsub will be thrown away
+			token.setError(fmt.Errorf("reconnecting state and cleansession is true"))
+			return token
+		}
 	}
 	unsub := packets.NewControlPacket(packets.Unsubscribe).(*packets.UnsubscribePacket)
 	unsub.Topics = make([]string, len(topics))

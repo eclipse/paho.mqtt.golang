@@ -1293,3 +1293,53 @@ func Test_ResumeSubs(t *testing.T) {
 	s.Disconnect(250)
 	p.Disconnect(250)
 }
+
+func Test_ResumeSubsWithReconnect(t *testing.T) {
+	topic := "/test/ResumeSubs"
+	var qos byte = 1
+
+	// subscribe to topic before establishing a connection, and publish a message after the publish client has connected successfully
+	ops := NewClientOptions().SetClientID("Start").AddBroker(FVTTCP).SetConnectRetry(true).SetConnectRetryInterval(time.Second / 2).
+		SetResumeSubs(true).SetCleanSession(false)
+	c := NewClient(ops)
+	sConnToken := c.Connect()
+	sConnToken.Wait()
+	if sConnToken.Error() != nil {
+		t.Fatalf("Connect returned error (%v)", sConnToken.Error())
+	}
+
+	// Send subscription request and then immediatly force disconnect (hope it will happen before sub sent)
+	subToken := newToken(packets.Subscribe).(*SubscribeToken)
+	sub := packets.NewControlPacket(packets.Subscribe).(*packets.SubscribePacket)
+	sub.Topics = append(sub.Topics, topic)
+	sub.Qoss = append(sub.Qoss, qos)
+	subToken.subs = append(subToken.subs, topic)
+
+	if sub.MessageID == 0 {
+		sub.MessageID = c.(*client).getID(subToken)
+		subToken.messageID = sub.MessageID
+	}
+	DEBUG.Println(CLI, sub.String())
+
+	persistOutbound(c.(*client).persist, sub)
+	//subToken := c.Subscribe(topic, qos, nil)
+	c.(*client).internalConnLost(fmt.Errorf("Reconnection subscription test"))
+
+	// As reconnect is enabled the client should automatically reconnect
+	subDone := make(chan bool)
+	go func(t *testing.T) {
+		subToken.Wait()
+		if err := subToken.Error(); err != nil {
+			t.Fatalf("Connect returned error (should be retrying) (%v)", err)
+		}
+		close(subDone)
+	}(t)
+	// Wait for done or timeout
+	select {
+	case <-subDone:
+	case <-time.After(4 * time.Second):
+		t.Fatalf("Timed out waiting for subToken to complete")
+	}
+
+	c.Disconnect(250)
+}
