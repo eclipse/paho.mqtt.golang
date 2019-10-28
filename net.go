@@ -108,7 +108,7 @@ func incoming(c *client) {
 	defer c.workers.Done()
 
 	DEBUG.Println(NET, "incoming started")
-
+loop:
 	for {
 		if cp, err = packets.ReadPacket(c.conn); err != nil {
 			break
@@ -124,7 +124,7 @@ func incoming(c *client) {
 			// This avoids a deadlock should a message arrive while shutting down.
 			// In that case the "reader" of c.ibound might already be gone
 			WARN.Println(NET, "incoming dropped a received message during shutdown")
-			break
+			break loop
 		}
 	}
 	// We received an error on read.
