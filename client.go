@@ -799,7 +799,7 @@ func (c *client) reserveStoredPublishIDs() {
 	// The resume function sets the stored id for publish packets only (some other packets
 	// will get new ids in net code). This means that the only keys we need to ensure are
 	// unique are the publish ones (and these will completed/replaced in resume() )
-	if c.options.CleanSession == false {
+	if !c.options.CleanSession {
 		storedKeys := c.persist.All()
 		for _, key := range storedKeys {
 			packet := c.persist.Get(key)

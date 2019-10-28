@@ -59,7 +59,7 @@ func keepalive(c *client) {
 					pingSent = time.Now()
 				}
 			}
-			if atomic.LoadInt32(&c.pingOutstanding) > 0 && time.Now().Sub(pingSent) >= c.options.PingTimeout {
+			if atomic.LoadInt32(&c.pingOutstanding) > 0 && time.Since(pingSent) >= c.options.PingTimeout {
 				CRITICAL.Println(PNG, "pingresp not received, disconnecting")
 				c.errors <- errors.New("pingresp not received, disconnecting")
 				return

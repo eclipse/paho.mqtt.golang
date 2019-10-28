@@ -1,7 +1,6 @@
 package packets
 
 import (
-	"fmt"
 	"io"
 )
 
@@ -12,8 +11,7 @@ type PingrespPacket struct {
 }
 
 func (pr *PingrespPacket) String() string {
-	str := fmt.Sprintf("%s", pr.FixedHeader)
-	return str
+	return pr.FixedHeader.String()
 }
 
 func (pr *PingrespPacket) Write(w io.Writer) error {

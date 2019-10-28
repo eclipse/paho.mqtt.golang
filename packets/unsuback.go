@@ -13,10 +13,7 @@ type UnsubackPacket struct {
 }
 
 func (ua *UnsubackPacket) String() string {
-	str := fmt.Sprintf("%s", ua.FixedHeader)
-	str += " "
-	str += fmt.Sprintf("MessageID: %d", ua.MessageID)
-	return str
+	return fmt.Sprintf("%s MessageID: %d", ua.FixedHeader, ua.MessageID)
 }
 
 func (ua *UnsubackPacket) Write(w io.Writer) error {

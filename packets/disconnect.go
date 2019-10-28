@@ -1,7 +1,6 @@
 package packets
 
 import (
-	"fmt"
 	"io"
 )
 
@@ -12,8 +11,7 @@ type DisconnectPacket struct {
 }
 
 func (d *DisconnectPacket) String() string {
-	str := fmt.Sprintf("%s", d.FixedHeader)
-	return str
+	return d.FixedHeader.String()
 }
 
 func (d *DisconnectPacket) Write(w io.Writer) error {
