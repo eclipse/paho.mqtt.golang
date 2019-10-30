@@ -81,15 +81,13 @@ type router struct {
 	routes         *list.List
 	defaultHandler MessageHandler
 	messages       chan *packets.PublishPacket
-	stop           chan bool
 }
 
 // newRouter returns a new instance of a Router and channel which can be used to tell the Router
 // to stop
-func newRouter() (*router, chan bool) {
-	router := &router{routes: list.New(), messages: make(chan *packets.PublishPacket), stop: make(chan bool)}
-	stop := router.stop
-	return router, stop
+func newRouter() *router {
+	router := &router{routes: list.New(), messages: make(chan *packets.PublishPacket)}
+	return router
 }
 
 // addRoute takes a topic string and MessageHandler callback. It looks in the current list of
@@ -134,48 +132,44 @@ func (r *router) setDefaultHandler(handler MessageHandler) {
 // associated callback (or the defaultHandler, if one exists and no other route matched). If
 // anything is sent down the stop channel the function will end.
 func (r *router) matchAndDispatch(messages <-chan *packets.PublishPacket, order bool, client *client) {
-	go func() {
-		for {
-			select {
-			case message := <-messages:
-				sent := false
-				r.RLock()
-				m := messageFromPublish(message, client.ackFunc(message))
-				handlers := []MessageHandler{}
-				for e := r.routes.Front(); e != nil; e = e.Next() {
-					if e.Value.(*route).match(message.TopicName) {
-						if order {
-							handlers = append(handlers, e.Value.(*route).callback)
-						} else {
-							hd := e.Value.(*route).callback
-							go func() {
-								hd(client, m)
-								m.Ack()
-							}()
-						}
-						sent = true
-					}
-				}
-				if !sent && r.defaultHandler != nil {
-					if order {
-						handlers = append(handlers, r.defaultHandler)
-					} else {
-						go func() {
-							r.defaultHandler(client, m)
-							m.Ack()
-						}()
-					}
-				}
-				r.RUnlock()
-				for _, handler := range handlers {
-					func() {
-						handler(client, m)
+	for message := range messages {
+		// DEBUG.Println(ROU, "matchAndDispatch received message")
+		sent := false
+		r.RLock()
+		m := messageFromPublish(message, ackFunc(client.oboundP, client.persist, message))
+		handlers := []MessageHandler{}
+		for e := r.routes.Front(); e != nil; e = e.Next() {
+			if e.Value.(*route).match(message.TopicName) {
+				if order {
+					handlers = append(handlers, e.Value.(*route).callback)
+				} else {
+					hd := e.Value.(*route).callback
+					go func() {
+						hd(client, m)
 						m.Ack()
 					}()
 				}
-			case <-r.stop:
-				return
+				sent = true
 			}
 		}
-	}()
+		if !sent && r.defaultHandler != nil {
+			if order {
+				handlers = append(handlers, r.defaultHandler)
+			} else {
+				go func() {
+					r.defaultHandler(client, m)
+					m.Ack()
+				}()
+			}
+		}
+		r.RUnlock()
+		for _, handler := range handlers {
+			func() {
+				handler(client, m)
+				m.Ack()
+			}()
+		}
+		// DEBUG.Println(ROU, "matchAndDispatch handled message")
+	}
+	DEBUG.Println(ROU, "matchAndDispatch exiting")
 }

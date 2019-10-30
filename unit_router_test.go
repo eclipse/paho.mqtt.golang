@@ -16,17 +16,15 @@ package mqtt
 
 import (
 	"testing"
+	"time"
 
 	"github.com/eclipse/paho.mqtt.golang/packets"
 )
 
 func Test_newRouter(t *testing.T) {
-	router, stop := newRouter()
+	router := newRouter()
 	if router == nil {
 		t.Fatalf("router is nil")
-	}
-	if stop == nil {
-		t.Fatalf("stop is nil")
 	}
 	if router.routes.Len() != 0 {
 		t.Fatalf("router.routes was not empty")
@@ -34,7 +32,7 @@ func Test_newRouter(t *testing.T) {
 }
 
 func Test_AddRoute(t *testing.T) {
-	router, _ := newRouter()
+	router := newRouter()
 	cb := func(client Client, msg Message) {
 	}
 	router.addRoute("/alpha", cb)
@@ -45,7 +43,7 @@ func Test_AddRoute(t *testing.T) {
 }
 
 func Test_Match(t *testing.T) {
-	router, _ := newRouter()
+	router := newRouter()
 	router.addRoute("/alpha", nil)
 
 	if !router.routes.Front().Value.(*route).match("/alpha") {
@@ -266,22 +264,26 @@ func Test_MatchAndDispatch(t *testing.T) {
 
 	msgs := make(chan *packets.PublishPacket)
 
-	router, stopper := newRouter()
+	router := newRouter()
 	router.addRoute("a", cb)
 
-	router.matchAndDispatch(msgs, true, &client{oboundP: make(chan *PacketAndToken, 100)})
+	stopped := make(chan bool)
+	go func() {
+		router.matchAndDispatch(msgs, true, &client{oboundP: make(chan *PacketAndToken, 100)})
+		stopped <- true
+	}()
 	msgs <- pub
 
 	<-calledback
 
-	stopper <- true
+	close(msgs)
 
 	select {
-	case msgs <- pub:
-		t.Errorf("msgs should not have a listener")
-	default:
+	case <-stopped:
+		break
+	case <-time.After(time.Second):
+		t.Errorf("matchAndDispatch should have exited")
 	}
-
 }
 
 func Test_SharedSubscription_MatchAndDispatch(t *testing.T) {
@@ -298,21 +300,26 @@ func Test_SharedSubscription_MatchAndDispatch(t *testing.T) {
 
 	msgs := make(chan *packets.PublishPacket)
 
-	router, stopper := newRouter()
+	router := newRouter()
 	router.addRoute("$share/az1/a", cb)
 
-	router.matchAndDispatch(msgs, true, &client{oboundP: make(chan *PacketAndToken, 100)})
+	stopped := make(chan bool)
+	go func() {
+		router.matchAndDispatch(msgs, true, &client{oboundP: make(chan *PacketAndToken, 100)})
+		stopped <- true
+	}()
 
 	msgs <- pub
 
 	<-calledback
 
-	stopper <- true
+	close(msgs)
 
 	select {
-	case msgs <- pub:
-		t.Errorf("msgs should not have a listener")
-	default:
+	case <-stopped:
+		break
+	case <-time.After(time.Second):
+		t.Errorf("matchAndDispatch should have exited")
 	}
 
 }
