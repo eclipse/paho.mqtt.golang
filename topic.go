@@ -50,6 +50,10 @@ var ErrInvalidTopicMultilevel = errors.New("Invalid Topic; multi-level wildcard 
 //     Example:  a subscription to "foo/#" will match messages published to "foo".
 
 func validateSubscribeMap(subs map[string]byte) ([]string, []byte, error) {
+	if len(subs) == 0 {
+		return nil, nil, errors.New("Invalid subscription; subscribe map must not be empty")
+	}
+
 	var topics []string
 	var qoss []byte
 	for topic, qos := range subs {
