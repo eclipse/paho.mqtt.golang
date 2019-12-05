@@ -44,6 +44,18 @@ func Test_AddRoute(t *testing.T) {
 	}
 }
 
+func Test_AddRoute_Wildcards(t *testing.T) {
+	router, _ := newRouter()
+	cb := func(client Client, msg Message) {
+	}
+	router.addRoute("#", cb)
+	router.addRoute("topic1", cb)
+
+	if router.routes.Len() != 2 {
+		t.Fatalf("addRoute should only override routes on exact topic match")
+	}
+}
+
 func Test_Match(t *testing.T) {
 	router, _ := newRouter()
 	router.addRoute("/alpha", nil)
