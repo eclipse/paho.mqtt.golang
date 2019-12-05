@@ -99,7 +99,7 @@ func (r *router) addRoute(topic string, callback MessageHandler) {
 	r.Lock()
 	defer r.Unlock()
 	for e := r.routes.Front(); e != nil; e = e.Next() {
-		if e.Value.(*route).match(topic) {
+		if e.Value.(*route).topic == topic {
 			r := e.Value.(*route)
 			r.callback = callback
 			return
