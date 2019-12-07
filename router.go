@@ -114,7 +114,7 @@ func (r *router) deleteRoute(topic string) {
 	r.Lock()
 	defer r.Unlock()
 	for e := r.routes.Front(); e != nil; e = e.Next() {
-		if e.Value.(*route).match(topic) {
+		if e.Value.(*route).topic == topic {
 			r.routes.Remove(e)
 			return
 		}
