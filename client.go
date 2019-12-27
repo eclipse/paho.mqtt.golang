@@ -618,6 +618,7 @@ func (c *client) Publish(topic string, qos byte, retained bool, payload interfac
 		return token
 	case c.connectionStatus() == reconnecting && qos == 0:
 		token.flowComplete()
+		token.DirtyWrite = true
 		return token
 	}
 	pub := packets.NewControlPacket(packets.Publish).(*packets.PublishPacket)

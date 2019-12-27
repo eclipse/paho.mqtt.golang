@@ -142,7 +142,8 @@ func (c *ConnectToken) SessionPresent() bool {
 // required to provide information about calls to Publish()
 type PublishToken struct {
 	baseToken
-	messageID uint16
+	messageID  uint16
+	DirtyWrite bool
 }
 
 // MessageID returns the MQTT message ID that was assigned to the
