@@ -794,7 +794,7 @@ func (c *client) SubscribeMultiple(filters map[string]byte, callback MessageHand
 	return token
 }
 
-// reserveStoredPublishIDs reserves the ids for publish packets in the persistant store to ensure these are not duplicated
+// reserveStoredPublishIDs reserves the ids for publish packets in the persistent store to ensure these are not duplicated
 func (c *client) reserveStoredPublishIDs() {
 	// The resume function sets the stored id for publish packets only (some other packets
 	// will get new ids in net code). This means that the only keys we need to ensure are
