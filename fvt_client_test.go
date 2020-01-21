@@ -1308,7 +1308,7 @@ func Test_ResumeSubsWithReconnect(t *testing.T) {
 		t.Fatalf("Connect returned error (%v)", sConnToken.Error())
 	}
 
-	// Send subscription request and then immediatly force disconnect (hope it will happen before sub sent)
+	// Send subscription request and then immediately force disconnect (hope it will happen before sub sent)
 	subToken := newToken(packets.Subscribe).(*SubscribeToken)
 	sub := packets.NewControlPacket(packets.Subscribe).(*packets.SubscribePacket)
 	sub.Topics = append(sub.Topics, topic)
