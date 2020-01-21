@@ -22,7 +22,6 @@ import (
 	"net/url"
 	"os"
 	"reflect"
-	"sync/atomic"
 	"time"
 
 	"github.com/eclipse/paho.mqtt.golang/packets"
@@ -118,7 +117,7 @@ func incoming(c *client) {
 		case c.ibound <- cp:
 			// Notify keepalive logic that we recently received a packet
 			if c.options.KeepAlive != 0 {
-				c.lastReceived.Store(time.Now())
+				resetKeepaliveTimer(c)
 			}
 		case <-c.stop:
 			// This avoids a deadlock should a message arrive while shutting down.
@@ -196,7 +195,7 @@ func outgoing(c *client) {
 		}
 		// Reset ping timer after sending control packet.
 		if c.options.KeepAlive != 0 {
-			c.lastSent.Store(time.Now())
+			resetKeepaliveTimer(c)
 		}
 	}
 }
@@ -219,7 +218,7 @@ func alllogic(c *client) {
 			switch m := msg.(type) {
 			case *packets.PingrespPacket:
 				DEBUG.Println(NET, "received pingresp")
-				atomic.StoreInt32(&c.pingOutstanding, 0)
+				stopPingTimeOutTimer(c)
 			case *packets.SubackPacket:
 				DEBUG.Println(NET, "received suback, id:", m.MessageID)
 				token := c.getToken(m.MessageID)
