@@ -282,7 +282,7 @@ func (c *client) Connect() Token {
 				}
 				cm.Write(c.conn)
 
-				rc, t.sessionPresent = c.connect()
+				rc, t.sessionPresent, err = c.connect()
 				if rc != packets.Accepted {
 					c.Lock()
 					if c.conn != nil {
@@ -414,7 +414,7 @@ func (c *client) reconnect() {
 				}
 				cm.Write(c.conn)
 
-				rc, _ = c.connect()
+				rc, _, err = c.connect()
 				if rc != packets.Accepted {
 					if c.conn != nil {
 						c.conn.Close()
@@ -481,27 +481,27 @@ func (c *client) reconnect() {
 // when the connection is first started.
 // This prevents receiving incoming data while resume
 // is in progress if clean session is false.
-func (c *client) connect() (byte, bool) {
+func (c *client) connect() (byte, bool, error) {
 	DEBUG.Println(NET, "connect started")
 
 	ca, err := packets.ReadPacket(c.conn)
 	if err != nil {
-		ERROR.Println(NET, "connect got error", err)
-		return packets.ErrNetworkError, false
+		ERROR.Println(NET, "ReadPacket returned error", err)
+		return packets.ErrNetworkError, false, err
 	}
 	if ca == nil {
 		ERROR.Println(NET, "received nil packet")
-		return packets.ErrNetworkError, false
+		return packets.ErrNetworkError, false, nil
 	}
 
 	msg, ok := ca.(*packets.ConnackPacket)
 	if !ok {
 		ERROR.Println(NET, "received msg that was not CONNACK")
-		return packets.ErrNetworkError, false
+		return packets.ErrNetworkError, false, nil
 	}
 
 	DEBUG.Println(NET, "received connack")
-	return msg.ReturnCode, msg.SessionPresent
+	return msg.ReturnCode, msg.SessionPresent, nil
 }
 
 // Disconnect will end the connection with the server, but not before waiting
