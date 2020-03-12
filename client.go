@@ -198,7 +198,7 @@ func (c *client) connectionStatus() uint32 {
 func (c *client) setConnected(status uint32) {
 	c.Lock()
 	defer c.Unlock()
-	atomic.StoreUint32(&c.status, uint32(status))
+	atomic.StoreUint32(&c.status, status)
 }
 
 //ErrNotConnected is the error returned from function calls that are
@@ -376,7 +376,7 @@ func (c *client) reconnect() {
 		err error
 
 		rc    = byte(1)
-		sleep = time.Duration(1 * time.Second)
+		sleep = 1 * time.Second
 	)
 
 	for rc != 0 && atomic.LoadUint32(&c.status) != disconnected {
