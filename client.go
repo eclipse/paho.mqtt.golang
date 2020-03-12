@@ -203,7 +203,7 @@ func (c *client) setConnected(status uint32) {
 
 //ErrNotConnected is the error returned from function calls that are
 //made when the client is not connected to a broker
-var ErrNotConnected = errors.New("Not Connected")
+var ErrNotConnected = errors.New("not Connected")
 
 // Connect will create a connection to the message broker, by default
 // it will attempt to connect at v3.1.1 and auto retry at v3.1 if that
@@ -241,7 +241,7 @@ func (c *client) Connect() Token {
 		protocolVersion := c.options.ProtocolVersion
 
 		if len(c.options.Servers) == 0 {
-			t.setError(fmt.Errorf("No servers defined to connect to"))
+			t.setError(fmt.Errorf("no servers defined to connect to"))
 			return
 		}
 
@@ -632,7 +632,7 @@ func (c *client) Publish(topic string, qos byte, retained bool, payload interfac
 	case bytes.Buffer:
 		pub.Payload = p.Bytes()
 	default:
-		token.setError(fmt.Errorf("Unknown payload type"))
+		token.setError(fmt.Errorf("unknown payload type"))
 		return token
 	}
 

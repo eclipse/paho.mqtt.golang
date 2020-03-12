@@ -46,7 +46,7 @@ func Test_exists_no(t *testing.T) {
 
 func isemptydir(dir string) bool {
 	if !exists(dir) {
-		panic(fmt.Errorf("Directory %s does not exist", dir))
+		panic(fmt.Errorf("directory %s does not exist", dir))
 	}
 	files, err := ioutil.ReadDir(dir)
 	chkerr(err)

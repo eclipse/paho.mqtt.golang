@@ -40,11 +40,11 @@ func (mids *messageIds) cleanUp() {
 	for _, token := range mids.index {
 		switch token.(type) {
 		case *PublishToken:
-			token.setError(fmt.Errorf("Connection lost before Publish completed"))
+			token.setError(fmt.Errorf("connection lost before Publish completed"))
 		case *SubscribeToken:
-			token.setError(fmt.Errorf("Connection lost before Subscribe completed"))
+			token.setError(fmt.Errorf("connection lost before Subscribe completed"))
 		case *UnsubscribeToken:
-			token.setError(fmt.Errorf("Connection lost before Unsubscribe completed"))
+			token.setError(fmt.Errorf("connection lost before Unsubscribe completed"))
 		case nil:
 			continue
 		}

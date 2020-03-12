@@ -56,7 +56,7 @@ func (p *PublishPacket) Unpack(b io.Reader) error {
 		payloadLength -= len(p.TopicName) + 2
 	}
 	if payloadLength < 0 {
-		return fmt.Errorf("Error unpacking publish, payload length < 0")
+		return fmt.Errorf("error unpacking publish, payload length < 0")
 	}
 	p.Payload = make([]byte, payloadLength)
 	_, err = b.Read(p.Payload)
