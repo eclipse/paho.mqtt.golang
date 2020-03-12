@@ -274,9 +274,9 @@ func decodeUint16(b io.Reader) (uint16, error) {
 }
 
 func encodeUint16(num uint16) []byte {
-	bytes := make([]byte, 2)
-	binary.BigEndian.PutUint16(bytes, num)
-	return bytes
+	bytesResult := make([]byte, 2)
+	binary.BigEndian.PutUint16(bytesResult, num)
+	return bytesResult
 }
 
 func encodeString(field string) []byte {
