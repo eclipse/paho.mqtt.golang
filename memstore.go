@@ -88,7 +88,7 @@ func (store *MemoryStore) All() []string {
 		ERROR.Println(STR, "Trying to use memory store, but not open")
 		return nil
 	}
-	keys := []string{}
+	var keys []string
 	for k := range store.messages {
 		keys = append(keys, k)
 	}
