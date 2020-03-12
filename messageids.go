@@ -114,7 +114,7 @@ func (d *DummyToken) Error() error {
 	return nil
 }
 
-func (p *DummyToken) setError(e error) {}
+func (d *DummyToken) setError(e error) {}
 
 // PlaceHolderToken does nothing and was implemented to allow a messageid to be reserved
 // it differs from DummyToken in that calling flowComplete does not generate an error (it
