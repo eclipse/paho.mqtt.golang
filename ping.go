@@ -54,7 +54,9 @@ func keepalive(c *client) {
 					//We don't want to wait behind large messages being sent, the Write call
 					//will block until it it able to send the packet.
 					atomic.StoreInt32(&c.pingOutstanding, 1)
-					ping.Write(c.conn)
+					if err := ping.Write(c.conn); err != nil {
+						ERROR.Println(err)
+					}
 					c.lastSent.Store(time.Now())
 					pingSent = time.Now()
 				}

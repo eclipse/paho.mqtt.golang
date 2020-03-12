@@ -90,7 +90,9 @@ func openConnection(uri *url.URL, tlsc *tls.Config, timeout time.Duration, heade
 
 		err = tlsConn.Handshake()
 		if err != nil {
-			conn.Close()
+			if errClose := conn.Close(); errClose != nil {
+				ERROR.Println(errClose)
+			}
 			return nil, err
 		}
 
@@ -157,7 +159,9 @@ func outgoing(c *client) {
 			msg := pub.p.(*packets.PublishPacket)
 
 			if c.options.WriteTimeout > 0 {
-				c.conn.SetWriteDeadline(time.Now().Add(c.options.WriteTimeout))
+				if err := c.conn.SetWriteDeadline(time.Now().Add(c.options.WriteTimeout)); err != nil {
+					ERROR.Println(err)
+				}
 			}
 
 			if err := msg.Write(c.conn); err != nil {
@@ -170,7 +174,9 @@ func outgoing(c *client) {
 			if c.options.WriteTimeout > 0 {
 				// If we successfully wrote, we don't want the timeout to happen during an idle period
 				// so we reset it to infinite.
-				c.conn.SetWriteDeadline(time.Time{})
+				if err := c.conn.SetWriteDeadline(time.Time{}); err != nil {
+					ERROR.Println(err)
+				}
 			}
 
 			if msg.Qos == 0 {

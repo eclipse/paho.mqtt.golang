@@ -280,13 +280,17 @@ func (c *client) Connect() Token {
 					cm.ProtocolName = "MQTT"
 					cm.ProtocolVersion = 4
 				}
-				cm.Write(c.conn)
+				if err := cm.Write(c.conn); err != nil {
+					ERROR.Println(ERR, err)
+				}
 
 				rc, t.sessionPresent = c.connect()
 				if rc != packets.Accepted {
 					c.Lock()
 					if c.conn != nil {
-						c.conn.Close()
+						if err := c.conn.Close(); err != nil {
+							ERROR.Println(ERR, err)
+						}
 						c.conn = nil
 					}
 					c.Unlock()
@@ -412,12 +416,16 @@ func (c *client) reconnect() {
 					cm.ProtocolName = "MQTT"
 					cm.ProtocolVersion = 4
 				}
-				cm.Write(c.conn)
+				if err := cm.Write(c.conn); err != nil {
+					ERROR.Println(ERR, err)
+				}
 
 				rc, _ = c.connect()
 				if rc != packets.Accepted {
 					if c.conn != nil {
-						c.conn.Close()
+						if err := c.conn.Close(); err != nil {
+							ERROR.Println(ERR, err)
+						}
 						c.conn = nil
 					}
 					//if the protocol version was explicitly set don't do any fallback
@@ -534,7 +542,9 @@ func (c *client) forceDisconnect() {
 		return
 	}
 	c.setConnected(disconnected)
-	c.conn.Close()
+	if err := c.conn.Close(); err != nil {
+		ERROR.Println(ERR, err)
+	}
 	DEBUG.Println(CLI, "forcefully disconnecting")
 	c.disconnect()
 }
@@ -545,7 +555,9 @@ func (c *client) internalConnLost(err error) {
 	// error from closing the socket but state will be "disconnected"
 	if c.IsConnected() {
 		c.closeStop()
-		c.conn.Close()
+		if err := c.conn.Close(); err != nil {
+			ERROR.Println(ERR, err)
+		}
 		c.workers.Wait()
 		if c.options.CleanSession && !c.options.AutoReconnect {
 			c.messageIds.cleanUp()
@@ -592,7 +604,9 @@ func (c *client) closeConn() {
 	c.Lock()
 	defer c.Unlock()
 	if c.conn != nil {
-		c.conn.Close()
+		if err := c.conn.Close(); err != nil {
+			ERROR.Println(ERR, err)
+		}
 	}
 }
 

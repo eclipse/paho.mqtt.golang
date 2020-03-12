@@ -36,7 +36,9 @@ func Test_NewPingReqMessage(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	pr.Write(&buf)
+	if err := pr.Write(&buf); err != nil {
+		t.Error(err)
+	}
 	bs := buf.Bytes()
 
 	if len(bs) != 2 {

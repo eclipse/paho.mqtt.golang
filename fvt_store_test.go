@@ -189,7 +189,9 @@ func Test_FileStore_Get(t *testing.T) {
 	}
 
 	var msg bytes.Buffer
-	m.Write(&msg)
+	if err := m.Write(&msg); err != nil {
+		t.Error(err)
+	}
 	if !bytes.Equal(exp, msg.Bytes()) {
 		t.Fatal("message from store not same as what went in", msg.Bytes())
 	}
@@ -512,7 +514,9 @@ func Test_MemoryStore_Get(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	msg.Write(&buf)
+	if err := msg.Write(&buf); err != nil {
+		t.Error(err)
+	}
 	if !bytes.Equal(exp, buf.Bytes()) {
 		t.Fatalf("message from store not same as what went in")
 	}

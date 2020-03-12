@@ -117,7 +117,9 @@ func (store *FileStore) Get(key string) packets.ControlPacket {
 	if rerr != nil {
 		newpath := corruptpath(store.directory, key)
 		WARN.Println(STR, "corrupted file detected:", rerr.Error(), "archived at:", newpath)
-		os.Rename(filepath, newpath)
+		if err := os.Rename(filepath, newpath); err != nil {
+			ERROR.Println(STR, err)
+		}
 		return nil
 	}
 	return msg
