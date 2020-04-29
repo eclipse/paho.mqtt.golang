@@ -257,7 +257,7 @@ func (c *client) Connect() Token {
 			DEBUG.Println(CLI, "about to write new connect msg")
 			c.Lock()
 			c.conn, err = openConnection(broker, c.options.TLSConfig, c.options.ConnectTimeout,
-				c.options.HTTPHeaders)
+				c.options.HTTPHeaders, c.options.WebsocketOptions)
 			c.Unlock()
 			if err == nil {
 				DEBUG.Println(CLI, "socket connected to broker")
@@ -390,7 +390,7 @@ func (c *client) reconnect() {
 			cm := newConnectMsgFromOptions(&c.options, broker)
 			DEBUG.Println(CLI, "about to write new connect msg")
 			c.Lock()
-			c.conn, err = openConnection(broker, c.options.TLSConfig, c.options.ConnectTimeout, c.options.HTTPHeaders)
+			c.conn, err = openConnection(broker, c.options.TLSConfig, c.options.ConnectTimeout, c.options.HTTPHeaders, c.options.WebsocketOptions)
 			c.Unlock()
 			if err == nil {
 				DEBUG.Println(CLI, "socket connected to broker")
