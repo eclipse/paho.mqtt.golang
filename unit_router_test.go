@@ -43,7 +43,7 @@ func Test_AddRoute(t *testing.T) {
 }
 
 func Test_AddRoute_Wildcards(t *testing.T) {
-	router, _ := newRouter()
+	router := newRouter()
 	cb := func(client Client, msg Message) {
 	}
 	router.addRoute("#", cb)
@@ -55,15 +55,16 @@ func Test_AddRoute_Wildcards(t *testing.T) {
 }
 
 func Test_DeleteRoute_Wildcards(t *testing.T) {
-	router, _ := newRouter()
+	router := newRouter()
 	cb := func(client Client, msg Message) {
 	}
 	router.addRoute("#", cb)
 	router.addRoute("topic1", cb)
 	router.deleteRoute("topic1")
-	
+
 	expected := "#"
-	got := router.routes.Front().Value.(*route).topic; if !(router.routes.Front().Value.(*route).topic == "#") {
+	got := router.routes.Front().Value.(*route).topic
+	if !(router.routes.Front().Value.(*route).topic == "#") {
 		t.Fatalf("deleteRoute deleted wrong route when wildcards are used, got topic '%s', expected route with topic '%s'", got, expected)
 	}
 }

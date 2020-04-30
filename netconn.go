@@ -39,7 +39,7 @@ func openConnection(uri *url.URL, tlsc *tls.Config, timeout time.Duration, heade
 	case "wss":
 		conn, err := NewWebsocket(uri.String(), tlsc, timeout, headers)
 		return conn, err
-	case "tcp":
+	case "mqtt", "tcp":
 		allProxy := os.Getenv("all_proxy")
 		if len(allProxy) == 0 {
 			conn, err := net.DialTimeout("tcp", uri.Host, timeout)
@@ -61,11 +61,7 @@ func openConnection(uri *url.URL, tlsc *tls.Config, timeout time.Duration, heade
 			return nil, err
 		}
 		return conn, nil
-	case "ssl":
-		fallthrough
-	case "tls":
-		fallthrough
-	case "tcps":
+	case "ssl", "tls", "mqtts", "mqtt+ssl", "tcps":
 		allProxy := os.Getenv("all_proxy")
 		if len(allProxy) == 0 {
 			conn, err := tls.DialWithDialer(&net.Dialer{Timeout: timeout}, "tcp", uri.Host, tlsc)
