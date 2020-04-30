@@ -21,9 +21,8 @@ import "os"
 // Use fvt/mosquitto.cfg for the open source Mosquitto project
 
 var (
-	FVTAddr string
-	FVTTCP  string
-	FVTSSL  string
+	FVTTCP string
+	FVTSSL string
 )
 
 func init() {

@@ -15,8 +15,6 @@
 package mqtt
 
 import (
-	"fmt"
-	"io/ioutil"
 	"testing"
 
 	"github.com/eclipse/paho.mqtt.golang/packets"
@@ -42,15 +40,6 @@ func Test_exists_no(t *testing.T) {
 	if b {
 		t.Errorf("you have some strange files")
 	}
-}
-
-func isemptydir(dir string) bool {
-	if !exists(dir) {
-		panic(fmt.Errorf("Directory %s does not exist", dir))
-	}
-	files, err := ioutil.ReadDir(dir)
-	chkerr(err)
-	return len(files) == 0
 }
 
 func Test_mIDFromKey(t *testing.T) {

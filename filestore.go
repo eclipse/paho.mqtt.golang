@@ -101,7 +101,7 @@ func (store *FileStore) Get(key string) packets.ControlPacket {
 	store.RLock()
 	defer store.RUnlock()
 	if !store.opened {
-		ERROR.Println(STR, "Trying to use file store, but not open")
+		ERROR.Println(STR, "trying to use file store, but not open")
 		return nil
 	}
 	filepath := fullpath(store.directory, key)
@@ -117,7 +117,9 @@ func (store *FileStore) Get(key string) packets.ControlPacket {
 	if rerr != nil {
 		newpath := corruptpath(store.directory, key)
 		WARN.Println(STR, "corrupted file detected:", rerr.Error(), "archived at:", newpath)
-		os.Rename(filepath, newpath)
+		if err := os.Rename(filepath, newpath); err != nil {
+			ERROR.Println(STR, err)
+		}
 		return nil
 	}
 	return msg
@@ -156,7 +158,7 @@ func (store *FileStore) all() []string {
 	var files fileInfos
 
 	if !store.opened {
-		ERROR.Println(STR, "Trying to use file store, but not open")
+		ERROR.Println(STR, "trying to use file store, but not open")
 		return nil
 	}
 
@@ -179,7 +181,7 @@ func (store *FileStore) all() []string {
 // lockless
 func (store *FileStore) del(key string) {
 	if !store.opened {
-		ERROR.Println(STR, "Trying to use file store, but not open")
+		ERROR.Println(STR, "trying to use file store, but not open")
 		return
 	}
 	DEBUG.Println(STR, "store del filepath:", store.directory)
