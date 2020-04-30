@@ -313,7 +313,7 @@ func (o *ClientOptions) SetReconnectingHandler(cb ReconnectHandler) *ClientOptio
 }
 
 // SetWriteTimeout puts a limit on how long a mqtt publish should block until it unblocks with a
-// timeout error. A duration of 0 never times out. Default 30 seconds
+// timeout error. A duration of 0 never times out. Default never times out
 func (o *ClientOptions) SetWriteTimeout(t time.Duration) *ClientOptions {
 	o.WriteTimeout = t
 	return o
