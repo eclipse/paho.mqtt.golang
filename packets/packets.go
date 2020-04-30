@@ -85,13 +85,13 @@ var ConnackReturnCodes = map[uint8]string{
 //to a Go error
 var ConnErrors = map[byte]error{
 	Accepted:                        nil,
-	ErrRefusedBadProtocolVersion:    errors.New("Unnacceptable protocol version"),
-	ErrRefusedIDRejected:            errors.New("Identifier rejected"),
-	ErrRefusedServerUnavailable:     errors.New("Server Unavailable"),
-	ErrRefusedBadUsernameOrPassword: errors.New("Bad user name or password"),
-	ErrRefusedNotAuthorised:         errors.New("Not Authorized"),
-	ErrNetworkError:                 errors.New("Network Error"),
-	ErrProtocolViolation:            errors.New("Protocol Violation"),
+	ErrRefusedBadProtocolVersion:    errors.New("unnacceptable protocol version"),
+	ErrRefusedIDRejected:            errors.New("identifier rejected"),
+	ErrRefusedServerUnavailable:     errors.New("server Unavailable"),
+	ErrRefusedBadUsernameOrPassword: errors.New("bad user name or password"),
+	ErrRefusedNotAuthorised:         errors.New("not Authorized"),
+	ErrNetworkError:                 errors.New("network Error"),
+	ErrProtocolViolation:            errors.New("protocol Violation"),
 }
 
 //ReadPacket takes an instance of an io.Reader (such as net.Conn) and attempts
@@ -123,7 +123,7 @@ func ReadPacket(r io.Reader) (ControlPacket, error) {
 		return nil, err
 	}
 	if n != fh.RemainingLength {
-		return nil, errors.New("Failed to read expected data")
+		return nil, errors.New("failed to read expected data")
 	}
 
 	err = cp.Unpack(bytes.NewBuffer(packetBytes))
@@ -274,9 +274,9 @@ func decodeUint16(b io.Reader) (uint16, error) {
 }
 
 func encodeUint16(num uint16) []byte {
-	bytes := make([]byte, 2)
-	binary.BigEndian.PutUint16(bytes, num)
-	return bytes
+	bytesResult := make([]byte, 2)
+	binary.BigEndian.PutUint16(bytesResult, num)
+	return bytesResult
 }
 
 func encodeString(field string) []byte {

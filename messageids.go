@@ -40,11 +40,11 @@ func (mids *messageIds) cleanUp() {
 	for _, token := range mids.index {
 		switch token.(type) {
 		case *PublishToken:
-			token.setError(fmt.Errorf("Connection lost before Publish completed"))
+			token.setError(fmt.Errorf("connection lost before Publish completed"))
 		case *SubscribeToken:
-			token.setError(fmt.Errorf("Connection lost before Subscribe completed"))
+			token.setError(fmt.Errorf("connection lost before Subscribe completed"))
 		case *UnsubscribeToken:
-			token.setError(fmt.Errorf("Connection lost before Unsubscribe completed"))
+			token.setError(fmt.Errorf("connection lost before Unsubscribe completed"))
 		case nil:
 			continue
 		}
@@ -114,7 +114,7 @@ func (d *DummyToken) Error() error {
 	return nil
 }
 
-func (p *DummyToken) setError(e error) {}
+func (d *DummyToken) setError(e error) {}
 
 // PlaceHolderToken does nothing and was implemented to allow a messageid to be reserved
 // it differs from DummyToken in that calling flowComplete does not generate an error (it

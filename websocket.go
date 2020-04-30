@@ -11,7 +11,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-// NewWebsocket returns a new websocket and returns a net.Conn compatiable interface using the gorilla/websocket package
+// NewWebsocket returns a new websocket and returns a net.Conn compatible interface using the gorilla/websocket package
 func NewWebsocket(host string, tlsc *tls.Config, timeout time.Duration, requestHeader http.Header) (net.Conn, error) {
 	if timeout == 0 {
 		timeout = 10 * time.Second
