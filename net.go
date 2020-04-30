@@ -96,7 +96,7 @@ func openConnection(uri *url.URL, tlsc *tls.Config, timeout time.Duration, heade
 
 		return tlsConn, nil
 	}
-	return nil, errors.New("Unknown protocol")
+	return nil, errors.New("unknown protocol")
 }
 
 // actually read incoming messages off the wire

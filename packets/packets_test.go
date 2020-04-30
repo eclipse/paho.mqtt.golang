@@ -203,9 +203,9 @@ func TestEncoding(t *testing.T) {
 	}
 
 	strings := map[string][]byte{
-		"foo":         []byte{0x00, 0x03, 'f', 'o', 'o'},
-		"\U0000FEFF":  []byte{0x00, 0x03, 0xEF, 0xBB, 0xBF},
-		"A\U0002A6D4": []byte{0x00, 0x05, 'A', 0xF0, 0xAA, 0x9B, 0x94},
+		"foo":         {0x00, 0x03, 'f', 'o', 'o'},
+		"\U0000FEFF":  {0x00, 0x03, 0xEF, 0xBB, 0xBF},
+		"A\U0002A6D4": {0x00, 0x05, 'A', 0xF0, 0xAA, 0x9B, 0x94},
 	}
 	for str, encoded := range strings {
 		if res, err := decodeString(bytes.NewBuffer(encoded)); res != str || err != nil {
@@ -217,14 +217,14 @@ func TestEncoding(t *testing.T) {
 	}
 
 	lengths := map[int][]byte{
-		0:         []byte{0x00},
-		127:       []byte{0x7F},
-		128:       []byte{0x80, 0x01},
-		16383:     []byte{0xFF, 0x7F},
-		16384:     []byte{0x80, 0x80, 0x01},
-		2097151:   []byte{0xFF, 0xFF, 0x7F},
-		2097152:   []byte{0x80, 0x80, 0x80, 0x01},
-		268435455: []byte{0xFF, 0xFF, 0xFF, 0x7F},
+		0:         {0x00},
+		127:       {0x7F},
+		128:       {0x80, 0x01},
+		16383:     {0xFF, 0x7F},
+		16384:     {0x80, 0x80, 0x01},
+		2097151:   {0xFF, 0xFF, 0x7F},
+		2097152:   {0x80, 0x80, 0x80, 0x01},
+		268435455: {0xFF, 0xFF, 0xFF, 0x7F},
 	}
 	for length, encoded := range lengths {
 		if res, err := decodeLength(bytes.NewBuffer(encoded)); res != length || err != nil {

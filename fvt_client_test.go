@@ -1013,7 +1013,7 @@ func Test_autoreconnect(t *testing.T) {
 	time.Sleep(5 * time.Second)
 
 	fmt.Println("Breaking connection")
-	c.(*client).internalConnLost(fmt.Errorf("Autoreconnect test"))
+	c.(*client).internalConnLost(fmt.Errorf("autoreconnect test"))
 
 	time.Sleep(5 * time.Second)
 	if !c.IsConnected() {
@@ -1323,7 +1323,7 @@ func Test_ResumeSubsWithReconnect(t *testing.T) {
 
 	persistOutbound(c.(*client).persist, sub)
 	//subToken := c.Subscribe(topic, qos, nil)
-	c.(*client).internalConnLost(fmt.Errorf("Reconnection subscription test"))
+	c.(*client).internalConnLost(fmt.Errorf("reconnection subscription test"))
 
 	// As reconnect is enabled the client should automatically reconnect
 	subDone := make(chan bool)
