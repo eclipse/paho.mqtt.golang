@@ -15,211 +15,171 @@
 package mqtt
 
 import (
-	"crypto/tls"
-	"errors"
 	"net"
-	"net/http"
-	"net/url"
-	"os"
 	"reflect"
-	"sync/atomic"
+	"strings"
 	"time"
 
 	"github.com/eclipse/paho.mqtt.golang/packets"
-	"golang.org/x/net/proxy"
 )
 
-func signalError(c chan<- error, err error) {
-	select {
-	case c <- err:
+const closedNetConnErrorText = "use of closed network connection" // error string for closed conn (https://golang.org/src/net/error_test.go)
+
+// ConnectMQTT takes a connected net.Conn and performs the initial MQTT handshake. Paramaters are:
+// conn - Connected net.Conn
+// cm - Connect Packet with everything other than the protocolname/version populated (historical reasons)
+// protocolVersion - The protocol version to attempt to connect with
+func ConnectMQTT(conn net.Conn, cm *packets.ConnectPacket, protocolVersion uint) (byte, bool) {
+	switch protocolVersion {
+	case 3:
+		DEBUG.Println(CLI, "Using MQTT 3.1 protocol")
+		cm.ProtocolName = "MQIsdp"
+		cm.ProtocolVersion = 3
+	case 0x83:
+		DEBUG.Println(CLI, "Using MQTT 3.1b protocol")
+		cm.ProtocolName = "MQIsdp"
+		cm.ProtocolVersion = 0x83
+	case 0x84:
+		DEBUG.Println(CLI, "Using MQTT 3.1.1b protocol")
+		cm.ProtocolName = "MQTT"
+		cm.ProtocolVersion = 0x84
 	default:
+		DEBUG.Println(CLI, "Using MQTT 3.1.1 protocol")
+		cm.ProtocolName = "MQTT"
+		cm.ProtocolVersion = 4
 	}
+	cm.Write(conn)
+
+	rc, sessionPresent := verifyCONNACK(conn)
+	return rc, sessionPresent
 }
 
-func openConnection(uri *url.URL, tlsc *tls.Config, timeout time.Duration, headers http.Header) (net.Conn, error) {
-	switch uri.Scheme {
-	case "ws":
-		conn, err := NewWebsocket(uri.String(), nil, timeout, headers)
-		return conn, err
-	case "wss":
-		conn, err := NewWebsocket(uri.String(), tlsc, timeout, headers)
-		return conn, err
-	case "tcp":
-		allProxy := os.Getenv("all_proxy")
-		if len(allProxy) == 0 {
-			conn, err := net.DialTimeout("tcp", uri.Host, timeout)
-			if err != nil {
-				return nil, err
-			}
-			return conn, nil
-		}
-		proxyDialer := proxy.FromEnvironment()
+// This function is only used for receiving a connack
+// when the connection is first started.
+// This prevents receiving incoming data while resume
+// is in progress if clean session is false.
+func verifyCONNACK(conn net.Conn) (byte, bool) {
+	DEBUG.Println(NET, "connect started")
 
-		conn, err := proxyDialer.Dial("tcp", uri.Host)
-		if err != nil {
-			return nil, err
-		}
-		return conn, nil
-	case "unix":
-		conn, err := net.DialTimeout("unix", uri.Host, timeout)
-		if err != nil {
-			return nil, err
-		}
-		return conn, nil
-	case "ssl":
-		fallthrough
-	case "tls":
-		fallthrough
-	case "tcps":
-		allProxy := os.Getenv("all_proxy")
-		if len(allProxy) == 0 {
-			conn, err := tls.DialWithDialer(&net.Dialer{Timeout: timeout}, "tcp", uri.Host, tlsc)
-			if err != nil {
-				return nil, err
-			}
-			return conn, nil
-		}
-		proxyDialer := proxy.FromEnvironment()
-
-		conn, err := proxyDialer.Dial("tcp", uri.Host)
-		if err != nil {
-			return nil, err
-		}
-
-		tlsConn := tls.Client(conn, tlsc)
-
-		err = tlsConn.Handshake()
-		if err != nil {
-			conn.Close()
-			return nil, err
-		}
-
-		return tlsConn, nil
+	ca, err := packets.ReadPacket(conn)
+	if err != nil {
+		ERROR.Println(NET, "connect got error", err)
+		return packets.ErrNetworkError, false
 	}
-	return nil, errors.New("unknown protocol")
+	if ca == nil {
+		ERROR.Println(NET, "received nil packet")
+		return packets.ErrNetworkError, false
+	}
+
+	msg, ok := ca.(*packets.ConnackPacket)
+	if !ok {
+		ERROR.Println(NET, "received msg that was not CONNACK")
+		return packets.ErrNetworkError, false
+	}
+
+	DEBUG.Println(NET, "received connack")
+	return msg.ReturnCode, msg.SessionPresent
 }
 
-// actually read incoming messages off the wire
-// send Message object into ibound channel
-func incoming(c *client) {
+// inbound encapuslates the output from startIncoming.
+// err  - If != nil then an error has occured
+// cp - A control packet received over the network link
+type inbound struct {
+	err error
+	cp  packets.ControlPacket
+}
+
+// startIncoming initiates a goroutine that reads incoming messages off the wire and sends them to the channel (returned).
+// If there are any issues with the network connection then the returned cahnnel will be closed and the goroutine will exit
+// (so closing the connection will terminate the goroutine)
+func startIncoming(conn net.Conn) <-chan inbound {
 	var err error
 	var cp packets.ControlPacket
-
-	defer c.workers.Done()
+	ibound := make(chan inbound)
 
 	DEBUG.Println(NET, "incoming started")
-
-	for {
-		if cp, err = packets.ReadPacket(c.conn); err != nil {
-			break
-		}
-		DEBUG.Println(NET, "Received Message")
-		select {
-		case c.ibound <- cp:
-			// Notify keepalive logic that we recently received a packet
-			if c.options.KeepAlive != 0 {
-				c.lastReceived.Store(time.Now())
-			}
-		case <-c.stop:
-			// This avoids a deadlock should a message arrive while shutting down.
-			// In that case the "reader" of c.ibound might already be gone
-			WARN.Println(NET, "incoming dropped a received message during shutdown")
-			break
-		}
-	}
-	// We received an error on read.
-	// If disconnect is in progress, swallow error and return
-	select {
-	case <-c.stop:
-		DEBUG.Println(NET, "incoming stopped")
-		return
-	// Not trying to disconnect, send the error to the errors channel
-	default:
-		ERROR.Println(NET, "incoming stopped with error", err)
-		signalError(c.errors, err)
-		return
-	}
-}
-
-// receive a Message object on obound, and then
-// actually send outgoing message to the wire
-func outgoing(c *client) {
-	defer c.workers.Done()
-	DEBUG.Println(NET, "outgoing started")
-
-	for {
-		DEBUG.Println(NET, "outgoing waiting for an outbound message")
-		select {
-		case <-c.stop:
-			DEBUG.Println(NET, "outgoing stopped")
-			return
-		case pub := <-c.obound:
-			msg := pub.p.(*packets.PublishPacket)
-
-			if c.options.WriteTimeout > 0 {
-				c.conn.SetWriteDeadline(time.Now().Add(c.options.WriteTimeout))
-			}
-
-			if err := msg.Write(c.conn); err != nil {
-				ERROR.Println(NET, "outgoing stopped with error", err)
-				pub.t.setError(err)
-				signalError(c.errors, err)
-				return
-			}
-
-			if c.options.WriteTimeout > 0 {
-				// If we successfully wrote, we don't want the timeout to happen during an idle period
-				// so we reset it to infinite.
-				c.conn.SetWriteDeadline(time.Time{})
-			}
-
-			if msg.Qos == 0 {
-				pub.t.flowComplete()
-			}
-			DEBUG.Println(NET, "obound wrote msg, id:", msg.MessageID)
-		case msg := <-c.oboundP:
-			DEBUG.Println(NET, "obound priority msg to write, type", reflect.TypeOf(msg.p))
-			if err := msg.p.Write(c.conn); err != nil {
-				ERROR.Println(NET, "outgoing stopped with error", err)
-				if msg.t != nil {
-					msg.t.setError(err)
+	go func() {
+		for {
+			if cp, err = packets.ReadPacket(conn); err != nil {
+				// We do not want to log the error if it is due to the network connection having been closed
+				// elsewhere (i.e. after sending DisconnectPacket). Detecting this situation is the subject of
+				// https://github.com/golang/go/issues/4373
+				if !strings.Contains(err.Error(), closedNetConnErrorText) {
+					ibound <- inbound{err: err}
 				}
-				signalError(c.errors, err)
+				close(ibound)
+				DEBUG.Println(NET, "incoming complete")
 				return
 			}
-			switch msg.p.(type) {
-			case *packets.DisconnectPacket:
-				msg.t.(*DisconnectToken).flowComplete()
-				DEBUG.Println(NET, "outbound wrote disconnect, stopping")
-				return
-			}
+			DEBUG.Println(NET, "Received Message")
+			ibound <- inbound{cp: cp}
 		}
-		// Reset ping timer after sending control packet.
-		if c.options.KeepAlive != 0 {
-			c.lastSent.Store(time.Now())
-		}
-	}
+	}()
+	return ibound
 }
 
-// receive Message objects on ibound
-// store messages if necessary
-// send replies on obound
-// delete messages from store if necessary
-func alllogic(c *client) {
-	defer c.workers.Done()
-	DEBUG.Println(NET, "logic started")
+// incommingComms encapuslates the possible output of the incommingComms routine. If err != nil then an error has occured and
+// the routine will have terminated; otherwise one of the other members should be non-nil
+type incommingComms struct {
+	err          error                  // If non-nil then there has been an error (ignore everything else)
+	outbound     *PacketAndToken        // Packet (with token) than needs to be sent out (e.g. an acknowledgement)
+	incommingPub *packets.PublishPacket // A new publish has been received; this will need to be passed on to our user
+}
 
-	for {
-		DEBUG.Println(NET, "logic waiting for msg on ibound")
+// startIncommingComms initiates incomming communications; this includes starting a goroutine to process incomming
+// messages.
+// Accepts a channel of inbound messages from the store (persistanced messages); note this must be closed as soon as the
+// everything in the store has been sent.
+// Returns a channel that will be passed any received packets; this will be closed on a network error (and inboundFromStore closed)
+func startIncommingComms(conn net.Conn,
+	c commsFns,
+	inboundFromStore <-chan packets.ControlPacket,
+) <-chan incommingComms {
+	ibound := startIncoming(conn) // Start goroutine that reads from network connection
+	output := make(chan incommingComms)
 
-		select {
-		case msg := <-c.ibound:
-			DEBUG.Println(NET, "logic got msg on ibound")
-			persistInbound(c.persist, msg)
+	DEBUG.Println(NET, "startIncommingComms started")
+	go func() {
+		for {
+			if inboundFromStore == nil && ibound == nil {
+				close(output)
+				DEBUG.Println(NET, "startIncommingComms goroutine complete")
+				return // As soon as ibound is closed we can exit (should have already processed an error)
+			}
+			DEBUG.Println(NET, "logic waiting for msg on ibound")
+
+			var msg packets.ControlPacket
+			var ok bool
+			select {
+			case msg, ok = <-inboundFromStore:
+				if !ok {
+					DEBUG.Println(NET, "startIncommingComms: inboundFromStore complete")
+					inboundFromStore = nil // should happen quickly as this is only for persisted messages
+					continue
+				}
+				DEBUG.Println(NET, "startIncommingComms: got msg from store")
+			case ibMsg, ok := <-ibound:
+				if !ok {
+					DEBUG.Println(NET, "startIncommingComms: ibound complete")
+					ibound = nil
+					continue
+				}
+				DEBUG.Println(NET, "startIncommingComms: got msg on ibound")
+				// If the inbound comms routine encounters any issues it will send us an error.
+				if ibMsg.err != nil {
+					output <- incommingComms{err: ibMsg.err}
+					continue // Usually the channel will be closed immediatly after sending an error but safer that we do not assume this
+				}
+				msg = ibMsg.cp
+
+				c.persistInbound(msg)
+				c.UpdateLastReceived() // Notify keepalive logic that we recently received a packet
+			}
+
 			switch m := msg.(type) {
 			case *packets.PingrespPacket:
 				DEBUG.Println(NET, "received pingresp")
-				atomic.StoreInt32(&c.pingOutstanding, 0)
+				c.pingRespReceived()
 			case *packets.SubackPacket:
 				DEBUG.Println(NET, "received suback, id:", m.MessageID)
 				token := c.getToken(m.MessageID)
@@ -238,93 +198,237 @@ func alllogic(c *client) {
 				c.freeID(m.MessageID)
 			case *packets.PublishPacket:
 				DEBUG.Println(NET, "received publish, msgId:", m.MessageID)
-				DEBUG.Println(NET, "putting msg on onPubChan")
-				switch m.Qos {
-				case 2:
-					c.incomingPubChan <- m
-					DEBUG.Println(NET, "done putting msg on incomingPubChan")
-				case 1:
-					c.incomingPubChan <- m
-					DEBUG.Println(NET, "done putting msg on incomingPubChan")
-				case 0:
-					select {
-					case c.incomingPubChan <- m:
-					case <-c.stop:
-					}
-					DEBUG.Println(NET, "done putting msg on incomingPubChan")
-				}
+				output <- incommingComms{incommingPub: m}
 			case *packets.PubackPacket:
 				DEBUG.Println(NET, "received puback, id:", m.MessageID)
-				// c.receipts.get(msg.MsgId()) <- Receipt{}
-				// c.receipts.end(msg.MsgId())
 				c.getToken(m.MessageID).flowComplete()
 				c.freeID(m.MessageID)
 			case *packets.PubrecPacket:
 				DEBUG.Println(NET, "received pubrec, id:", m.MessageID)
 				prel := packets.NewControlPacket(packets.Pubrel).(*packets.PubrelPacket)
 				prel.MessageID = m.MessageID
-				select {
-				case c.oboundP <- &PacketAndToken{p: prel, t: nil}:
-				case <-c.stop:
-				}
+				output <- incommingComms{outbound: &PacketAndToken{p: prel, t: nil}}
 			case *packets.PubrelPacket:
 				DEBUG.Println(NET, "received pubrel, id:", m.MessageID)
 				pc := packets.NewControlPacket(packets.Pubcomp).(*packets.PubcompPacket)
 				pc.MessageID = m.MessageID
-				persistOutbound(c.persist, pc)
-				select {
-				case c.oboundP <- &PacketAndToken{p: pc, t: nil}:
-				case <-c.stop:
-				}
+				c.persistOutbound(pc)
+				output <- incommingComms{outbound: &PacketAndToken{p: pc, t: nil}}
 			case *packets.PubcompPacket:
 				DEBUG.Println(NET, "received pubcomp, id:", m.MessageID)
 				c.getToken(m.MessageID).flowComplete()
 				c.freeID(m.MessageID)
 			}
-		case <-c.stop:
-			WARN.Println(NET, "logic stopped")
-			return
 		}
-	}
+	}()
+	return output
 }
 
-func (c *client) ackFunc(packet *packets.PublishPacket) func() {
+// startOutgoingComms initiates a go routint to transmit outgoing packets.
+// Pass in an open network connection and channels for outbound messages (including those triggered
+// directly from incomming comms).
+// Returns a channel that will receive details of any errors (closed when the goroutine exits)
+// This function wil only terminate when all input channels are closed
+func startOutgoingComms(conn net.Conn,
+	c commsFns,
+	oboundp <-chan *PacketAndToken,
+	obound <-chan *PacketAndToken,
+	oboundFromIncomming <-chan *PacketAndToken,
+) <-chan error {
+	errChan := make(chan error)
+	DEBUG.Println(NET, "outgoing started")
+
+	go func() {
+		for {
+			DEBUG.Println(NET, "outgoing waiting for an outbound message")
+
+			// This goroutine will only exits when all of the input channels we receive on have been closed. This approach is taken to avoid any
+			// deadlocks (if the connection goes down there are limited options as to what we can do with anything waiting on us and
+			// throwing away the packets seems the best option)
+			if oboundp == nil && obound == nil && oboundFromIncomming == nil {
+				DEBUG.Println(NET, "outgoing comms stopping")
+				close(errChan)
+				return
+			}
+
+			select {
+			case pub, ok := <-obound:
+				if !ok {
+					obound = nil
+					continue
+				}
+				msg := pub.p.(*packets.PublishPacket)
+
+				writeTimeout := c.getWriteTimeOut()
+				if writeTimeout > 0 {
+					conn.SetWriteDeadline(time.Now().Add(writeTimeout))
+				}
+
+				if err := msg.Write(conn); err != nil {
+					ERROR.Println(NET, "outgoing reporting error", err)
+					pub.t.setError(err)
+					// report error if it's not due to the connection being closed elsewhere
+					if !strings.Contains(err.Error(), closedNetConnErrorText) {
+						errChan <- err
+					}
+					continue
+				}
+
+				if writeTimeout > 0 {
+					// If we successfully wrote, we don't want the timeout to happen during an idle period
+					// so we reset it to infinite.
+					conn.SetWriteDeadline(time.Time{})
+				}
+
+				if msg.Qos == 0 {
+					pub.t.flowComplete()
+				}
+				DEBUG.Println(NET, "obound wrote msg, id:", msg.MessageID)
+			case msg, ok := <-oboundp:
+				if !ok {
+					oboundp = nil
+					continue
+				}
+				DEBUG.Println(NET, "obound priority msg to write, type", reflect.TypeOf(msg.p))
+				if err := msg.p.Write(conn); err != nil {
+					ERROR.Println(NET, "outgoing reporting error", err)
+					if msg.t != nil {
+						msg.t.setError(err)
+					}
+					errChan <- err
+					continue
+				}
+				switch msg.p.(type) {
+				case *packets.DisconnectPacket:
+					msg.t.(*DisconnectToken).flowComplete()
+					DEBUG.Println(NET, "outbound wrote disconnect, closing connection")
+					// As per the MQTT spec "After sending a DISCONNECT Packet the Client MUST close the Network Connection"
+					// Closing the connection will cause the goroutines to end in sequence (starting with incomming comms)
+					conn.Close()
+				}
+			case msg, ok := <-oboundFromIncomming: // message triggered by an inbound message (PubrecPacket or PubrelPacket)
+				if !ok {
+					oboundFromIncomming = nil
+					continue
+				}
+				DEBUG.Println(NET, "obound from incomming msg to write, type", reflect.TypeOf(msg.p))
+				if err := msg.p.Write(conn); err != nil {
+					ERROR.Println(NET, "outgoing reporting error", err)
+					if msg.t != nil {
+						msg.t.setError(err)
+					}
+					errChan <- err
+					continue
+				}
+			}
+			c.UpdateLastSent() // Record that a packet has been received (for keepalive routine)
+		}
+	}()
+	return errChan
+}
+
+// commsFns provide access to the client state (messageids, requesting disconnection and updating timing)
+type commsFns interface {
+	getToken(id uint16) tokenCompletor       // Retrieve the token for the specified messageid (if none then a dummy token must be returned)
+	freeID(id uint16)                        // Release the specified messageid (clearing out of any persistant store)
+	UpdateLastReceived()                     // Must be called whenever a packet is received
+	UpdateLastSent()                         // Must be called whenever a packet is successfully sent
+	getWriteTimeOut() time.Duration          // Return the writetimeout (or 0 if none)
+	persistOutbound(m packets.ControlPacket) // add the packet to the outbound store
+	persistInbound(m packets.ControlPacket)  // add the packet to the inbound store
+	pingRespReceived()                       // Called when a ping response is received
+}
+
+// startComms initiates goroutines that handles communications over the network connection
+// Messages will be stored (via commsFns) and deleted from the store as neccessary
+// It returns two channels:
+//  packets.PublishPacket - Will receive publish packets received over the network. Closed when incomming comms routines exit (on shutdown or if network link closed)
+//  error - Any errors will be sent on this channel. The channel is closed when all comms routines have shut down
+//
+// Note: The comms routines monitoring oboundp and obound will not shutdown until those channels are both closed. Any messages received between the
+// connection being closed and those channels being closed will generate errors (and nothing will be sent). That way the chance of a deadlock is
+// minimised.
+func startComms(conn net.Conn, // Network connection (must be active)
+	c commsFns, // getters and setters to enable us to cleanly interact with client
+	inboundFromStore <-chan packets.ControlPacket, // Inbound packets from the persistance store (should be closed relatively soon after startup)
+	oboundp <-chan *PacketAndToken,
+	obound <-chan *PacketAndToken) (
+	<-chan *packets.PublishPacket, // Publishpackages received over the network
+	<-chan error, // Any errors (should generally trigger a disconnect)
+) {
+	// Start inbound comms handler; this needs to be able to transmit messages so we start a go routine to add these to the priority outbound channel
+	ibound := startIncommingComms(conn, c, inboundFromStore)
+	outboundFromIncomming := make(chan *PacketAndToken) // Will accept outgoing messages triggered by startIncommingComms (e.g. acknowledgements)
+
+	oboundErr := startOutgoingComms(conn, c, oboundp, obound, outboundFromIncomming)
+	DEBUG.Println(NET, "startComms started")
+
+	// Now we just need to pass on any errors and close the error channel when out inbound channels have been closed
+	outPublish := make(chan *packets.PublishPacket)
+	outError := make(chan error)
+	go func() {
+		for {
+			if ibound == nil && oboundErr == nil {
+				close(outError)
+				DEBUG.Println(NET, "startComms gorouting exiting")
+				return
+			}
+			select {
+			case ic, ok := <-ibound:
+				if !ok {
+					ibound = nil
+					// As there will be no more inbound messages we can close the two channels that could receive these
+					close(outboundFromIncomming)
+					close(outPublish)
+					break
+				}
+				if ic.err != nil {
+					outError <- ic.err
+					break
+				}
+				if ic.outbound != nil {
+					outboundFromIncomming <- ic.outbound
+					break
+				}
+				if ic.incommingPub != nil {
+					outPublish <- ic.incommingPub
+					break
+				}
+				ERROR.Println(STR, "startComms received empty incommingComms msg")
+			case err, ok := <-oboundErr:
+				if !ok {
+					oboundErr = nil
+					break
+				}
+				outError <- err
+			}
+		}
+	}()
+	return outPublish, outError
+}
+
+// ackFunc acknowledges a packet
+// WARNING the function returned must not be called if the comms routine is shutting down or not running
+// (it needs outgoing comms in order to send the acknowledgement). Currently this is only called from
+// matchAndDispatch which will be shutdown before the comms are
+func ackFunc(oboundP chan *PacketAndToken, persist Store, packet *packets.PublishPacket) func() {
 	return func() {
 		switch packet.Qos {
 		case 2:
 			pr := packets.NewControlPacket(packets.Pubrec).(*packets.PubrecPacket)
 			pr.MessageID = packet.MessageID
 			DEBUG.Println(NET, "putting pubrec msg on obound")
-			select {
-			case c.oboundP <- &PacketAndToken{p: pr, t: nil}:
-			case <-c.stop:
-			}
+			oboundP <- &PacketAndToken{p: pr, t: nil}
 			DEBUG.Println(NET, "done putting pubrec msg on obound")
 		case 1:
 			pa := packets.NewControlPacket(packets.Puback).(*packets.PubackPacket)
 			pa.MessageID = packet.MessageID
 			DEBUG.Println(NET, "putting puback msg on obound")
-			persistOutbound(c.persist, pa)
-			select {
-			case c.oboundP <- &PacketAndToken{p: pa, t: nil}:
-			case <-c.stop:
-			}
+			persistOutbound(persist, pa)
+			oboundP <- &PacketAndToken{p: pa, t: nil}
 			DEBUG.Println(NET, "done putting puback msg on obound")
 		case 0:
 			// do nothing, since there is no need to send an ack packet back
 		}
-	}
-}
-
-func errorWatch(c *client) {
-	defer c.workers.Done()
-	select {
-	case <-c.stop:
-		WARN.Println(NET, "errorWatch stopped")
-		return
-	case err := <-c.errors:
-		ERROR.Println(NET, "error triggered, stopping")
-		go c.internalConnLost(err)
-		return
 	}
 }
