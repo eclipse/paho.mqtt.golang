@@ -48,7 +48,9 @@ func ConnectMQTT(conn net.Conn, cm *packets.ConnectPacket, protocolVersion uint)
 		cm.ProtocolName = "MQTT"
 		cm.ProtocolVersion = 4
 	}
-	cm.Write(conn)
+	if err := cm.Write(conn); err != nil {
+		ERROR.Println(CLI, err)
+	}
 
 	rc, sessionPresent := verifyCONNACK(conn)
 	return rc, sessionPresent
@@ -261,7 +263,9 @@ func startOutgoingComms(conn net.Conn,
 
 				writeTimeout := c.getWriteTimeOut()
 				if writeTimeout > 0 {
-					conn.SetWriteDeadline(time.Now().Add(writeTimeout))
+					if err := conn.SetWriteDeadline(time.Now().Add(writeTimeout)); err != nil {
+						ERROR.Println(NET, err)
+					}
 				}
 
 				if err := msg.Write(conn); err != nil {
@@ -277,7 +281,9 @@ func startOutgoingComms(conn net.Conn,
 				if writeTimeout > 0 {
 					// If we successfully wrote, we don't want the timeout to happen during an idle period
 					// so we reset it to infinite.
-					conn.SetWriteDeadline(time.Time{})
+					if err := conn.SetWriteDeadline(time.Time{}); err != nil {
+						ERROR.Println(NET, err)
+					}
 				}
 
 				if msg.Qos == 0 {

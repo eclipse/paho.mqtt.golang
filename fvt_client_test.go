@@ -16,10 +16,7 @@ package mqtt
 
 import (
 	"bytes"
-	"crypto/tls"
-	"crypto/x509"
 	"fmt"
-	"io/ioutil"
 	"testing"
 	"time"
 
@@ -53,26 +50,26 @@ func Test_Start(t *testing.T) {
 */
 
 // Helper function for Test_Start_Ssl
-func NewTLSConfig() *tls.Config {
-	certpool := x509.NewCertPool()
-	pemCerts, err := ioutil.ReadFile("samples/samplecerts/CAfile.pem")
-	if err == nil {
-		certpool.AppendCertsFromPEM(pemCerts)
-	}
+// func NewTLSConfig() *tls.Config {
+// 	certpool := x509.NewCertPool()
+// 	pemCerts, err := ioutil.ReadFile("samples/samplecerts/CAfile.pem")
+// 	if err == nil {
+// 		certpool.AppendCertsFromPEM(pemCerts)
+// 	}
 
-	cert, err := tls.LoadX509KeyPair("samples/samplecerts/client-crt.pem", "samples/samplecerts/client-key.pem")
-	if err != nil {
-		panic(err)
-	}
+// 	cert, err := tls.LoadX509KeyPair("samples/samplecerts/client-crt.pem", "samples/samplecerts/client-key.pem")
+// 	if err != nil {
+// 		panic(err)
+// 	}
 
-	return &tls.Config{
-		RootCAs:            certpool,
-		ClientAuth:         tls.NoClientCert,
-		ClientCAs:          nil,
-		InsecureSkipVerify: true,
-		Certificates:       []tls.Certificate{cert},
-	}
-}
+// 	return &tls.Config{
+// 		RootCAs:            certpool,
+// 		ClientAuth:         tls.NoClientCert,
+// 		ClientCAs:          nil,
+// 		InsecureSkipVerify: true,
+// 		Certificates:       []tls.Certificate{cert},
+// 	}
+// }
 
 /* uncomment this if you have ssl setup
  func Test_Start_Ssl(t *testing.T) {
@@ -1330,7 +1327,7 @@ func Test_ResumeSubsWithReconnect(t *testing.T) {
 	go func(t *testing.T) {
 		subToken.Wait()
 		if err := subToken.Error(); err != nil {
-			t.Fatalf("Connect returned error (should be retrying) (%v)", err)
+			t.Errorf("Connect returned error (should be retrying) (%v)", err)
 		}
 		close(subDone)
 	}(t)
