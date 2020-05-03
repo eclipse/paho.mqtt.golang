@@ -308,7 +308,7 @@ func (c *client) reconnect() {
 			sleep = c.options.MaxReconnectInterval
 		}
 		// Disconnect may have been called
-		if atomic.LoadUint32(&c.status) != disconnected {
+		if atomic.LoadUint32(&c.status) == disconnected {
 			break
 		}
 	}
