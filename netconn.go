@@ -31,13 +31,13 @@ import (
 //
 
 // openConnection opens a network connection using the protocol indicated in the URL. Does not carry out any MQTT specific handshakes
-func openConnection(uri *url.URL, tlsc *tls.Config, timeout time.Duration, headers http.Header) (net.Conn, error) {
+func openConnection(uri *url.URL, tlsc *tls.Config, timeout time.Duration, headers http.Header, websocketOptions *WebsocketOptions) (net.Conn, error) {
 	switch uri.Scheme {
 	case "ws":
-		conn, err := NewWebsocket(uri.String(), nil, timeout, headers)
+		conn, err := NewWebsocket(uri.String(), nil, timeout, headers, websocketOptions)
 		return conn, err
 	case "wss":
-		conn, err := NewWebsocket(uri.String(), tlsc, timeout, headers)
+		conn, err := NewWebsocket(uri.String(), tlsc, timeout, headers, websocketOptions)
 		return conn, err
 	case "mqtt", "tcp":
 		allProxy := os.Getenv("all_proxy")

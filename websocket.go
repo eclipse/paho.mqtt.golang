@@ -11,10 +11,21 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+// WebsocketOptions are config options for a websocket dialer
+type WebsocketOptions struct {
+	ReadBufferSize  int
+	WriteBufferSize int
+}
+
 // NewWebsocket returns a new websocket and returns a net.Conn compatible interface using the gorilla/websocket package
-func NewWebsocket(host string, tlsc *tls.Config, timeout time.Duration, requestHeader http.Header) (net.Conn, error) {
+func NewWebsocket(host string, tlsc *tls.Config, timeout time.Duration, requestHeader http.Header, options *WebsocketOptions) (net.Conn, error) {
 	if timeout == 0 {
 		timeout = 10 * time.Second
+	}
+
+	if options == nil {
+		// Apply default options
+		options = &WebsocketOptions{}
 	}
 
 	dialer := &websocket.Dialer{
@@ -23,7 +34,10 @@ func NewWebsocket(host string, tlsc *tls.Config, timeout time.Duration, requestH
 		EnableCompression: false,
 		TLSClientConfig:   tlsc,
 		Subprotocols:      []string{"mqtt"},
+		ReadBufferSize:    options.ReadBufferSize,
+		WriteBufferSize:   options.WriteBufferSize,
 	}
+
 	ws, _, err := dialer.Dial(host, requestHeader)
 
 	if err != nil {
