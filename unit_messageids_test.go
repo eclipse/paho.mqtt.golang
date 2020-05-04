@@ -16,6 +16,7 @@ package mqtt
 
 import (
 	"fmt"
+	"log"
 	"testing"
 )
 
@@ -54,4 +55,20 @@ func Test_freeID(t *testing.T) {
 
 	i2 := mids.getID(&DummyToken{})
 	fmt.Printf("i2: %v\n", i2)
+}
+
+func Test_noFreeID(t *testing.T) {
+	var d DummyToken
+
+	mids := &messageIds{index: make(map[uint16]tokenCompletor)}
+
+	for i := midMin; i != 0; i++ {
+		log.Println(i)
+		mids.index[i] = &d
+	}
+
+	mid := mids.getID(&d)
+	if mid != 0 {
+		t.Errorf("shouldn't be any mids left")
+	}
 }

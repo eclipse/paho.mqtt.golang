@@ -622,8 +622,13 @@ func (c *client) Publish(topic string, qos byte, retained bool, payload interfac
 	}
 
 	if pub.Qos != 0 && pub.MessageID == 0 {
-		pub.MessageID = c.getID(token)
-		token.messageID = pub.MessageID
+		mID := c.getID(token)
+		if mID == 0 {
+			token.setError(fmt.Errorf("no message IDs available"))
+			return token
+		}
+		pub.MessageID = mID
+		token.messageID = mID
 	}
 	persistOutbound(c.persist, pub)
 	switch c.connectionStatus() {
@@ -690,8 +695,13 @@ func (c *client) Subscribe(topic string, qos byte, callback MessageHandler) Toke
 	token.subs = append(token.subs, topic)
 
 	if sub.MessageID == 0 {
-		sub.MessageID = c.getID(token)
-		token.messageID = sub.MessageID
+		mID := c.getID(token)
+		if mID == 0 {
+			token.setError(fmt.Errorf("no message IDs available"))
+			return token
+		}
+		sub.MessageID = mID
+		token.messageID = mID
 	}
 	DEBUG.Println(CLI, sub.String())
 
@@ -754,8 +764,13 @@ func (c *client) SubscribeMultiple(filters map[string]byte, callback MessageHand
 	copy(token.subs, sub.Topics)
 
 	if sub.MessageID == 0 {
-		sub.MessageID = c.getID(token)
-		token.messageID = sub.MessageID
+		mID := c.getID(token)
+		if mID == 0 {
+			token.setError(fmt.Errorf("no message IDs available"))
+			return token
+		}
+		sub.MessageID = mID
+		token.messageID = mID
 	}
 	persistOutbound(c.persist, sub)
 	switch c.connectionStatus() {
@@ -884,8 +899,13 @@ func (c *client) Unsubscribe(topics ...string) Token {
 	copy(unsub.Topics, topics)
 
 	if unsub.MessageID == 0 {
-		unsub.MessageID = c.getID(token)
-		token.messageID = unsub.MessageID
+		mID := c.getID(token)
+		if mID == 0 {
+			token.setError(fmt.Errorf("no message IDs available"))
+			return token
+		}
+		unsub.MessageID = mID
+		token.messageID = mID
 	}
 
 	persistOutbound(c.persist, unsub)
