@@ -83,6 +83,7 @@ type ClientOptions struct {
 	MessageChannelDepth     uint
 	ResumeSubs              bool
 	HTTPHeaders             http.Header
+	WebsocketOptions        *WebsocketOptions
 }
 
 // NewClientOptions will create a new ClientClientOptions type with some
@@ -122,6 +123,7 @@ func NewClientOptions() *ClientOptions {
 		WriteTimeout:            0, // 0 represents timeout disabled
 		ResumeSubs:              false,
 		HTTPHeaders:             make(map[string][]string),
+		WebsocketOptions:        &WebsocketOptions{},
 	}
 	return o
 }
@@ -370,5 +372,11 @@ func (o *ClientOptions) SetMessageChannelDepth(s uint) *ClientOptions {
 // opening handshake.
 func (o *ClientOptions) SetHTTPHeaders(h http.Header) *ClientOptions {
 	o.HTTPHeaders = h
+	return o
+}
+
+// SetWebsocketOptions sets the additional websocket options used in a WebSocket connection
+func (o *ClientOptions) SetWebsocketOptions(w *WebsocketOptions) *ClientOptions {
+	o.WebsocketOptions = w
 	return o
 }

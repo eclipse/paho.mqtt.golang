@@ -352,7 +352,7 @@ func (c *client) attemptConnection() (net.Conn, byte, bool, error) {
 		DEBUG.Println(CLI, "about to write new connect msg")
 	CONN:
 		// Start by opening the network connection (tcp, tls, ws) etc
-		conn, err = openConnection(broker, c.options.TLSConfig, c.options.ConnectTimeout, c.options.HTTPHeaders)
+		conn, err = openConnection(broker, c.options.TLSConfig, c.options.ConnectTimeout, c.options.HTTPHeaders, c.options.WebsocketOptions)
 		if err != nil {
 			ERROR.Println(CLI, err.Error())
 			WARN.Println(CLI, "failed to connect to broker, trying next")
