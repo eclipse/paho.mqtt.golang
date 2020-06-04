@@ -215,6 +215,9 @@ var ErrNotConnected = errors.New("not Connected")
 // Connect will create a connection to the message broker, by default
 // it will attempt to connect at v3.1.1 and auto retry at v3.1 if that
 // fails
+// Note: If using QOS1+ and CleanSession=false it is advisable to add
+// routes (or a DefaultPublishHandler) prior to calling Connect()
+// because queued messages may be delivered immediatly post connection
 func (c *client) Connect() Token {
 	t := newToken(packets.Connect).(*ConnectToken)
 	DEBUG.Println(CLI, "Connect()")

@@ -152,14 +152,18 @@ func (r *router) matchAndDispatch(messages <-chan *packets.PublishPacket, order 
 				sent = true
 			}
 		}
-		if !sent && r.defaultHandler != nil {
-			if order {
-				handlers = append(handlers, r.defaultHandler)
+		if !sent {
+			if r.defaultHandler != nil {
+				if order {
+					handlers = append(handlers, r.defaultHandler)
+				} else {
+					go func() {
+						r.defaultHandler(client, m)
+						m.Ack()
+					}()
+				}
 			} else {
-				go func() {
-					r.defaultHandler(client, m)
-					m.Ack()
-				}()
+				DEBUG.Println(ROU, "matchAndDispatch received message and no handler was available. Message will NOT be acknowledged.")
 			}
 		}
 		r.RUnlock()
