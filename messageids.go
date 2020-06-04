@@ -76,7 +76,7 @@ func (mids *messageIds) claimID(token tokenCompletor, id uint16) {
 func (mids *messageIds) getID(t tokenCompletor) uint16 {
 	mids.Lock()
 	defer mids.Unlock()
-	for i := midMin; i <= midMax; i++ {
+	for i := midMin; i <= midMax && i != 0; i++ {
 		if _, ok := mids.index[i]; !ok {
 			mids.index[i] = t
 			return i

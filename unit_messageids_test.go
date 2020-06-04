@@ -71,4 +71,9 @@ func Test_noFreeID(t *testing.T) {
 	if mid != 0 {
 		t.Errorf("shouldn't be any mids left")
 	}
+
+	mid = mids.getID(&d)
+	if mid != 0 {
+		t.Errorf("shouldn't be any mids left")
+	}
 }
