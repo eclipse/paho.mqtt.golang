@@ -209,6 +209,7 @@ func (o *ClientOptions) SetCleanSession(clean bool) *ClientOptions {
 // each QoS level. By default, this value is true. If set to false,
 // this flag indicates that messages can be delivered asynchronously
 // from the client to the application and possibly arrive out of order.
+// Specifically, the message handler is called in its own go routine.
 func (o *ClientOptions) SetOrderMatters(order bool) *ClientOptions {
 	o.Order = order
 	return o
