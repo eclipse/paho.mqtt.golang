@@ -658,7 +658,7 @@ func (c *client) Publish(topic string, qos byte, retained bool, payload interfac
 // a message is published on the topic provided.
 //
 // Please note: you should try to keep the execution time of the callback to be
-// as low as possible, especially when SetOrderMatters(true) (default) is in
+// as low as possible, especially when SetOrderMatters(true) (the default) is in
 // place. Blocking calls in message handlers might otherwise delay delivery to
 // other message handlers.
 func (c *client) Subscribe(topic string, qos byte, callback MessageHandler) Token {
