@@ -168,10 +168,8 @@ func (r *router) matchAndDispatch(messages <-chan *packets.PublishPacket, order 
 		}
 		r.RUnlock()
 		for _, handler := range handlers {
-			func() {
-				handler(client, m)
-				m.Ack()
-			}()
+			handler(client, m)
+			m.Ack()
 		}
 		// DEBUG.Println(ROU, "matchAndDispatch handled message")
 	}
