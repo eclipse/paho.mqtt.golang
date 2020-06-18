@@ -47,10 +47,10 @@ func NewWebsocket(host string, tlsc *tls.Config, timeout time.Duration, requestH
 
 	ws, resp, err := dialer.Dial(host, requestHeader)
 
-	if resp != nil {
-		WARN.Println(CLI, fmt.Sprintf("Websocket handshake failure. StatusCode: %d. Body: %s", resp.StatusCode, resp.Body))
-	}
 	if err != nil {
+		if resp != nil {
+			WARN.Println(CLI, fmt.Sprintf("Websocket handshake failure. StatusCode: %d. Body: %s", resp.StatusCode, resp.Body))
+		}
 		return nil, err
 	}
 
