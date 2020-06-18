@@ -2,6 +2,7 @@ package mqtt
 
 import (
 	"crypto/tls"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -44,8 +45,11 @@ func NewWebsocket(host string, tlsc *tls.Config, timeout time.Duration, requestH
 		WriteBufferSize:   options.WriteBufferSize,
 	}
 
-	ws, _, err := dialer.Dial(host, requestHeader)
+	ws, resp, err := dialer.Dial(host, requestHeader)
 
+	if resp != nil {
+		WARN.Println(CLI, fmt.Sprintf("Websocket handshake failure. StatusCode: %d. Body: %s", resp.StatusCode, resp.Body))
+	}
 	if err != nil {
 		return nil, err
 	}
