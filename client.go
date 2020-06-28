@@ -437,10 +437,10 @@ func (c *client) disconnect() {
 	done := c.stopCommsWorkers()
 	if done != nil {
 		<-done // Wait until the disconect is complete (to limit chance that another connection will be started)
+		c.messageIds.cleanUp()
+		DEBUG.Println(CLI, "disconnected")
+		c.persist.Close()
 	}
-	c.messageIds.cleanUp()
-	DEBUG.Println(CLI, "disconnected")
-	c.persist.Close()
 }
 
 // internalConnLost cleanup when connection is lost or an error occurs
