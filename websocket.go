@@ -15,6 +15,7 @@ import (
 type WebsocketOptions struct {
 	ReadBufferSize  int
 	WriteBufferSize int
+	Jar             http.CookieJar
 }
 
 // NewWebsocket returns a new websocket and returns a net.Conn compatible interface using the gorilla/websocket package
@@ -36,6 +37,7 @@ func NewWebsocket(host string, tlsc *tls.Config, timeout time.Duration, requestH
 		Subprotocols:      []string{"mqtt"},
 		ReadBufferSize:    options.ReadBufferSize,
 		WriteBufferSize:   options.WriteBufferSize,
+		Jar:               options.Jar,
 	}
 
 	ws, _, err := dialer.Dial(host, requestHeader)
