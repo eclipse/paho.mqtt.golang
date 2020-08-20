@@ -1,4 +1,4 @@
-module github.com/eclipse/paho.mqtt.golang
+module github.com/nejtr0n/paho.mqtt.golang
 
 go 1.14
 
