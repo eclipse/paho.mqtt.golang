@@ -212,6 +212,13 @@ func (c *client) setConnected(status uint32) {
 //made when the client is not connected to a broker
 var ErrNotConnected = errors.New("not Connected")
 
+var (
+	// ErrConnStatusConnecting is the error that are made when the client connection status is 'connecting'
+	ErrConnStatusConnecting = errors.New("connection in the connecting status")
+	// ErrConnStatusReconnecting is the error that are made when the client connection status is 'reconnecting'
+	ErrConnStatusReconnecting = errors.New("connection in the reconnecting status")
+)
+
 // Connect will create a connection to the message broker, by default
 // it will attempt to connect at v3.1.1 and auto retry at v3.1 if that
 // fails
@@ -637,8 +644,10 @@ func (c *client) Publish(topic string, qos byte, retained bool, payload interfac
 	switch c.connectionStatus() {
 	case connecting:
 		DEBUG.Println(CLI, "storing publish message (connecting), topic:", topic)
+		token.setError(ErrConnStatusConnecting)
 	case reconnecting:
 		DEBUG.Println(CLI, "storing publish message (reconnecting), topic:", topic)
+		token.setError(ErrConnStatusReconnecting)
 	default:
 		DEBUG.Println(CLI, "sending publish message, topic:", topic)
 		publishWaitTimeout := c.options.WriteTimeout
