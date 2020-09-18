@@ -365,7 +365,7 @@ func (c *client) attemptConnection() (net.Conn, byte, bool, error) {
 		DEBUG.Println(CLI, "socket connected to broker")
 
 		// Now we send the perform the MQTT connection handshake
-		rc, sessionPresent = ConnectMQTT(conn, cm, protocolVersion)
+		rc, sessionPresent, err = connectMQTT(conn, cm, protocolVersion)
 		if rc == packets.Accepted {
 			break // successfully connected
 		}
