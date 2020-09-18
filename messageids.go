@@ -115,12 +115,21 @@ type DummyToken struct {
 	id uint16
 }
 
+// Wait implements the Token Wait method.
 func (d *DummyToken) Wait() bool {
 	return true
 }
 
+// WaitTimeout implements the Token WaitTimeout method.
 func (d *DummyToken) WaitTimeout(t time.Duration) bool {
 	return true
+}
+
+// Done implements the Token Done method.
+func (d *DummyToken) Done() <-chan struct{} {
+	ch := make(chan struct{})
+	close(ch)
+	return ch
 }
 
 func (d *DummyToken) flowComplete() {
@@ -140,12 +149,21 @@ type PlaceHolderToken struct {
 	id uint16
 }
 
+// Wait implements the Token Wait method.
 func (p *PlaceHolderToken) Wait() bool {
 	return true
 }
 
+// WaitTimeout implements the Token WaitTimeout method.
 func (p *PlaceHolderToken) WaitTimeout(t time.Duration) bool {
 	return true
+}
+
+// Done implements the Token Done method.
+func (p *PlaceHolderToken) Done() <-chan struct{} {
+	ch := make(chan struct{})
+	close(ch)
+	return ch
 }
 
 func (p *PlaceHolderToken) flowComplete() {
