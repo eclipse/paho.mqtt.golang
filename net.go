@@ -20,6 +20,7 @@ import (
 	"net"
 	"reflect"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/eclipse/paho.mqtt.golang/packets"
@@ -126,7 +127,7 @@ func startIncoming(conn io.Reader) <-chan inbound {
 				DEBUG.Println(NET, "incoming complete")
 				return
 			}
-			DEBUG.Println(NET, "Received Message")
+			DEBUG.Println(NET, "startIncoming Received Message")
 			ibound <- inbound{cp: cp}
 		}
 	}()
@@ -137,12 +138,12 @@ func startIncoming(conn io.Reader) <-chan inbound {
 // incomingComms encapuslates the possible output of the incomingComms routine. If err != nil then an error has occurred and
 // the routine will have terminated; otherwise one of the other members should be non-nil
 type incomingComms struct {
-	err          error                  // If non-nil then there has been an error (ignore everything else)
-	outbound     *PacketAndToken        // Packet (with token) than needs to be sent out (e.g. an acknowledgement)
-	incommingPub *packets.PublishPacket // A new publish has been received; this will need to be passed on to our user
+	err         error                  // If non-nil then there has been an error (ignore everything else)
+	outbound    *PacketAndToken        // Packet (with token) than needs to be sent out (e.g. an acknowledgement)
+	incomingPub *packets.PublishPacket // A new publish has been received; this will need to be passed on to our user
 }
 
-// startIncomingComms initiates incomming communications; this includes starting a goroutine to process incomming
+// startIncomingComms initiates incoming communications; this includes starting a goroutine to process incoming
 // messages.
 // Accepts a channel of inbound messages from the store (persistanced messages); note this must be closed as soon as the
 // everything in the store has been sent.
@@ -194,14 +195,14 @@ func startIncomingComms(conn io.Reader,
 
 			switch m := msg.(type) {
 			case *packets.PingrespPacket:
-				DEBUG.Println(NET, "received pingresp")
+				DEBUG.Println(NET, "startIncomingComms: received pingresp")
 				c.pingRespReceived()
 			case *packets.SubackPacket:
-				DEBUG.Println(NET, "received suback, id:", m.MessageID)
+				DEBUG.Println(NET, "startIncomingComms: received suback, id:", m.MessageID)
 				token := c.getToken(m.MessageID)
 
 				if t, ok := token.(*SubscribeToken); ok {
-					DEBUG.Println(NET, "granted qoss", m.ReturnCodes)
+					DEBUG.Println(NET, "startIncomingComms: granted qoss", m.ReturnCodes)
 					for i, qos := range m.ReturnCodes {
 						t.subResult[t.subs[i]] = qos
 					}
@@ -210,29 +211,29 @@ func startIncomingComms(conn io.Reader,
 				token.flowComplete()
 				c.freeID(m.MessageID)
 			case *packets.UnsubackPacket:
-				DEBUG.Println(NET, "received unsuback, id:", m.MessageID)
+				DEBUG.Println(NET, "startIncomingComms: received unsuback, id:", m.MessageID)
 				c.getToken(m.MessageID).flowComplete()
 				c.freeID(m.MessageID)
 			case *packets.PublishPacket:
-				DEBUG.Println(NET, "received publish, msgId:", m.MessageID)
-				output <- incomingComms{incommingPub: m}
+				DEBUG.Println(NET, "startIncomingComms: received publish, msgId:", m.MessageID)
+				output <- incomingComms{incomingPub: m}
 			case *packets.PubackPacket:
-				DEBUG.Println(NET, "received puback, id:", m.MessageID)
+				DEBUG.Println(NET, "startIncomingComms: received puback, id:", m.MessageID)
 				c.getToken(m.MessageID).flowComplete()
 				c.freeID(m.MessageID)
 			case *packets.PubrecPacket:
-				DEBUG.Println(NET, "received pubrec, id:", m.MessageID)
+				DEBUG.Println(NET, "startIncomingComms: received pubrec, id:", m.MessageID)
 				prel := packets.NewControlPacket(packets.Pubrel).(*packets.PubrelPacket)
 				prel.MessageID = m.MessageID
 				output <- incomingComms{outbound: &PacketAndToken{p: prel, t: nil}}
 			case *packets.PubrelPacket:
-				DEBUG.Println(NET, "received pubrel, id:", m.MessageID)
+				DEBUG.Println(NET, "startIncomingComms: received pubrel, id:", m.MessageID)
 				pc := packets.NewControlPacket(packets.Pubcomp).(*packets.PubcompPacket)
 				pc.MessageID = m.MessageID
 				c.persistOutbound(pc)
 				output <- incomingComms{outbound: &PacketAndToken{p: pc, t: nil}}
 			case *packets.PubcompPacket:
-				DEBUG.Println(NET, "received pubcomp, id:", m.MessageID)
+				DEBUG.Println(NET, "startIncomingComms: received pubcomp, id:", m.MessageID)
 				c.getToken(m.MessageID).flowComplete()
 				c.freeID(m.MessageID)
 			}
@@ -243,14 +244,14 @@ func startIncomingComms(conn io.Reader,
 
 // startOutgoingComms initiates a go routint to transmit outgoing packets.
 // Pass in an open network connection and channels for outbound messages (including those triggered
-// directly from incomming comms).
+// directly from incoming comms).
 // Returns a channel that will receive details of any errors (closed when the goroutine exits)
 // This function wil only terminate when all input channels are closed
 func startOutgoingComms(conn net.Conn,
 	c commsFns,
 	oboundp <-chan *PacketAndToken,
 	obound <-chan *PacketAndToken,
-	oboundFromIncomming <-chan *PacketAndToken,
+	oboundFromIncoming <-chan *PacketAndToken,
 ) <-chan error {
 	errChan := make(chan error)
 	DEBUG.Println(NET, "outgoing started")
@@ -262,7 +263,7 @@ func startOutgoingComms(conn net.Conn,
 			// This goroutine will only exits when all of the input channels we receive on have been closed. This approach is taken to avoid any
 			// deadlocks (if the connection goes down there are limited options as to what we can do with anything waiting on us and
 			// throwing away the packets seems the best option)
-			if oboundp == nil && obound == nil && oboundFromIncomming == nil {
+			if oboundp == nil && obound == nil && oboundFromIncoming == nil {
 				DEBUG.Println(NET, "outgoing comms stopping")
 				close(errChan)
 				return
@@ -275,16 +276,17 @@ func startOutgoingComms(conn net.Conn,
 					continue
 				}
 				msg := pub.p.(*packets.PublishPacket)
+				DEBUG.Println(NET, "obound msg to write", msg.MessageID)
 
 				writeTimeout := c.getWriteTimeOut()
 				if writeTimeout > 0 {
 					if err := conn.SetWriteDeadline(time.Now().Add(writeTimeout)); err != nil {
-						ERROR.Println(NET, err)
+						ERROR.Println(NET, "SetWriteDeadline ", err)
 					}
 				}
 
 				if err := msg.Write(conn); err != nil {
-					ERROR.Println(NET, "outgoing reporting error", err)
+					ERROR.Println(NET, "outgoing obound reporting error ", err)
 					pub.t.setError(err)
 					// report error if it's not due to the connection being closed elsewhere
 					if !strings.Contains(err.Error(), closedNetConnErrorText) {
@@ -297,7 +299,7 @@ func startOutgoingComms(conn net.Conn,
 					// If we successfully wrote, we don't want the timeout to happen during an idle period
 					// so we reset it to infinite.
 					if err := conn.SetWriteDeadline(time.Time{}); err != nil {
-						ERROR.Println(NET, err)
+						ERROR.Println(NET, "SetWriteDeadline to 0 ", err)
 					}
 				}
 
@@ -312,7 +314,7 @@ func startOutgoingComms(conn net.Conn,
 				}
 				DEBUG.Println(NET, "obound priority msg to write, type", reflect.TypeOf(msg.p))
 				if err := msg.p.Write(conn); err != nil {
-					ERROR.Println(NET, "outgoing reporting error", err)
+					ERROR.Println(NET, "outgoing oboundp reporting error ", err)
 					if msg.t != nil {
 						msg.t.setError(err)
 					}
@@ -324,17 +326,17 @@ func startOutgoingComms(conn net.Conn,
 					msg.t.(*DisconnectToken).flowComplete()
 					DEBUG.Println(NET, "outbound wrote disconnect, closing connection")
 					// As per the MQTT spec "After sending a DISCONNECT Packet the Client MUST close the Network Connection"
-					// Closing the connection will cause the goroutines to end in sequence (starting with incomming comms)
+					// Closing the connection will cause the goroutines to end in sequence (starting with incoming comms)
 					conn.Close()
 				}
-			case msg, ok := <-oboundFromIncomming: // message triggered by an inbound message (PubrecPacket or PubrelPacket)
+			case msg, ok := <-oboundFromIncoming: // message triggered by an inbound message (PubrecPacket or PubrelPacket)
 				if !ok {
-					oboundFromIncomming = nil
+					oboundFromIncoming = nil
 					continue
 				}
-				DEBUG.Println(NET, "obound from incomming msg to write, type", reflect.TypeOf(msg.p))
+				DEBUG.Println(NET, "obound from incoming msg to write, type", reflect.TypeOf(msg.p), " ID ", msg.p.Details().MessageID)
 				if err := msg.p.Write(conn); err != nil {
-					ERROR.Println(NET, "outgoing reporting error", err)
+					ERROR.Println(NET, "outgoing oboundFromIncoming reporting error", err)
 					if msg.t != nil {
 						msg.t.setError(err)
 					}
@@ -380,52 +382,58 @@ func startComms(conn net.Conn, // Network connection (must be active)
 ) {
 	// Start inbound comms handler; this needs to be able to transmit messages so we start a go routine to add these to the priority outbound channel
 	ibound := startIncomingComms(conn, c, inboundFromStore)
-	outboundFromIncomming := make(chan *PacketAndToken) // Will accept outgoing messages triggered by startIncomingComms (e.g. acknowledgements)
+	outboundFromIncoming := make(chan *PacketAndToken) // Will accept outgoing messages triggered by startIncomingComms (e.g. acknowledgements)
 
-	oboundErr := startOutgoingComms(conn, c, oboundp, obound, outboundFromIncomming)
+	// Start the outgoing handler. It is important to note that output from startIncomingComms is fed into startOutgoingComms (for ACK's)
+	oboundErr := startOutgoingComms(conn, c, oboundp, obound, outboundFromIncoming)
 	DEBUG.Println(NET, "startComms started")
 
-	// Now we just need to pass on any errors and close the error channel when out inbound channels have been closed
+	// Run up go routines to handle the output from the above comms functions - these are handled in seperate
+	// go routines because they can interact (e.g. ibound triggers an ACK to obound which triggers an error)
+	var wg sync.WaitGroup
+	wg.Add(2)
+
 	outPublish := make(chan *packets.PublishPacket)
 	outError := make(chan error)
+
+	// Any messages received get passed to the appropriate channel
 	go func() {
-		for {
-			if ibound == nil && oboundErr == nil {
-				close(outError)
-				DEBUG.Println(NET, "startComms gorouting exiting")
-				return
+		for ic := range ibound {
+			if ic.err != nil {
+				outError <- ic.err
+				continue
 			}
-			select {
-			case ic, ok := <-ibound:
-				if !ok {
-					ibound = nil
-					// As there will be no more inbound messages we can close the two channels that could receive these
-					close(outboundFromIncomming)
-					close(outPublish)
-					break
-				}
-				if ic.err != nil {
-					outError <- ic.err
-					break
-				}
-				if ic.outbound != nil {
-					outboundFromIncomming <- ic.outbound
-					break
-				}
-				if ic.incommingPub != nil {
-					outPublish <- ic.incommingPub
-					break
-				}
-				ERROR.Println(STR, "startComms received empty incomingComms msg")
-			case err, ok := <-oboundErr:
-				if !ok {
-					oboundErr = nil
-					break
-				}
-				outError <- err
+			if ic.outbound != nil {
+				outboundFromIncoming <- ic.outbound
+				continue
 			}
+			if ic.incomingPub != nil {
+				outPublish <- ic.incomingPub
+				continue
+			}
+			ERROR.Println(STR, "startComms received empty incomingComms msg")
 		}
+		// Close channels that will not be written to again (allowing other routines to exit)
+		close(outboundFromIncoming)
+		close(outPublish)
+		wg.Done()
 	}()
+
+	// Any errors will be passed out to our caller
+	go func() {
+		for err := range oboundErr {
+			outError <- err
+		}
+		wg.Done()
+	}()
+
+	// outError is used by both routines so can only be closed when they are both complete
+	go func() {
+		wg.Wait()
+		close(outError)
+		DEBUG.Println(NET, "startComms closing outError")
+	}()
+
 	return outPublish, outError
 }
 

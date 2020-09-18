@@ -31,8 +31,24 @@ type PacketAndToken struct {
 // Token defines the interface for the tokens used to indicate when
 // actions have completed.
 type Token interface {
+	// Wait will wait indefinitely for the Token to complete, ie the Publish
+	// to be sent and confirmed receipt from the broker.
 	Wait() bool
+
+	// WaitTimeout takes a time.Duration to wait for the flow associated with the
+	// Token to complete, returns true if it returned before the timeout or
+	// returns false if the timeout occurred. In the case of a timeout the Token
+	// does not have an error set in case the caller wishes to wait again.
 	WaitTimeout(time.Duration) bool
+
+	// Done returns a channel that is closed when the flow associated
+	// with the Token completes. Clients should call Error after the
+	// channel is closed to check if the flow completed successfully.
+	//
+	// Done is provided for use in select statements. Simple use cases may
+	// use Wait or WaitTimeout.
+	Done() <-chan struct{}
+
 	Error() error
 }
 
@@ -52,17 +68,13 @@ type baseToken struct {
 	err      error
 }
 
-// Wait will wait indefinitely for the Token to complete, ie the Publish
-// to be sent and confirmed receipt from the broker
+// Wait implements the Token Wait method.
 func (b *baseToken) Wait() bool {
 	<-b.complete
 	return true
 }
 
-// WaitTimeout takes a time.Duration to wait for the flow associated with the
-// Token to complete, returns true if it returned before the timeout or
-// returns false if the timeout occurred. In the case of a timeout the Token
-// does not have an error set in case the caller wishes to wait again
+// WaitTimeout implements the Token WaitTimeout method.
 func (b *baseToken) WaitTimeout(d time.Duration) bool {
 	timer := time.NewTimer(d)
 	select {
@@ -75,6 +87,11 @@ func (b *baseToken) WaitTimeout(d time.Duration) bool {
 	}
 
 	return false
+}
+
+// Done implements the Token Done method.
+func (b *baseToken) Done() <-chan struct{} {
+	return b.complete
 }
 
 func (b *baseToken) flowComplete() {
