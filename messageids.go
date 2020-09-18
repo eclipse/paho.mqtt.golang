@@ -28,6 +28,8 @@ type MId uint16
 type messageIds struct {
 	sync.RWMutex
 	index map[uint16]tokenCompletor
+
+	lastIssuedID uint16 // The most recently issued ID. Used so we cycle through ids rather than immediatly reusing them (can make debugging easier)
 }
 
 const (
@@ -71,18 +73,33 @@ func (mids *messageIds) claimID(token tokenCompletor, id uint16) {
 		old.flowComplete()
 		mids.index[id] = token
 	}
+	if id > mids.lastIssuedID {
+		mids.lastIssuedID = id
+	}
 }
 
+// getID will return an available id or 0 if none available
+// The id will generally be the previous id + 1 (because this makes tracing messages a bit simpler)
 func (mids *messageIds) getID(t tokenCompletor) uint16 {
 	mids.Lock()
 	defer mids.Unlock()
-	for i := midMin; i <= midMax && i != 0; i++ {
+	i := mids.lastIssuedID // note: the only situation where lastIssuedID is 0 the map will be empty
+	looped := false        // uint16 will loop from 65535->0
+	for {
+		i++
+		if i == 0 { // skip 0 because its not a valid id (Control Packets MUST contain a non-zero 16-bit Packet Identifier [MQTT-2.3.1-1])
+			i++
+			looped = true
+		}
 		if _, ok := mids.index[i]; !ok {
 			mids.index[i] = t
+			mids.lastIssuedID = i
 			return i
 		}
+		if (looped && i == mids.lastIssuedID) || (mids.lastIssuedID == 0 && i == midMax) { // lastIssuedID will be 0 at startup
+			return 0 // no free ids
+		}
 	}
-	return 0
 }
 
 func (mids *messageIds) getToken(id uint16) tokenCompletor {
