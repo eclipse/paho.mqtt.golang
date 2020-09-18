@@ -316,7 +316,9 @@ func (c *client) reconnect() {
 
 	// Disconnect() must have been called while we were trying to reconnect.
 	if c.connectionStatus() == disconnected {
-		conn.Close()
+		if conn != nil {
+			conn.Close()
+		}
 		DEBUG.Println(CLI, "Client moved to disconnected state while reconnecting, abandoning reconnect")
 		return
 	}
