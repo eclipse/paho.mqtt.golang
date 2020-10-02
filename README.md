@@ -1,5 +1,4 @@
-
-[![GoDoc](https://godoc.org/github.com/eclipse/paho.mqtt.golang?status.svg)](https://godoc.org/github.com/eclipse/paho.mqtt.golang)
+[![PkgGoDev](https://pkg.go.dev/badge/github.com/eclipse/paho.mqtt.golang)](https://pkg.go.dev/github.com/eclipse/paho.mqtt.golang)
 [![Go Report Card](https://goreportcard.com/badge/github.com/eclipse/paho.mqtt.golang)](https://goreportcard.com/report/github.com/eclipse/paho.mqtt.golang)
 
 Eclipse Paho MQTT Go client
