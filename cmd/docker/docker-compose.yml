@@ -1,0 +1,42 @@
+version: "3.8"
+services:
+  mosquitto:
+    image: eclipse-mosquitto
+    networks:
+      - test-net
+    ports:
+      - target: 8883
+        published: 8883
+        protocol: tcp
+        mode: host
+    volumes:
+      - type: bind
+        source: ./binds/mosquitto/config
+        target: /mosquitto/config
+        read_only: true
+      - type: bind
+        source: ./binds/mosquitto/data
+        target: /mosquitto/data
+      - type: bind
+        source: ./binds/mosquitto/log
+        target: /mosquitto/log
+  pub:
+    build: publisher/.
+    networks:
+      - test-net
+    depends_on:
+      - mosquitto
+  sub:
+    build: subscriber/.
+    networks:
+      - test-net
+    depends_on:
+      - mosquitto
+    volumes:
+      - type: bind
+        source: ./binds/sub
+        target: /binds
+        read_only: false
+networks:
+  test-net:
+    external: false
