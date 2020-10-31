@@ -1,0 +1,15 @@
+# Compile stage
+FROM golang:alpine AS build-env
+ENV CGO_ENABLED 0
+
+ADD . /pub_src
+WORKDIR /pub_src
+RUN go build -gcflags "all=-N -l" -o /pub
+
+# Final stage
+FROM alpine:latest
+
+COPY --from=build-env /pub /
+
+# Run
+CMD ["/pub"]
