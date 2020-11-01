@@ -1,5 +1,5 @@
 
-[![GoDoc](https://godoc.org/github.com/eclipse/paho.mqtt.golang?status.svg)](https://godoc.org/github.com/eclipse/paho.mqtt.golang)
+[![PkgGoDev](https://pkg.go.dev/badge/github.com/eclipse/paho.mqtt.golang)](https://pkg.go.dev/github.com/eclipse/paho.mqtt.golang)
 [![Go Report Card](https://goreportcard.com/badge/github.com/eclipse/paho.mqtt.golang)](https://goreportcard.com/report/github.com/eclipse/paho.mqtt.golang)
 
 Eclipse Paho MQTT Go client
@@ -50,7 +50,7 @@ Usage and API
 -------------
 
 Detailed API documentation is available by using to godoc tool, or can be browsed online
-using the [godoc.org](https://godoc.org/github.com/eclipse/paho.mqtt.golang) service.
+using the [pkg.go.dev](https://pkg.go.dev/github.com/eclipse/paho.mqtt.golang) service.
 
 Samples are available in the `cmd` directory for reference.
 
