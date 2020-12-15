@@ -128,6 +128,7 @@ We welcome bug reports, but it is important they are actionable. A significant p
 resolved due to a lack of information. If we cannot replicate the problem then it is unlikely we will be able to fix it. 
 The information required will vary from issue to issue but consider including:  
 
+* Which version of the package you are using (tag or commit - this should be in your go.mod file)
 * A [Minimal, Reproducible Example](https://stackoverflow.com/help/minimal-reproducible-example). Providing an example 
 is the best way to demonstrate the issue you are facing; it is important this includes all relevant information
 (including broker configuration). Docker (see `cmd/docker`) makes it relatively simple to provide a working end-to-end 
