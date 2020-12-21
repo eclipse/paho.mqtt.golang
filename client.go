@@ -530,6 +530,7 @@ func (c *client) startCommsWorkers(conn net.Conn, inboundFromStore <-chan packet
 				if !ok {
 					ackOut = nil     // ignore channel going forward
 					c.workers.Done() // matchAndDispatch has completed
+					continue         // await next message
 				}
 				commsoboundP <- msg
 			case <-c.stop:
