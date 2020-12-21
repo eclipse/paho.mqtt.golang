@@ -6,8 +6,8 @@ import (
 	"io"
 )
 
-//ConnackPacket is an internal representation of the fields of the
-//Connack MQTT packet
+// ConnackPacket is an internal representation of the fields of the
+// Connack MQTT packet
 type ConnackPacket struct {
 	FixedHeader
 	SessionPresent bool
@@ -32,8 +32,8 @@ func (ca *ConnackPacket) Write(w io.Writer) error {
 	return err
 }
 
-//Unpack decodes the details of a ControlPacket after the fixed
-//header has been read
+// Unpack decodes the details of a ControlPacket after the fixed
+// header has been read
 func (ca *ConnackPacket) Unpack(b io.Reader) error {
 	flags, err := decodeByte(b)
 	if err != nil {
@@ -45,8 +45,8 @@ func (ca *ConnackPacket) Unpack(b io.Reader) error {
 	return err
 }
 
-//Details returns a Details struct containing the Qos and
-//MessageID of this ControlPacket
+// Details returns a Details struct containing the Qos and
+// MessageID of this ControlPacket
 func (ca *ConnackPacket) Details() Details {
 	return Details{Qos: 0, MessageID: 0}
 }

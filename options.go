@@ -198,7 +198,7 @@ func (o *ClientOptions) SetCredentialsProvider(p CredentialsProvider) *ClientOpt
 // when this client connects to an MQTT broker. By setting this flag, you are
 // indicating that no messages saved by the broker for this client should be
 // delivered. Any messages that were going to be sent by this client before
-// diconnecting previously but didn't will not be sent upon connecting to the
+// disconnecting previously but didn't will not be sent upon connecting to the
 // broker.
 func (o *ClientOptions) SetCleanSession(clean bool) *ClientOptions {
 	o.CleanSession = clean
@@ -323,7 +323,7 @@ func (o *ClientOptions) SetWriteTimeout(t time.Duration) *ClientOptions {
 }
 
 // SetConnectTimeout limits how long the client will wait when trying to open a connection
-// to an MQTT server before timing out and erroring the attempt. A duration of 0 never times out.
+// to an MQTT server before timing out. A duration of 0 never times out.
 // Default 30 seconds. Currently only operational on TCP/TLS connections.
 func (o *ClientOptions) SetConnectTimeout(t time.Duration) *ClientOptions {
 	o.ConnectTimeout = t
@@ -356,7 +356,7 @@ func (o *ClientOptions) SetConnectRetryInterval(t time.Duration) *ClientOptions 
 // in the event of a failure (when true the token returned by the Connect function will
 // not complete until the connection is up or it is cancelled)
 // If ConnectRetry is true then subscriptions should be requested in OnConnect handler
-// Setting this to TRUE permits mesages to be published before the connection is established
+// Setting this to TRUE permits messages to be published before the connection is established
 func (o *ClientOptions) SetConnectRetry(a bool) *ClientOptions {
 	o.ConnectRetry = a
 	return o

@@ -16,9 +16,9 @@ package mqtt
 
 import (
 	"net/url"
+	"sync"
 
 	"github.com/eclipse/paho.mqtt.golang/packets"
-	"sync"
 )
 
 // Message defines the externals that a message implementation must support
@@ -114,7 +114,7 @@ func newConnectMsgFromOptions(options *ClientOptions, broker *url.URL) *packets.
 	if username != "" {
 		m.UsernameFlag = true
 		m.Username = username
-		//mustn't have password without user as well
+		// mustn't have password without user as well
 		if password != "" {
 			m.PasswordFlag = true
 			m.Password = []byte(password)

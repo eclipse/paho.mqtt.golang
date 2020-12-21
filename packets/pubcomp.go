@@ -5,8 +5,8 @@ import (
 	"io"
 )
 
-//PubcompPacket is an internal representation of the fields of the
-//Pubcomp MQTT packet
+// PubcompPacket is an internal representation of the fields of the
+// Pubcomp MQTT packet
 type PubcompPacket struct {
 	FixedHeader
 	MessageID uint16
@@ -26,8 +26,8 @@ func (pc *PubcompPacket) Write(w io.Writer) error {
 	return err
 }
 
-//Unpack decodes the details of a ControlPacket after the fixed
-//header has been read
+// Unpack decodes the details of a ControlPacket after the fixed
+// header has been read
 func (pc *PubcompPacket) Unpack(b io.Reader) error {
 	var err error
 	pc.MessageID, err = decodeUint16(b)
@@ -35,8 +35,8 @@ func (pc *PubcompPacket) Unpack(b io.Reader) error {
 	return err
 }
 
-//Details returns a Details struct containing the Qos and
-//MessageID of this ControlPacket
+// Details returns a Details struct containing the Qos and
+// MessageID of this ControlPacket
 func (pc *PubcompPacket) Details() Details {
 	return Details{Qos: pc.Qos, MessageID: pc.MessageID}
 }

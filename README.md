@@ -147,7 +147,7 @@ seeing may be due to:
 * Bugs in the broker.
 * Issues with whatever you are communicating with.
 
-When submitting an issue please ensure that you provide sufficient details to enable us to eliminate causes outside of
+When submitting an issue, please ensure that you provide sufficient details to enable us to eliminate causes outside of
 this library.
 
 Contributing

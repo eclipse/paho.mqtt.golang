@@ -96,7 +96,7 @@ func verifyCONNACK(conn io.Reader) (byte, bool, error) {
 	return msg.ReturnCode, msg.SessionPresent, nil
 }
 
-// inbound encapuslates the output from startIncoming.
+// inbound encapsulates the output from startIncoming.
 // err  - If != nil then an error has occurred
 // cp - A control packet received over the network link
 type inbound struct {
@@ -105,7 +105,7 @@ type inbound struct {
 }
 
 // startIncoming initiates a goroutine that reads incoming messages off the wire and sends them to the channel (returned).
-// If there are any issues with the network connection then the returned cahnnel will be closed and the goroutine will exit
+// If there are any issues with the network connection then the returned channel will be closed and the goroutine will exit
 // (so closing the connection will terminate the goroutine)
 func startIncoming(conn io.Reader) <-chan inbound {
 	var err error
@@ -135,7 +135,7 @@ func startIncoming(conn io.Reader) <-chan inbound {
 	return ibound
 }
 
-// incomingComms encapuslates the possible output of the incomingComms routine. If err != nil then an error has occurred and
+// incomingComms encapsulates the possible output of the incomingComms routine. If err != nil then an error has occurred and
 // the routine will have terminated; otherwise one of the other members should be non-nil
 type incomingComms struct {
 	err         error                  // If non-nil then there has been an error (ignore everything else)
@@ -145,7 +145,7 @@ type incomingComms struct {
 
 // startIncomingComms initiates incoming communications; this includes starting a goroutine to process incoming
 // messages.
-// Accepts a channel of inbound messages from the store (persistanced messages); note this must be closed as soon as the
+// Accepts a channel of inbound messages from the store (persisted messages); note this must be closed as soon as the
 // everything in the store has been sent.
 // Returns a channel that will be passed any received packets; this will be closed on a network error (and inboundFromStore closed)
 func startIncomingComms(conn io.Reader,
@@ -242,7 +242,7 @@ func startIncomingComms(conn io.Reader,
 	return output
 }
 
-// startOutgoingComms initiates a go routint to transmit outgoing packets.
+// startOutgoingComms initiates a go routine to transmit outgoing packets.
 // Pass in an open network connection and channels for outbound messages (including those triggered
 // directly from incoming comms).
 // Returns a channel that will receive details of any errors (closed when the goroutine exits)
@@ -388,7 +388,7 @@ func startComms(conn net.Conn, // Network connection (must be active)
 	oboundErr := startOutgoingComms(conn, c, oboundp, obound, outboundFromIncoming)
 	DEBUG.Println(NET, "startComms started")
 
-	// Run up go routines to handle the output from the above comms functions - these are handled in seperate
+	// Run up go routines to handle the output from the above comms functions - these are handled in separate
 	// go routines because they can interact (e.g. ibound triggers an ACK to obound which triggers an error)
 	var wg sync.WaitGroup
 	wg.Add(2)

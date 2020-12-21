@@ -29,7 +29,7 @@ type messageIds struct {
 	sync.RWMutex
 	index map[uint16]tokenCompletor
 
-	lastIssuedID uint16 // The most recently issued ID. Used so we cycle through ids rather than immediatly reusing them (can make debugging easier)
+	lastIssuedID uint16 // The most recently issued ID. Used so we cycle through ids rather than immediately reusing them (can make debugging easier)
 }
 
 const (
