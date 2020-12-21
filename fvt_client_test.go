@@ -1061,9 +1061,9 @@ func Test_cleanUpMids(t *testing.T) {
 	// - If the transmit succeeds (regardless of whether the handshake completes then no error is generated)
 	// If the intention is that an error should always be returned if the publish is incomplete upon disconnedt then
 	// internalConnLost needs to be altered (if c.options.CleanSession && !c.options.AutoReconnect)
-	//if token.Error() == nil {
-	//t.Fatal("token should have received an error on connection loss")
-	//}
+	// if token.Error() == nil {
+	// t.Fatal("token should have received an error on connection loss")
+	// }
 	fmt.Println(token.Error())
 
 	c.Disconnect(250)
@@ -1319,7 +1319,7 @@ func Test_ResumeSubsWithReconnect(t *testing.T) {
 	DEBUG.Println(CLI, sub.String())
 
 	persistOutbound(c.(*client).persist, sub)
-	//subToken := c.Subscribe(topic, qos, nil)
+	// subToken := c.Subscribe(topic, qos, nil)
 	c.(*client).internalConnLost(fmt.Errorf("reconnection subscription test"))
 
 	// As reconnect is enabled the client should automatically reconnect

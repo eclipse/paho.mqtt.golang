@@ -17,10 +17,9 @@ package mqtt
 import (
 	"log"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"testing"
-
-	_ "net/http/pprof"
 )
 
 func init() {

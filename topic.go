@@ -19,17 +19,17 @@ import (
 	"strings"
 )
 
-//ErrInvalidQos is the error returned when an packet is to be sent
-//with an invalid Qos value
+// ErrInvalidQos is the error returned when an packet is to be sent
+// with an invalid Qos value
 var ErrInvalidQos = errors.New("invalid QoS")
 
-//ErrInvalidTopicEmptyString is the error returned when a topic string
-//is passed in that is 0 length
+// ErrInvalidTopicEmptyString is the error returned when a topic string
+// is passed in that is 0 length
 var ErrInvalidTopicEmptyString = errors.New("invalid Topic; empty string")
 
-//ErrInvalidTopicMultilevel is the error returned when a topic string
-//is passed in that has the multi level wildcard in any position but
-//the last
+// ErrInvalidTopicMultilevel is the error returned when a topic string
+// is passed in that has the multi level wildcard in any position but
+// the last
 var ErrInvalidTopicMultilevel = errors.New("invalid Topic; multi-level wildcard must be last level")
 
 // Topic Names and Topic Filters

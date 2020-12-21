@@ -139,7 +139,7 @@ func (r *router) matchAndDispatch(messages <-chan *packets.PublishPacket, order 
 			sent := false
 			r.RLock()
 			m := messageFromPublish(message, ackFunc(ackChan, client.persist, message))
-			handlers := []MessageHandler{}
+			var handlers []MessageHandler
 			for e := r.routes.Front(); e != nil; e = e.Next() {
 				if e.Value.(*route).match(message.TopicName) {
 					if order {

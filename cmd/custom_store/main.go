@@ -28,7 +28,7 @@ import (
 // This NoOpStore type implements the go-mqtt/Store interface, which
 // allows it to be used by the go-mqtt client library. However, it is
 // highly recommended that you do not use this NoOpStore in production,
-// because it will NOT provide any sort of guaruntee of message delivery.
+// because it will NOT provide any sort of guarantee of message delivery.
 type NoOpStore struct {
 	// Contain nothing
 }

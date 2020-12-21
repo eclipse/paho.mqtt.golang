@@ -80,7 +80,7 @@ func Test_persistOutbound_connect(t *testing.T) {
 	m.Username = "user"
 	m.Password = []byte("pass")
 	m.ClientIdentifier = "cid"
-	//m := newConnectMsg(false, false, QOS_ZERO, false, "", nil, "cid", "user", "pass", 10)
+	// m := newConnectMsg(false, false, QOS_ZERO, false, "", nil, "cid", "user", "pass", 10)
 	persistOutbound(ts, m)
 
 	if len(ts.mput) != 0 {

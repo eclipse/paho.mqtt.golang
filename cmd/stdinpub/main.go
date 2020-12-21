@@ -20,7 +20,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	//"log"
+	// "log"
 	"os"
 	"strconv"
 	"time"
@@ -29,8 +29,8 @@ import (
 )
 
 func main() {
-	//MQTT.DEBUG = log.New(os.Stdout, "", 0)
-	//MQTT.ERROR = log.New(os.Stdout, "", 0)
+	// MQTT.DEBUG = log.New(os.Stdout, "", 0)
+	// MQTT.ERROR = log.New(os.Stdout, "", 0)
 	stdin := bufio.NewReader(os.Stdin)
 	hostname, _ := os.Hostname()
 
