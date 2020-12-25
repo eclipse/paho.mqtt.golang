@@ -135,7 +135,7 @@ is the best way to demonstrate the issue you are facing; it is important this in
 example.
 * A full, clear, description of the problem (detail what you are expecting vs what actually happens).
 * Details of your attempts to resolve the issue (what have you tried, what worked, what did not).
-* [Application Logs](#logging) covering the period the issue occurred.
+* [Application Logs](#logging) covering the period the issue occurred. Unless you have isolated the root cause of the issue please include a link to a full log (including data from well before the problem arose).
 * Broker Logs covering the period the issue occurred.
 
 It is important to remember that this library does not stand alone; it communicates with a broker and any issues you are 
