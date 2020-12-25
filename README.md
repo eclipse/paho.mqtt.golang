@@ -107,7 +107,7 @@ identifier; this is as per the [spec](https://docs.oasis-open.org/mqtt/mqtt/v3.1
 * A `MessageHandler` (called when a new message is received) must not block. If you wish to perform a long-running task,
 or publish a message, then please use a go routine (blocking in the handler is a common cause of unexpected `pingresp 
 not received, disconnecting` errors). 
-* When subscribing at QOS1+ with `CleanSession` set to false it is possible that the broker will deliver retained 
+* When QOS1+ subscriptions have been created previously and you connect with `CleanSession` set to false it is possible that the broker will deliver retained 
 messages before `Subscribe` can be called. To process these messages either configure a handler with `AddRoute` or
 set a `DefaultPublishHandler`.
 * Loss of network connectivity may not be detected immediately. If this is an issue then consider setting 
