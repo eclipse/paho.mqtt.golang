@@ -81,17 +81,27 @@ var ConnackReturnCodes = map[uint8]string{
 	255: "Connection Refused: Protocol Violation",
 }
 
+var (
+	ErrorRefusedBadProtocolVersion    = errors.New("unacceptable protocol version")
+	ErrorRefusedIDRejected            = errors.New("identifier rejected")
+	ErrorRefusedServerUnavailable     = errors.New("server Unavailable")
+	ErrorRefusedBadUsernameOrPassword = errors.New("bad user name or password")
+	ErrorRefusedNotAuthorised         = errors.New("not Authorized")
+	ErrorNetworkError                 = errors.New("network Error")
+	ErrorProtocolViolation            = errors.New("protocol Violation")
+)
+
 // ConnErrors is a map of the errors codes constants for Connect()
 // to a Go error
 var ConnErrors = map[byte]error{
 	Accepted:                        nil,
-	ErrRefusedBadProtocolVersion:    errors.New("unacceptable protocol version"),
-	ErrRefusedIDRejected:            errors.New("identifier rejected"),
-	ErrRefusedServerUnavailable:     errors.New("server Unavailable"),
-	ErrRefusedBadUsernameOrPassword: errors.New("bad user name or password"),
-	ErrRefusedNotAuthorised:         errors.New("not Authorized"),
-	ErrNetworkError:                 errors.New("network Error"),
-	ErrProtocolViolation:            errors.New("protocol Violation"),
+	ErrRefusedBadProtocolVersion:    ErrorRefusedBadProtocolVersion,
+	ErrRefusedIDRejected:            ErrorRefusedIDRejected,
+	ErrRefusedServerUnavailable:     ErrorRefusedServerUnavailable,
+	ErrRefusedBadUsernameOrPassword: ErrorRefusedBadUsernameOrPassword,
+	ErrRefusedNotAuthorised:         ErrorRefusedNotAuthorised,
+	ErrNetworkError:                 ErrorNetworkError,
+	ErrProtocolViolation:            ErrorProtocolViolation,
 }
 
 // ReadPacket takes an instance of an io.Reader (such as net.Conn) and attempts
