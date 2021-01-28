@@ -20,6 +20,8 @@ const (
 	SERVERADDRESS = "tcp://mosquitto:1883"
 	DELAY         = time.Second
 	CLIENTID      = "mqtt_publisher"
+
+	WRITETOLOG = true // If true then published messages will be written to the console
 )
 
 func main() {
@@ -32,6 +34,7 @@ func main() {
 	opts.AddBroker(SERVERADDRESS)
 	opts.SetClientID(CLIENTID)
 
+	opts.SetOrderMatters(false)       // Allow out of order messages (use this option unless in order delivery is essential)
 	opts.ConnectTimeout = time.Second // Minimal delays on connect
 	opts.WriteTimeout = time.Second   // Minimal delays on writes
 	opts.KeepAlive = 10               // Keepalive every 10 seconds so we quickly detect network outages
@@ -85,6 +88,9 @@ func main() {
 					panic(err)
 				}
 
+				if WRITETOLOG {
+					fmt.Printf("sending message: %s\n", msg)
+				}
 				t := client.Publish(TOPIC, QOS, false, msg)
 				// Handle the token in a go routine so this loop keeps sending messages regardless of delivery status
 				go func() {

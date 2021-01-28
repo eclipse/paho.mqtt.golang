@@ -55,6 +55,8 @@ const (
 // information can be found in their respective documentation.
 // Numerous connection options may be specified by configuring a
 // and then supplying a ClientOptions type.
+// Implementations of Client must be safe for concurrent use by multiple
+// goroutines
 type Client interface {
 	// IsConnected returns a bool signifying whether
 	// the client is connected or not.
@@ -75,11 +77,21 @@ type Client interface {
 	// Returns a token to track delivery of the message to the broker
 	Publish(topic string, qos byte, retained bool, payload interface{}) Token
 	// Subscribe starts a new subscription. Provide a MessageHandler to be executed when
-	// a message is published on the topic provided, or nil for the default handler
+	// a message is published on the topic provided, or nil for the default handler.
+	//
+	// If `options.OrderMatters` is true (the default) then `callback` must not block or
+	// call functions within this package that may block (e.g. `Publish`) other than in
+	// a new go routine.
+	// `callback` must be safe for concurrent use by multiple goroutines.
 	Subscribe(topic string, qos byte, callback MessageHandler) Token
 	// SubscribeMultiple starts a new subscription for multiple topics. Provide a MessageHandler to
 	// be executed when a message is published on one of the topics provided, or nil for the
-	// default handler
+	// default handler.
+	//
+	// If `options.OrderMatters` is true (the default) then `callback` must not block or
+	// call functions within this package that may block (e.g. `Publish`) other than in
+	// a new go routine.
+	// `callback` must be safe for concurrent use by multiple goroutines.
 	SubscribeMultiple(filters map[string]byte, callback MessageHandler) Token
 	// Unsubscribe will end the subscription from each of the topics provided.
 	// Messages published to those topics from other clients will no longer be
@@ -87,7 +99,13 @@ type Client interface {
 	Unsubscribe(topics ...string) Token
 	// AddRoute allows you to add a handler for messages on a specific topic
 	// without making a subscription. For example having a different handler
-	// for parts of a wildcard subscription
+	// for parts of a wildcard subscription or for receiving retained messages
+	// upon connection (before Sub scribe can be processed).
+	//
+	// If `options.OrderMatters` is true (the default) then `callback` must not block or
+	// call functions within this package that may block (e.g. `Publish`) other than in
+	// a new go routine.
+	// `callback` must be safe for concurrent use by multiple goroutines.
 	AddRoute(topic string, callback MessageHandler)
 	// OptionsReader returns a ClientOptionsReader which is a copy of the clientoptions
 	// in use by the client.
@@ -95,6 +113,8 @@ type Client interface {
 }
 
 // client implements the Client interface
+// clients are safe for concurrent use by multiple
+// goroutines
 type client struct {
 	lastSent        atomic.Value // time.Time - the last time a packet was successfully sent to network
 	lastReceived    atomic.Value // time.Time - the last time a packet was successfully received from network
@@ -153,6 +173,11 @@ func NewClient(o *ClientOptions) Client {
 // AddRoute allows you to add a handler for messages on a specific topic
 // without making a subscription. For example having a different handler
 // for parts of a wildcard subscription
+//
+// If `options.OrderMatters` is true (the default) then `callback` must not block or
+// call functions within this package that may block (e.g. `Publish`) other than in
+// a new go routine.
+// `callback` must be safe for concurrent use by multiple goroutines.
 func (c *client) AddRoute(topic string, callback MessageHandler) {
 	if callback != nil {
 		c.msgRouter.addRoute(topic, callback)
@@ -686,10 +711,10 @@ func (c *client) Publish(topic string, qos byte, retained bool, payload interfac
 // Subscribe starts a new subscription. Provide a MessageHandler to be executed when
 // a message is published on the topic provided.
 //
-// Please note: you should try to keep the execution time of the callback to be
-// as low as possible, especially when SetOrderMatters(true) (the default) is in
-// place. Blocking calls in message handlers might otherwise delay delivery to
-// other message handlers.
+// If `options.OrderMatters` is true (the default) then `callback` must not block or
+// call functions within this package that may block (e.g. `Publish`) other than in
+// a new go routine.
+// `callback` must be safe for concurrent use by multiple goroutines.
 func (c *client) Subscribe(topic string, qos byte, callback MessageHandler) Token {
 	token := newToken(packets.Subscribe).(*SubscribeToken)
 	DEBUG.Println(CLI, "enter Subscribe")
@@ -766,6 +791,11 @@ func (c *client) Subscribe(topic string, qos byte, callback MessageHandler) Toke
 
 // SubscribeMultiple starts a new subscription for multiple topics. Provide a MessageHandler to
 // be executed when a message is published on one of the topics provided.
+//
+// If `options.OrderMatters` is true (the default) then `callback` must not block or
+// call functions within this package that may block (e.g. `Publish`) other than in
+// a new go routine.
+// `callback` must be safe for concurrent use by multiple goroutines.
 func (c *client) SubscribeMultiple(filters map[string]byte, callback MessageHandler) Token {
 	var err error
 	token := newToken(packets.Subscribe).(*SubscribeToken)

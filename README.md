@@ -104,8 +104,12 @@ func main() {
 
 * Seemingly random disconnections may be caused by another client connecting to the broker with the same client 
 identifier; this is as per the [spec](https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html#_Toc384800405).
-* A `MessageHandler` (called when a new message is received) must not block. If you wish to perform a long-running task,
-or publish a message, then please use a go routine (blocking in the handler is a common cause of unexpected `pingresp 
+* Unless ordered delivery of messages is essential (and you have configured your broker to support this e.g. 
+  `max_inflight_messages=1` in mosquitto) then set `ClientOptions.SetOrderMatters(false)`. Doing so will avoid the 
+  below issue (deadlocks due to blocking message handlers).
+* A `MessageHandler` (called when a new message is received) must not block (unless 
+  `ClientOptions.SetOrderMatters(false)` set). If you wish to perform a long-running task, or publish a message, then 
+  please use a go routine (blocking in the handler is a common cause of unexpected `pingresp 
 not received, disconnecting` errors). 
 * When QOS1+ subscriptions have been created previously and you connect with `CleanSession` set to false it is possible that the broker will deliver retained 
 messages before `Subscribe` can be called. To process these messages either configure a handler with `AddRoute` or
