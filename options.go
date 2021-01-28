@@ -50,7 +50,7 @@ type OnConnectHandler func(Client)
 type ReconnectHandler func(Client, *ClientOptions)
 
 // ClientOptions contains configurable options for an Client. Note that these should be set using the
-// relevant methods (e.g. `AddBroker`) rather than directly. See those functions for information on usage.
+// relevant methods (e.g. AddBroker) rather than directly. See those functions for information on usage.
 type ClientOptions struct {
 	Servers                 []*url.URL
 	ClientID                string
@@ -209,8 +209,8 @@ func (o *ClientOptions) SetCleanSession(clean bool) *ClientOptions {
 // from the client to the application and possibly arrive out of order.
 // Specifically, the message handler is called in its own go routine.
 // Note that setting this to true does not guarantee in-order delivery
-// (this is subject to broker settings like `max_inflight_messages=1` in mosquitto)
-// and if `true` then handlers must not block.
+// (this is subject to broker settings like "max_inflight_messages=1" in mosquitto)
+// and if true then handlers must not block.
 func (o *ClientOptions) SetOrderMatters(order bool) *ClientOptions {
 	o.Order = order
 	return o
@@ -291,10 +291,10 @@ func (o *ClientOptions) SetBinaryWill(topic string, payload []byte, qos byte, re
 // SetDefaultPublishHandler sets the MessageHandler that will be called when a message
 // is received that does not match any known subscriptions.
 //
-// If `options.OrderMatters` is true (the default) then `defaultHandler` must not block or
-// call functions within this package that may block (e.g. `Publish`) other than in
+// If OrderMatters is true (the defaultHandler) then callback must not block or
+// call functions within this package that may block (e.g. Publish) other than in
 // a new go routine.
-// `defaultHandler` must be safe for concurrent use by multiple goroutines.
+// defaultHandler must be safe for concurrent use by multiple goroutines.
 func (o *ClientOptions) SetDefaultPublishHandler(defaultHandler MessageHandler) *ClientOptions {
 	o.DefaultPublishHandler = defaultHandler
 	return o
