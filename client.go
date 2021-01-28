@@ -79,19 +79,19 @@ type Client interface {
 	// Subscribe starts a new subscription. Provide a MessageHandler to be executed when
 	// a message is published on the topic provided, or nil for the default handler.
 	//
-	// If `options.OrderMatters` is true (the default) then `callback` must not block or
-	// call functions within this package that may block (e.g. `Publish`) other than in
+	// If options.OrderMatters is true (the default) then callback must not block or
+	// call functions within this package that may block (e.g. Publish) other than in
 	// a new go routine.
-	// `callback` must be safe for concurrent use by multiple goroutines.
+	// callback must be safe for concurrent use by multiple goroutines.
 	Subscribe(topic string, qos byte, callback MessageHandler) Token
 	// SubscribeMultiple starts a new subscription for multiple topics. Provide a MessageHandler to
 	// be executed when a message is published on one of the topics provided, or nil for the
 	// default handler.
 	//
-	// If `options.OrderMatters` is true (the default) then `callback` must not block or
-	// call functions within this package that may block (e.g. `Publish`) other than in
+	// If options.OrderMatters is true (the default) then callback must not block or
+	// call functions within this package that may block (e.g. Publish) other than in
 	// a new go routine.
-	// `callback` must be safe for concurrent use by multiple goroutines.
+	// callback must be safe for concurrent use by multiple goroutines.
 	SubscribeMultiple(filters map[string]byte, callback MessageHandler) Token
 	// Unsubscribe will end the subscription from each of the topics provided.
 	// Messages published to those topics from other clients will no longer be
@@ -102,10 +102,10 @@ type Client interface {
 	// for parts of a wildcard subscription or for receiving retained messages
 	// upon connection (before Sub scribe can be processed).
 	//
-	// If `options.OrderMatters` is true (the default) then `callback` must not block or
-	// call functions within this package that may block (e.g. `Publish`) other than in
+	// If options.OrderMatters is true (the default) then callback must not block or
+	// call functions within this package that may block (e.g. Publish) other than in
 	// a new go routine.
-	// `callback` must be safe for concurrent use by multiple goroutines.
+	// callback must be safe for concurrent use by multiple goroutines.
 	AddRoute(topic string, callback MessageHandler)
 	// OptionsReader returns a ClientOptionsReader which is a copy of the clientoptions
 	// in use by the client.
@@ -174,10 +174,10 @@ func NewClient(o *ClientOptions) Client {
 // without making a subscription. For example having a different handler
 // for parts of a wildcard subscription
 //
-// If `options.OrderMatters` is true (the default) then `callback` must not block or
-// call functions within this package that may block (e.g. `Publish`) other than in
+// If options.OrderMatters is true (the default) then callback must not block or
+// call functions within this package that may block (e.g. Publish) other than in
 // a new go routine.
-// `callback` must be safe for concurrent use by multiple goroutines.
+// callback must be safe for concurrent use by multiple goroutines.
 func (c *client) AddRoute(topic string, callback MessageHandler) {
 	if callback != nil {
 		c.msgRouter.addRoute(topic, callback)
@@ -711,10 +711,10 @@ func (c *client) Publish(topic string, qos byte, retained bool, payload interfac
 // Subscribe starts a new subscription. Provide a MessageHandler to be executed when
 // a message is published on the topic provided.
 //
-// If `options.OrderMatters` is true (the default) then `callback` must not block or
-// call functions within this package that may block (e.g. `Publish`) other than in
+// If options.OrderMatters is true (the default) then callback must not block or
+// call functions within this package that may block (e.g. Publish) other than in
 // a new go routine.
-// `callback` must be safe for concurrent use by multiple goroutines.
+// callback must be safe for concurrent use by multiple goroutines.
 func (c *client) Subscribe(topic string, qos byte, callback MessageHandler) Token {
 	token := newToken(packets.Subscribe).(*SubscribeToken)
 	DEBUG.Println(CLI, "enter Subscribe")
@@ -792,10 +792,10 @@ func (c *client) Subscribe(topic string, qos byte, callback MessageHandler) Toke
 // SubscribeMultiple starts a new subscription for multiple topics. Provide a MessageHandler to
 // be executed when a message is published on one of the topics provided.
 //
-// If `options.OrderMatters` is true (the default) then `callback` must not block or
-// call functions within this package that may block (e.g. `Publish`) other than in
+// If options.OrderMatters is true (the default) then callback must not block or
+// call functions within this package that may block (e.g. Publish) other than in
 // a new go routine.
-// `callback` must be safe for concurrent use by multiple goroutines.
+// callback must be safe for concurrent use by multiple goroutines.
 func (c *client) SubscribeMultiple(filters map[string]byte, callback MessageHandler) Token {
 	var err error
 	token := newToken(packets.Subscribe).(*SubscribeToken)
