@@ -484,10 +484,13 @@ func (c *client) internalConnLost(err error) {
 			DEBUG.Println(CLI, "internalConnLost waiting on workers")
 			<-stopDone
 			DEBUG.Println(CLI, "internalConnLost workers stopped")
-			if c.options.CleanSession && !c.options.AutoReconnect {
+			// It is possible that Disconnect was called which led to this error so reconnection depends upon status
+			reconnect := c.options.AutoReconnect && c.connectionStatus() > connecting
+
+			if c.options.CleanSession && !reconnect {
 				c.messageIds.cleanUp()
 			}
-			if c.options.AutoReconnect {
+			if reconnect {
 				c.setConnected(reconnecting)
 				go c.reconnect()
 			} else {
