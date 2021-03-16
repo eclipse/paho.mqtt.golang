@@ -902,7 +902,7 @@ func (c *client) resume(subscription bool, ibound chan packets.ControlPacket) {
 		}
 		details := packet.Details()
 		if isKeyOutbound(key) {
-			switch packet.(type) {
+			switch p := packet.(type) {
 			case *packets.SubscribePacket:
 				if subscription {
 					DEBUG.Println(STR, fmt.Sprintf("loaded pending subscribe (%d)", details.MessageID))
@@ -942,13 +942,22 @@ func (c *client) resume(subscription bool, ibound chan packets.ControlPacket) {
 					return
 				}
 			case *packets.PublishPacket:
+				// spec: If the DUP flag is set to 0, it indicates that this is the first occasion that the Client or
+				// Server has attempted to send this MQTT PUBLISH Packet. If the DUP flag is set to 1, it indicates that
+				// this might be re-delivery of an earlier attempt to send the Packet.
+				//
+				// If the message is in the store than an attempt at delivery has been made (note that the message may
+				// never have made it onto the wire but tracking that would be complicated!).
+				if p.Qos != 0 { // spec: The DUP flag MUST be set to 0 for all QoS 0 messages
+					p.Dup = true
+				}
 				token := newToken(packets.Publish).(*PublishToken)
 				token.messageID = details.MessageID
 				c.claimID(token, details.MessageID)
 				DEBUG.Println(STR, fmt.Sprintf("loaded pending publish (%d)", details.MessageID))
 				DEBUG.Println(STR, details)
 				select {
-				case c.obound <- &PacketAndToken{p: packet, t: token}:
+				case c.obound <- &PacketAndToken{p: p, t: token}:
 				case <-c.stop:
 					DEBUG.Println(STR, "resume exiting due to stop")
 					return
