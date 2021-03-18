@@ -2,9 +2,11 @@ package mqtt
 
 import (
 	"crypto/tls"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"sync"
 	"time"
 
@@ -15,7 +17,10 @@ import (
 type WebsocketOptions struct {
 	ReadBufferSize  int
 	WriteBufferSize int
+	Proxy           ProxyFunction
 }
+
+type ProxyFunction func(req *http.Request) (*url.URL, error)
 
 // NewWebsocket returns a new websocket and returns a net.Conn compatible interface using the gorilla/websocket package
 func NewWebsocket(host string, tlsc *tls.Config, timeout time.Duration, requestHeader http.Header, options *WebsocketOptions) (net.Conn, error) {
@@ -27,9 +32,11 @@ func NewWebsocket(host string, tlsc *tls.Config, timeout time.Duration, requestH
 		// Apply default options
 		options = &WebsocketOptions{}
 	}
-
+	if options.Proxy == nil {
+		options.Proxy = http.ProxyFromEnvironment
+	}
 	dialer := &websocket.Dialer{
-		Proxy:             http.ProxyFromEnvironment,
+		Proxy:             options.Proxy,
 		HandshakeTimeout:  timeout,
 		EnableCompression: false,
 		TLSClientConfig:   tlsc,
@@ -38,9 +45,12 @@ func NewWebsocket(host string, tlsc *tls.Config, timeout time.Duration, requestH
 		WriteBufferSize:   options.WriteBufferSize,
 	}
 
-	ws, _, err := dialer.Dial(host, requestHeader)
+	ws, resp, err := dialer.Dial(host, requestHeader)
 
 	if err != nil {
+		if resp != nil {
+			WARN.Println(CLI, fmt.Sprintf("Websocket handshake failure. StatusCode: %d. Body: %s", resp.StatusCode, resp.Body))
+		}
 		return nil, err
 	}
 
