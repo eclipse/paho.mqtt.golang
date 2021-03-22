@@ -321,7 +321,9 @@ func (c *client) reconnect() {
 		}
 		var err error
 		conn, _, _, err = c.attemptConnection()
-		if err == nil {
+		if err != nil {
+			DEBUG.Println(CLI, "Connect failed, sleeping for", int(c.options.ConnectRetryInterval.Seconds()), "seconds and will then retry")
+			time.Sleep(c.options.ConnectRetryInterval)
 			break
 		}
 		DEBUG.Println(CLI, "Reconnect failed, sleeping for", int(sleep.Seconds()), "seconds:", err)
