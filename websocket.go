@@ -38,16 +38,18 @@ func NewWebsocket(host string, tlsc *tls.Config, timeout time.Duration, requestH
 		WriteBufferSize:   options.WriteBufferSize,
 	}
 
-	ws, _, err := dialer.Dial(host, requestHeader)
-
+	ws, res, err := dialer.Dial(host, requestHeader)
 	if err != nil {
+		if res != nil {
+			DEBUG.Println(CLI, "websocket dial failed with status:", res.Status)
+		}
 		return nil, err
 	}
 
 	wrapper := &websocketConnector{
 		Conn: ws,
 	}
-	return wrapper, err
+	return wrapper, nil
 }
 
 // websocketConnector is a websocket wrapper so it satisfies the net.Conn interface so it is a
