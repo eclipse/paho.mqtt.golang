@@ -77,7 +77,7 @@ func openConnection(uri *url.URL, tlsc *tls.Config, timeout time.Duration, heade
 			return nil, err
 		}
 
-		tlsConn := tls.Client(conn, tlsc)
+		tlsConn := tls.Client(conn, tlsConfigWithSni(uri, tlsc))
 
 		err = tlsConn.Handshake()
 		if err != nil {
@@ -88,4 +88,15 @@ func openConnection(uri *url.URL, tlsc *tls.Config, timeout time.Duration, heade
 		return tlsConn, nil
 	}
 	return nil, errors.New("unknown protocol")
+}
+
+func tlsConfigWithSni(uri *url.URL, conf *tls.Config) *tls.Config {
+	tlsConfig := conf
+	if tlsConfig.ServerName == "" {
+		// Ensure SNI is set appropriately - make a copy to avoid polluting argument or default.
+		c := tlsConfig.Clone()
+		c.ServerName = uri.Hostname()
+		tlsConfig = c
+	}
+	return tlsConfig
 }
