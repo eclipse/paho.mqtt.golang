@@ -30,7 +30,8 @@ import (
 // This just establishes the network connection; once established the type of connection should be irrelevant
 //
 
-// openConnection opens a network connection using the protocol indicated in the URL. Does not carry out any MQTT specific handshakes
+// openConnection opens a network connection using the protocol indicated in the URL.
+// Does not carry out any MQTT specific handshakes.
 func openConnection(uri *url.URL, tlsc *tls.Config, timeout time.Duration, headers http.Header, websocketOptions *WebsocketOptions) (net.Conn, error) {
 	switch uri.Scheme {
 	case "ws":
@@ -77,26 +78,15 @@ func openConnection(uri *url.URL, tlsc *tls.Config, timeout time.Duration, heade
 			return nil, err
 		}
 
-		tlsConn := tls.Client(conn, tlsConfigWithSni(uri, tlsc))
+		tlsConn := tls.Client(conn, tlsc)
 
 		err = tlsConn.Handshake()
 		if err != nil {
-			conn.Close()
+			_ = conn.Close()
 			return nil, err
 		}
 
 		return tlsConn, nil
 	}
 	return nil, errors.New("unknown protocol")
-}
-
-func tlsConfigWithSni(uri *url.URL, conf *tls.Config) *tls.Config {
-	tlsConfig := conf
-	if tlsConfig.ServerName == "" {
-		// Ensure SNI is set appropriately - make a copy to avoid polluting argument or default.
-		c := tlsConfig.Clone()
-		c.ServerName = uri.Hostname()
-		tlsConfig = c
-	}
-	return tlsConfig
 }

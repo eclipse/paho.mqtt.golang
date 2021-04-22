@@ -1,4 +1,4 @@
-package mqtt
+package main
 
 import (
 	"bufio"
@@ -76,9 +76,4 @@ func (s *httpProxy) Dial(_, addr string) (net.Conn, error) {
 	}
 
 	return c, nil
-}
-
-func init() {
-	proxy.RegisterDialerType("http", newHTTPProxy)
-	proxy.RegisterDialerType("https", newHTTPProxy)
 }

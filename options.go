@@ -49,6 +49,9 @@ type OnConnectHandler func(Client)
 // the initial connection is lost
 type ReconnectHandler func(Client, *ClientOptions)
 
+// ConnectionAttemptHandler is invoked prior to making the initial connection.
+type ConnectionAttemptHandler func(broker *url.URL, tlsCfg *tls.Config) *tls.Config
+
 // ClientOptions contains configurable options for an Client. Note that these should be set using the
 // relevant methods (e.g. AddBroker) rather than directly. See those functions for information on usage.
 type ClientOptions struct {
@@ -79,6 +82,7 @@ type ClientOptions struct {
 	OnConnect               OnConnectHandler
 	OnConnectionLost        ConnectionLostHandler
 	OnReconnecting          ReconnectHandler
+	OnConnectAttempt        ConnectionAttemptHandler
 	WriteTimeout            time.Duration
 	MessageChannelDepth     uint
 	ResumeSubs              bool
@@ -120,6 +124,7 @@ func NewClientOptions() *ClientOptions {
 		Store:                   nil,
 		OnConnect:               nil,
 		OnConnectionLost:        DefaultConnectionLostHandler,
+		OnConnectAttempt:        nil,
 		WriteTimeout:            0, // 0 represents timeout disabled
 		ResumeSubs:              false,
 		HTTPHeaders:             make(map[string][]string),
@@ -318,6 +323,13 @@ func (o *ClientOptions) SetConnectionLostHandler(onLost ConnectionLostHandler) *
 // to the client attempting a reconnect to the MQTT broker.
 func (o *ClientOptions) SetReconnectingHandler(cb ReconnectHandler) *ClientOptions {
 	o.OnReconnecting = cb
+	return o
+}
+
+// SetConnectionAttemptHandler sets the ConnectionAttemptHandler callback to be executed prior
+// to the client attempting initial connection to the MQTT broker.
+func (o *ClientOptions) SetConnectionAttemptHandler(onConnectAttempt ConnectionAttemptHandler) *ClientOptions {
+	o.OnConnectAttempt = onConnectAttempt
 	return o
 }
 
