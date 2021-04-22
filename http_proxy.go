@@ -70,10 +70,9 @@ func (s *httpProxy) Dial(_, addr string) (net.Conn, error) {
 		return nil, err
 	}
 	_ = resp.Body.Close()
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusOK {
 		_ = c.Close()
-		err = fmt.Errorf("connect server using proxy error, StatusCode [%d]", resp.StatusCode)
-		return nil, err
+		return nil, fmt.Errorf("proxied connection returned an error: %v", resp.Status)
 	}
 
 	return c, nil
