@@ -327,7 +327,9 @@ func (o *ClientOptions) SetReconnectingHandler(cb ReconnectHandler) *ClientOptio
 }
 
 // SetConnectionAttemptHandler sets the ConnectionAttemptHandler callback to be executed prior
-// to the client attempting initial connection to the MQTT broker.
+// to each attempt to connect to an MQTT broker. Returns the *tls.Config that will be used when establishing
+// the connection (a copy of the tls.Config from ClientOptions will be passed in along with the broker URL).
+// This allows connection specific changes to be made to the *tls.Config.
 func (o *ClientOptions) SetConnectionAttemptHandler(onConnectAttempt ConnectionAttemptHandler) *ClientOptions {
 	o.OnConnectAttempt = onConnectAttempt
 	return o
