@@ -379,8 +379,13 @@ func (c *client) attemptConnection() (net.Conn, byte, bool, error) {
 		cm := newConnectMsgFromOptions(&c.options, broker)
 		DEBUG.Println(CLI, "about to write new connect msg")
 	CONN:
+		tlsCfg := c.options.TLSConfig
+		if c.options.OnConnectAttempt != nil {
+			DEBUG.Println(CLI, "using custom onConnectAttempt handler...")
+			tlsCfg = c.options.OnConnectAttempt(broker, c.options.TLSConfig)
+		}
 		// Start by opening the network connection (tcp, tls, ws) etc
-		conn, err = openConnection(broker, c.options.TLSConfig, c.options.ConnectTimeout, c.options.HTTPHeaders, c.options.WebsocketOptions)
+		conn, err = openConnection(broker, tlsCfg, c.options.ConnectTimeout, c.options.HTTPHeaders, c.options.WebsocketOptions)
 		if err != nil {
 			ERROR.Println(CLI, err.Error())
 			WARN.Println(CLI, "failed to connect to broker, trying next")
@@ -397,7 +402,7 @@ func (c *client) attemptConnection() (net.Conn, byte, bool, error) {
 
 		// We may be have to attempt the connection with MQTT 3.1
 		if conn != nil {
-			conn.Close()
+			_ = conn.Close()
 		}
 		if !c.options.protocolVersionExplicit && protocolVersion == 4 { // try falling back to 3.1?
 			DEBUG.Println(CLI, "Trying reconnect using MQTT 3.1 protocol")
@@ -504,8 +509,8 @@ func (c *client) internalConnLost(err error) {
 	}
 }
 
-// startCommsWorkers is called when the connection is up. It starts off all of the routines needed to process incoming and
-// outgoing messages.
+// startCommsWorkers is called when the connection is up.
+// It starts off all of the routines needed to process incoming and outgoing messages.
 // Returns true if the comms workers were started (i.e. they were not already running)
 func (c *client) startCommsWorkers(conn net.Conn, inboundFromStore <-chan packets.ControlPacket) bool {
 	DEBUG.Println(CLI, "startCommsWorkers called")
