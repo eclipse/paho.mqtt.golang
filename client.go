@@ -439,12 +439,22 @@ func (c *client) Disconnect(quiesce uint) {
 
 		dm := packets.NewControlPacket(packets.Disconnect).(*packets.DisconnectPacket)
 		dt := newToken(packets.Disconnect)
-		c.oboundP <- &PacketAndToken{p: dm, t: dt}
+		disconnectSent := false
+		select {
+		case c.oboundP <- &PacketAndToken{p: dm, t: dt}:
+			disconnectSent = true
+		case <-c.commsStopped:
+			WARN.Println("Disconnect packet could not be sent because comms stopped")
+		case <-time.After(time.Duration(quiesce) * time.Millisecond):
+			WARN.Println("Disconnect packet not sent due to timeout")
+		}
 
 		// wait for work to finish, or quiesce time consumed
-		DEBUG.Println(CLI, "calling WaitTimeout")
-		dt.WaitTimeout(time.Duration(quiesce) * time.Millisecond)
-		DEBUG.Println(CLI, "WaitTimeout done")
+		if disconnectSent {
+			DEBUG.Println(CLI, "calling WaitTimeout")
+			dt.WaitTimeout(time.Duration(quiesce) * time.Millisecond)
+			DEBUG.Println(CLI, "WaitTimeout done")
+		}
 	} else {
 		WARN.Println(CLI, "Disconnect() called but not connected (disconnected/reconnecting)")
 		c.setConnected(disconnected)

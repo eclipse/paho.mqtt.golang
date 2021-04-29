@@ -31,7 +31,19 @@ func Test_Start(t *testing.T) {
 		t.Fatalf("Error on Client.Connect(): %v", token.Error())
 	}
 
-	c.Disconnect(250)
+	// Disconnect should return within 250ms and calling a second time should not block
+	disconnectC := make(chan struct{}, 1)
+	go func() {
+		c.Disconnect(250)
+		c.Disconnect(5)
+		close(disconnectC)
+	}()
+
+	select {
+	case <-time.After(time.Millisecond * 300):
+		t.Errorf("disconnect did not finnish within 300ms")
+	case <-disconnectC:
+	}
 }
 
 /* uncomment this if you have connection policy disallowing FailClientID
@@ -89,6 +101,34 @@ func Test_Start(t *testing.T) {
 	 c.Disconnect(250)
  }
 */
+
+// Disconnect should not block under any circumstance
+// This is triggered by issue #501; there is a very slight chance that Disconnect could get through the
+// `status == connected` check and then the connection drops...
+func Test_Disconnect(t *testing.T) {
+	ops := NewClientOptions().SetClientID("Disconnect").AddBroker(FVTTCP)
+	c := NewClient(ops)
+
+	if token := c.Connect(); token.Wait() && token.Error() != nil {
+		t.Fatalf("Error on Client.Connect(): %v", token.Error())
+	}
+
+	// Attempt to disconnect twice simultaneously and ensure this does not block
+	disconnectC := make(chan struct{}, 1)
+	go func() {
+		c.Disconnect(250)
+		cli := c.(*client)
+		cli.status = connected
+		c.Disconnect(250)
+		close(disconnectC)
+	}()
+
+	select {
+	case <-time.After(time.Millisecond * 300):
+		t.Errorf("disconnect did not finnish within 300ms")
+	case <-disconnectC:
+	}
+}
 
 func Test_Publish_1(t *testing.T) {
 	ops := NewClientOptions()
