@@ -18,15 +18,15 @@ import (
 	"log"
 	"net/http"
 	_ "net/http/pprof"
-	"os"
 	"testing"
 )
 
 func init() {
-	DEBUG = log.New(os.Stderr, "DEBUG    ", log.Ltime)
-	WARN = log.New(os.Stderr, "WARNING  ", log.Ltime)
-	CRITICAL = log.New(os.Stderr, "CRITICAL ", log.Ltime)
-	ERROR = log.New(os.Stderr, "ERROR    ", log.Ltime)
+	// Logging is off by default as this makes things simpler when you just want to confirm that tests pass
+	// DEBUG = log.New(os.Stderr, "DEBUG    ", log.Ltime)
+	// WARN = log.New(os.Stderr, "WARNING  ", log.Ltime)
+	// CRITICAL = log.New(os.Stderr, "CRITICAL ", log.Ltime)
+	// ERROR = log.New(os.Stderr, "ERROR    ", log.Ltime)
 
 	go func() {
 		log.Println(http.ListenAndServe("localhost:6060", nil))

@@ -16,7 +16,6 @@ package mqtt
 
 import (
 	"fmt"
-	"log"
 	"testing"
 )
 
@@ -63,7 +62,7 @@ func Test_noFreeID(t *testing.T) {
 	mids := &messageIds{index: make(map[uint16]tokenCompletor)}
 
 	for i := midMin; i != 0; i++ {
-		log.Println(i)
+		// Uncomment to see all message IDS log.Println(i)
 		mids.index[i] = &d
 	}
 
