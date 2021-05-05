@@ -146,10 +146,13 @@ func (r *router) matchAndDispatch(messages <-chan *packets.PublishPacket, order 
 						handlers = append(handlers, e.Value.(*route).callback)
 					} else {
 						hd := e.Value.(*route).callback
+						// order matters disabled, so the subscribe callback is called in a goroutine
 						go func() {
 							hd(client, m)
-							m.Ack()
 						}()
+						// m.Ack is not called in a routine, because in QoS 1 or QoS 2, if the callback did not terminate before
+						// client calls Disconenct function, program will panic because sending ack to a closed channel.
+						m.Ack()
 					}
 					sent = true
 				}
