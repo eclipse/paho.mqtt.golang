@@ -926,6 +926,70 @@ func Test_PublishEmptyMessage(t *testing.T) {
 	s.Disconnect(250)
 }
 
+// Test_CallbackOverrun - When ordermatters=false the callbacks are called within a go routine. It is possible that
+// the connection will drop before the handler completes and this should result in the ACK being dropped silently
+// (leads to a panic in v1.3-v1.3.4)
+func Test_CallbackOverrun(t *testing.T) {
+	topic := "/test/callbackoverrun"
+	handlerCalled := make(chan bool)
+	handlerChoke := make(chan bool)
+	handlerError := make(chan error)
+
+	pops := NewClientOptions()
+	pops.AddBroker(FVTTCP)
+	pops.SetOrderMatters(false) // Not really needed but consistent...
+	pops.SetClientID("callbackoverrun-pub")
+	p := NewClient(pops)
+
+	sops := NewClientOptions()
+	sops.AddBroker(FVTTCP)
+	sops.SetOrderMatters(false)
+	sops.SetClientID("callbackoverrun-sub")
+	var f MessageHandler = func(client Client, msg Message) {
+		handlerCalled <- true
+		<-handlerChoke // Wait until connection has been closed
+		if string(msg.Payload()) != "test message" {
+			handlerError <- fmt.Errorf("Message payload incorrect")
+		} else {
+			handlerError <- nil // Allow main test to proceed (should not raise error in go routine)
+		}
+	}
+
+	s := NewClient(sops).(*client)
+	if sToken := s.Connect(); sToken.Wait() && sToken.Error() != nil {
+		t.Fatalf("Error on Client.Connect(): %v", sToken.Error())
+	}
+
+	if sToken := s.Subscribe(topic, 1, f); sToken.Wait() && sToken.Error() != nil {
+		t.Fatalf("Error on Client.Subscribe(): %v", sToken.Error())
+	}
+
+	if pToken := p.Connect(); pToken.Wait() && pToken.Error() != nil {
+		t.Fatalf("Error on Client.Connect(): %v", pToken.Error())
+	}
+
+	p.Publish(topic, 1, false, "test message")
+	wait(handlerCalled)  // Wait until the handler has been called
+	s.Disconnect(250)    // Ensure the connection is dropped
+	<-s.commsStopped     // Double check...
+	handlerChoke <- true // Allow handler to proceed
+
+	err := <-handlerError
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+
+	time.Sleep(time.Microsecond) // Allow a little time in case the handler returning after connection dropped causes an issue (panic)
+	fmt.Println("reconnecting")
+	// Now attempt to reconnect (checking for blockages)
+	if sToken := s.Connect(); sToken.Wait() && sToken.Error() != nil {
+		t.Fatalf("Error on Client.Connect(): %v", sToken.Error())
+	}
+
+	s.Disconnect(250)
+	p.Disconnect(250)
+}
+
 // func Test_Cleanstore(t *testing.T) {
 // 	store := "/tmp/fvt/cleanstore"
 // 	topic := "/test/cleanstore"
