@@ -607,7 +607,22 @@ func (c *client) startCommsWorkers(conn net.Conn, inboundFromStore <-chan packet
 					commsIncomingPub = nil
 					continue
 				}
-				incomingPubChan <- pub
+				// Care is needed here because an error elsewhere could trigger a deadlock
+			sendPubLoop:
+				for {
+					select {
+					case incomingPubChan <- pub:
+						break sendPubLoop
+					case err, ok := <-commsErrors:
+						if !ok { // commsErrors has been closed so we can ignore it
+							commsErrors = nil
+							continue
+						}
+						ERROR.Println(CLI, "Connect comms goroutine - error triggered during send Pub", err)
+						c.internalConnLost(err) // no harm in calling this if the connection is already down (or shutdown is in progress)
+						continue
+					}
+				}
 			case err, ok := <-commsErrors:
 				if !ok {
 					commsErrors = nil
