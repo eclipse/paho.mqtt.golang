@@ -168,7 +168,7 @@ func (store *FileStore) all() []string {
 	for _, f := range files {
 		DEBUG.Println(STR, "file in All():", f.Name())
 		name := f.Name()
-		if name[len(name)-4:] != msgExt {
+		if len(name) < len(msgExt) || name[len(name)-len(msgExt):] != msgExt {
 			DEBUG.Println(STR, "skipping file, doesn't have right extension: ", name)
 			continue
 		}
