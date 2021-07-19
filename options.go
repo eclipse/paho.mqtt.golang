@@ -88,6 +88,7 @@ type ClientOptions struct {
 	ResumeSubs              bool
 	HTTPHeaders             http.Header
 	WebsocketOptions        *WebsocketOptions
+	MaxResumePubInFlight    int // // 0 = no limit; otherwise this is the maximum simultaneous messages sent while resuming
 }
 
 // NewClientOptions will create a new ClientClientOptions type with some
@@ -399,5 +400,15 @@ func (o *ClientOptions) SetHTTPHeaders(h http.Header) *ClientOptions {
 // SetWebsocketOptions sets the additional websocket options used in a WebSocket connection
 func (o *ClientOptions) SetWebsocketOptions(w *WebsocketOptions) *ClientOptions {
 	o.WebsocketOptions = w
+	return o
+}
+
+// SetMaxResumePubInFlight sets the maximum simultaneous publish messages that will be sent while resuming. Note that
+// this only applies to messages coming from the store (so additional sends may push us over the limit)
+// Note that the connect token will not be flagged as complete until all messages have been sent from the
+// store. If broker does not respond to messages then resume may not complete.
+// This option was put in place because resuming after downtime can saturate low capacity links.
+func (o *ClientOptions) SetMaxResumePubInFlight(MaxResumePubInFlight int) *ClientOptions {
+	o.MaxResumePubInFlight = MaxResumePubInFlight
 	return o
 }

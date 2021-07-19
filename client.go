@@ -19,6 +19,7 @@ package mqtt
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"net"
@@ -26,6 +27,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"golang.org/x/sync/semaphore"
 
 	"github.com/eclipse/paho.mqtt.golang/packets"
 )
@@ -919,9 +922,41 @@ func (c *client) reserveStoredPublishIDs() {
 // Load all stored messages and resend them
 // Call this to ensure QOS > 1,2 even after an application crash
 // Note: This function will exit if c.stop is closed (this allows the shutdown to proceed avoiding a potential deadlock)
-//
+// other than that it does not return until all messages in the store have been sent (connect() does not complete its
+// token before this completes)
 func (c *client) resume(subscription bool, ibound chan packets.ControlPacket) {
 	DEBUG.Println(STR, "enter Resume")
+
+	// Prior to sending a message getSemaphore will be called and once sent releaseSemaphore will be called
+	// with the token (so semaphore can be released when ACK received if applicable).
+	// Using a weighted semaphore rather than channels because this retains ordering
+	getSemaphore := func() {}                    // Default = do nothing
+	releaseSemaphore := func(_ *PublishToken) {} // Default = do nothing
+	var sem *semaphore.Weighted
+	if c.options.MaxResumePubInFlight > 0 {
+		sem = semaphore.NewWeighted(int64(c.options.MaxResumePubInFlight))
+		ctx, cancel := context.WithCancel(context.Background()) // Context needed for semaphore
+		defer cancel()                                          // ensure context gets cancelled
+
+		go func() {
+			select {
+			case <-c.stop: // Request to stop (due to comm error etc)
+				cancel()
+			case <-ctx.Done(): // resume completed normally
+			}
+		}()
+
+		getSemaphore = func() { sem.Acquire(ctx, 1) }
+		releaseSemaphore = func(token *PublishToken) { // Note: If token never completes then resume() may stall (will still exit on ctx.Done())
+			go func() {
+				select {
+				case <-token.Done():
+				case <-ctx.Done():
+				}
+				sem.Release(1)
+			}()
+		}
+	}
 
 	storedKeys := c.persist.All()
 	for _, key := range storedKeys {
@@ -986,12 +1021,14 @@ func (c *client) resume(subscription bool, ibound chan packets.ControlPacket) {
 				c.claimID(token, details.MessageID)
 				DEBUG.Println(STR, fmt.Sprintf("loaded pending publish (%d)", details.MessageID))
 				DEBUG.Println(STR, details)
+				getSemaphore()
 				select {
 				case c.obound <- &PacketAndToken{p: p, t: token}:
 				case <-c.stop:
 					DEBUG.Println(STR, "resume exiting due to stop")
 					return
 				}
+				releaseSemaphore(token) // If limiting simultaneous messages then we need to know when message is acknowledged
 			default:
 				ERROR.Println(STR, "invalid message type in store (discarded)")
 				c.persist.Del(key)
