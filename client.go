@@ -439,6 +439,9 @@ func (c *client) attemptConnection() (net.Conn, byte, bool, error) {
 // Disconnect will end the connection with the server, but not before waiting
 // the specified number of milliseconds to wait for existing work to be
 // completed.
+// WARNING: `Disconnect` may return before all activities (goroutines) have completed. This means that
+// reusing the `client` may lead to panics. If you want to reconnect when the connection drops then use
+// `SetAutoReconnect` and/or `SetConnectRetry`options instead of implementing this yourself.
 func (c *client) Disconnect(quiesce uint) {
 	status := atomic.LoadUint32(&c.status)
 	if status == connected {
