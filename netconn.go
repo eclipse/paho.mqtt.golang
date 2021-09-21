@@ -62,7 +62,17 @@ func openConnection(uri *url.URL, tlsc *tls.Config, timeout time.Duration, heade
 		}
 		return conn, nil
 	case "unix":
-		conn, err := net.DialTimeout("unix", uri.Host, timeout)
+		var conn net.Conn
+		var err error
+
+		// this check is preserved for compatibility with older versions
+		// which used uri.Host only (it works for local paths, e.g. unix://socket.sock in current dir)
+		if len(uri.Host) > 0 {
+			conn, err = net.DialTimeout("unix", uri.Host, timeout)
+		} else {
+			conn, err = net.DialTimeout("unix", uri.Path, timeout)
+		}
+
 		if err != nil {
 			return nil, err
 		}
