@@ -49,7 +49,7 @@ type Store interface {
 // where X is 'i' or 'o'
 func mIDFromKey(key string) uint16 {
 	s := key[2:]
-	i, err := strconv.Atoi(s)
+	i, err := strconv.ParseUint(s, 10, 16)
 	chkerr(err)
 	return uint16(i)
 }
