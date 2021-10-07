@@ -111,36 +111,51 @@ identifier; this is as per the [spec](https://docs.oasis-open.org/mqtt/mqtt/v3.1
   `ClientOptions.SetOrderMatters(false)` set). If you wish to perform a long-running task, or publish a message, then 
   please use a go routine (blocking in the handler is a common cause of unexpected `pingresp 
 not received, disconnecting` errors). 
-* When QOS1+ subscriptions have been created previously and you connect with `CleanSession` set to false it is possible that the broker will deliver retained 
-messages before `Subscribe` can be called. To process these messages either configure a handler with `AddRoute` or
-set a `DefaultPublishHandler`.
+* When QOS1+ subscriptions have been created previously and you connect with `CleanSession` set to false it is possible 
+that the broker will deliver retained messages before `Subscribe` can be called. To process these messages either 
+configure a handler with `AddRoute` or set a `DefaultPublishHandler`.
 * Loss of network connectivity may not be detected immediately. If this is an issue then consider setting 
-`ClientOptions.KeepAlive` (sends regular messages to check the link is active). 
-* Brokers offer many configuration options; some settings may lead to unexpected results. If using Mosquitto check
-`max_inflight_messages`, `max_queued_messages`, `persistence` (the defaults may not be what you expect).
+`ClientOptions.KeepAlive` (sends regular messages to check the link is active).
+* Reusing a `Client` is not completely safe. After calling `Disconnect` please create a new Client (`NewClient()`) rather 
+than attempting to reuse the existing one (note that features such as `SetAutoReconnect` mean this is rarely necessary).
+* Brokers offer many configuration options; some settings may lead to unexpected results.
+
+If using Mosquitto then there are a range of fairly common issues:
+* `listener` - By default [Mosquitto v2+](https://mosquitto.org/documentation/migrating-to-2-0/) listens on loopback 
+interfaces only (meaning it will only accept connections made from the computer its running on).
+* `max_inflight_messages` - Unless this is set to 1 mosquitto does not guarantee ordered delivery of messages. 
+* `max_queued_messages` / `max_queued_bytes` - These impose limits on the number/size of queued messages. The defaults
+may lead to messages being silently dropped.
+* `persistence` - Defaults to false (messages will not survive a broker restart)
+* `max_keepalive` - defaults to 65535 and, from version 2.0.12 `SetKeepAlive(0)` will result in a rejected connection 
+by default.
 
 Reporting bugs
 --------------
 
 Please report bugs by raising issues for this project in github https://github.com/eclipse/paho.mqtt.golang/issues
 
-*A limited number of contributors monitor the issues section so if you have a general question please consider the 
-resources in the [more information](#more-information) section (your question will be seen by more people, and you are 
-likely to receive an answer more quickly).*
+A limited number of contributors monitor the issues section so if you have a general question please see the 
+resources in the [more information](#more-information) section for help.
 
 We welcome bug reports, but it is important they are actionable. A significant percentage of issues reported are not 
 resolved due to a lack of information. If we cannot replicate the problem then it is unlikely we will be able to fix it. 
-The information required will vary from issue to issue but consider including:  
+The information required will vary from issue to issue but almost all bug reports would be expected to include: 
 
-* Which version of the package you are using (tag or commit - this should be in your go.mod file)
-* A [Minimal, Reproducible Example](https://stackoverflow.com/help/minimal-reproducible-example). Providing an example 
-is the best way to demonstrate the issue you are facing; it is important this includes all relevant information
-(including broker configuration). Docker (see `cmd/docker`) makes it relatively simple to provide a working end-to-end 
-example.
+* Which version of the package you are using (tag or commit - this should be in your `go.mod` file)
 * A full, clear, description of the problem (detail what you are expecting vs what actually happens).
+* Configuration information (code showing how you connect, please include all references to `ClientOption`)
+* Broker details (name and version).
+
+If at all possible please also include:
 * Details of your attempts to resolve the issue (what have you tried, what worked, what did not).
-* [Application Logs](#logging) covering the period the issue occurred. Unless you have isolated the root cause of the issue please include a link to a full log (including data from well before the problem arose).
-* Broker Logs covering the period the issue occurred.
+* A [Minimal, Reproducible Example](https://stackoverflow.com/help/minimal-reproducible-example). Providing an example
+is the best way to demonstrate the issue you are facing; it is important this includes all relevant information
+(including broker configuration). Docker (see `cmd/docker`) makes it relatively simple to provide a working end-to-end
+example.
+* Broker logs covering the period the issue occurred.
+* [Application Logs](#logging) covering the period the issue occurred. Unless you have isolated the root cause of the 
+issue please include a link to a full log (including data from well before the problem arose).
 
 It is important to remember that this library does not stand alone; it communicates with a broker and any issues you are 
 seeing may be due to:
@@ -158,8 +173,9 @@ Contributing
 ------------
 
 We welcome pull requests but before your contribution can be accepted by the project, you need to create and 
-electronically sign the Eclipse Contributor Agreement (ECA) and sign off on the Eclipse Foundation Certificate of Origin. 
-
+electronically sign the Eclipse Contributor Agreement (ECA) and sign off on the Eclipse Foundation Certificate of Origin.
+(your question will be seen by more people, and you are
+likely to receive an answer more quickly).*
 More information is available in the 
 [Eclipse Development Resources](http://wiki.eclipse.org/Development_Resources/Contributing_via_Git); please take special 
 note of the requirement that the commit record contain a "Signed-off-by" entry.
@@ -167,11 +183,12 @@ note of the requirement that the commit record contain a "Signed-off-by" entry.
 More information
 ----------------
 
+[Stack Overflow](https://stackoverflow.com/questions/tagged/mqtt+go) has a range questions/answers covering a range of 
+common issues (both relating to use of this library and MQTT in general). This is the best place to ask general questions 
+(including those relating to the use of this library).
+
 Discussion of the Paho clients takes place on the [Eclipse paho-dev mailing list](https://dev.eclipse.org/mailman/listinfo/paho-dev).
 
 General questions about the MQTT protocol are discussed in the [MQTT Google Group](https://groups.google.com/forum/?hl=en-US&fromgroups#!forum/mqtt).
 
 There is much more information available via the [MQTT community site](http://mqtt.org).
-
-[Stack Overflow](https://stackoverflow.com/questions/tagged/mqtt+go) has a range questions covering a range of common 
-issues (both relating to use of this library and MQTT in general).
