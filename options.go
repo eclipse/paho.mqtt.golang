@@ -58,6 +58,9 @@ type ConnectionAttemptHandler func(broker *url.URL, tlsCfg *tls.Config) *tls.Con
 
 // ClientOptions contains configurable options for an Client. Note that these should be set using the
 // relevant methods (e.g. AddBroker) rather than directly. See those functions for information on usage.
+// WARNING: Create the below using NewClientOptions unless you have a compelling reason not to. It is easy
+// to create a configuration with difficult to trace issues (e.g. Mosquitto 2.0.12+ will reject connections
+// with KeepAlive=0 by default).
 type ClientOptions struct {
 	Servers                 []*url.URL
 	ClientID                string
@@ -74,7 +77,7 @@ type ClientOptions struct {
 	ProtocolVersion         uint
 	protocolVersionExplicit bool
 	TLSConfig               *tls.Config
-	KeepAlive               int64
+	KeepAlive               int64 // Warning: Some brokers may reject connections with Keepalive = 0.
 	PingTimeout             time.Duration
 	ConnectTimeout          time.Duration
 	MaxReconnectInterval    time.Duration
