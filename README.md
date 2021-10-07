@@ -127,7 +127,7 @@ interfaces only (meaning it will only accept connections made from the computer 
 * `max_queued_messages` / `max_queued_bytes` - These impose limits on the number/size of queued messages. The defaults
 may lead to messages being silently dropped.
 * `persistence` - Defaults to false (messages will not survive a broker restart)
-* `max_keepalive` - defaults to 65535 and, from version 2.0.12 `SetKeepAlive(0)` will result in a rejected connection 
+* `max_keepalive` - defaults to 65535 and, from version 2.0.12, `SetKeepAlive(0)` will result in a rejected connection 
 by default.
 
 Reporting bugs
@@ -174,8 +174,7 @@ Contributing
 
 We welcome pull requests but before your contribution can be accepted by the project, you need to create and 
 electronically sign the Eclipse Contributor Agreement (ECA) and sign off on the Eclipse Foundation Certificate of Origin.
-(your question will be seen by more people, and you are
-likely to receive an answer more quickly).*
+
 More information is available in the 
 [Eclipse Development Resources](http://wiki.eclipse.org/Development_Resources/Contributing_via_Git); please take special 
 note of the requirement that the commit record contain a "Signed-off-by" entry.
