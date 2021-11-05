@@ -42,6 +42,7 @@ const (
 	midMax uint16 = 65535
 )
 
+// cleanup clears the message ID map; it sets an error and completes PUB, SUB and UNSUB tokens.
 func (mids *messageIds) cleanUp() {
 	mids.Lock()
 	for _, token := range mids.index {
@@ -52,6 +53,11 @@ func (mids *messageIds) cleanUp() {
 			token.setError(fmt.Errorf("connection lost before Subscribe completed"))
 		case *UnsubscribeToken:
 			token.setError(fmt.Errorf("connection lost before Unsubscribe completed"))
+		case *DisconnectToken:
+			token.setError(fmt.Errorf("connection lost before Disconnect completed"))
+		case *ConnectToken:
+			// Connect token will be closed in the connect function
+			continue
 		case nil:
 			continue
 		}
@@ -60,6 +66,27 @@ func (mids *messageIds) cleanUp() {
 	mids.index = make(map[uint16]tokenCompletor)
 	mids.Unlock()
 	DEBUG.Println(MID, "cleaned up")
+}
+
+// cleanUpSubscribe removes all SUBSCRIBE and UNSUBSCRIBE tokens (setting error)
+// This may be called when the connection is lost and we will not be resending SUB/UNSUB packets
+func (mids *messageIds) cleanUpSubscribe() {
+	mids.Lock()
+	for mid, token := range mids.index {
+		switch token.(type) {
+		case *SubscribeToken:
+			token.setError(fmt.Errorf("connection lost before Subscribe completed"))
+			delete(mids.index, mid)
+		case *UnsubscribeToken:
+			token.setError(fmt.Errorf("connection lost before Unsubscribe completed"))
+			delete(mids.index, mid)
+		case nil:
+			continue
+		}
+		token.flowComplete()
+	}
+	mids.Unlock()
+	DEBUG.Println(MID, "cleaned up subs")
 }
 
 func (mids *messageIds) freeID(id uint16) {
