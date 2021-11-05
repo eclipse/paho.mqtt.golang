@@ -514,7 +514,9 @@ func (c *client) internalConnLost(err error) {
 			reconnect := c.options.AutoReconnect && c.connectionStatus() > connecting
 
 			if c.options.CleanSession && !reconnect {
-				c.messageIds.cleanUp()
+				c.messageIds.cleanUp() // completes PUB/SUB/UNSUB tokens
+			} else if !c.options.ResumeSubs {
+				c.messageIds.cleanUpSubscribe() // completes SUB/UNSUB tokens
 			}
 			if reconnect {
 				c.setConnected(reconnecting)
@@ -811,7 +813,9 @@ func (c *client) Subscribe(topic string, qos byte, callback MessageHandler) Toke
 	}
 	DEBUG.Println(CLI, sub.String())
 
-	persistOutbound(c.persist, sub)
+	if c.options.ResumeSubs { // Only persist if we need this to resume subs after a disconnection
+		persistOutbound(c.persist, sub)
+	}
 	switch c.connectionStatus() {
 	case connecting:
 		DEBUG.Println(CLI, "storing subscribe message (connecting), topic:", topic)
@@ -883,7 +887,9 @@ func (c *client) SubscribeMultiple(filters map[string]byte, callback MessageHand
 		sub.MessageID = mID
 		token.messageID = mID
 	}
-	persistOutbound(c.persist, sub)
+	if c.options.ResumeSubs { // Only persist if we need this to resume subs after a disconnection
+		persistOutbound(c.persist, sub)
+	}
 	switch c.connectionStatus() {
 	case connecting:
 		DEBUG.Println(CLI, "storing subscribe message (connecting), topics:", sub.Topics)
@@ -1096,7 +1102,9 @@ func (c *client) Unsubscribe(topics ...string) Token {
 		token.messageID = mID
 	}
 
-	persistOutbound(c.persist, unsub)
+	if c.options.ResumeSubs { // Only persist if we need this to resume subs after a disconnection
+		persistOutbound(c.persist, unsub)
+	}
 
 	switch c.connectionStatus() {
 	case connecting:
