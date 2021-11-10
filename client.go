@@ -282,7 +282,7 @@ func (c *client) Connect() Token {
 		conn, rc, t.sessionPresent, err = c.attemptConnection()
 		if err != nil {
 			if c.options.ConnectRetry {
-				DEBUG.Println(CLI, "Connect failed, sleeping for", int(c.options.ConnectRetryInterval.Seconds()), "seconds and will then retry")
+				DEBUG.Println(CLI, "Connect failed, sleeping for", int(c.options.ConnectRetryInterval.Seconds()), "seconds and will then retry, error:", err.Error())
 				time.Sleep(c.options.ConnectRetryInterval)
 
 				if atomic.LoadUint32(&c.status) == connecting {
