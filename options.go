@@ -96,6 +96,7 @@ type ClientOptions struct {
 	HTTPHeaders             http.Header
 	WebsocketOptions        *WebsocketOptions
 	MaxResumePubInFlight    int // // 0 = no limit; otherwise this is the maximum simultaneous messages sent while resuming
+	TcpOptions              *TcpOptions
 }
 
 // NewClientOptions will create a new ClientClientOptions type with some
@@ -137,6 +138,7 @@ func NewClientOptions() *ClientOptions {
 		ResumeSubs:              false,
 		HTTPHeaders:             make(map[string][]string),
 		WebsocketOptions:        &WebsocketOptions{},
+		TcpOptions:              &TcpOptions{},
 	}
 	return o
 }
@@ -417,5 +419,11 @@ func (o *ClientOptions) SetWebsocketOptions(w *WebsocketOptions) *ClientOptions 
 // This option was put in place because resuming after downtime can saturate low capacity links.
 func (o *ClientOptions) SetMaxResumePubInFlight(MaxResumePubInFlight int) *ClientOptions {
 	o.MaxResumePubInFlight = MaxResumePubInFlight
+	return o
+}
+
+// SetTcpOptions sets the additional tcp options used in a tcp connection
+func (o *ClientOptions) SetTcpOptions(w *TcpOptions) *ClientOptions {
+	o.TcpOptions = w
 	return o
 }
