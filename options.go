@@ -23,6 +23,7 @@ package mqtt
 
 import (
 	"crypto/tls"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -96,6 +97,7 @@ type ClientOptions struct {
 	HTTPHeaders             http.Header
 	WebsocketOptions        *WebsocketOptions
 	MaxResumePubInFlight    int // // 0 = no limit; otherwise this is the maximum simultaneous messages sent while resuming
+	Dialer                  *net.Dialer
 }
 
 // NewClientOptions will create a new ClientClientOptions type with some
@@ -137,6 +139,7 @@ func NewClientOptions() *ClientOptions {
 		ResumeSubs:              false,
 		HTTPHeaders:             make(map[string][]string),
 		WebsocketOptions:        &WebsocketOptions{},
+		Dialer:                  &net.Dialer{Timeout: 30 * time.Second},
 	}
 	return o
 }
@@ -355,6 +358,7 @@ func (o *ClientOptions) SetWriteTimeout(t time.Duration) *ClientOptions {
 // Default 30 seconds. Currently only operational on TCP/TLS connections.
 func (o *ClientOptions) SetConnectTimeout(t time.Duration) *ClientOptions {
 	o.ConnectTimeout = t
+	o.Dialer.Timeout = t
 	return o
 }
 
@@ -417,5 +421,11 @@ func (o *ClientOptions) SetWebsocketOptions(w *WebsocketOptions) *ClientOptions 
 // This option was put in place because resuming after downtime can saturate low capacity links.
 func (o *ClientOptions) SetMaxResumePubInFlight(MaxResumePubInFlight int) *ClientOptions {
 	o.MaxResumePubInFlight = MaxResumePubInFlight
+	return o
+}
+
+// SetDialer sets the tcp dialer options used in a tcp connection
+func (o *ClientOptions) SetDialer(dialer *net.Dialer) *ClientOptions {
+	o.Dialer = dialer
 	return o
 }
