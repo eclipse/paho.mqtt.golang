@@ -119,6 +119,9 @@ configure a handler with `AddRoute` or set a `DefaultPublishHandler`.
 * Reusing a `Client` is not completely safe. After calling `Disconnect` please create a new Client (`NewClient()`) rather 
 than attempting to reuse the existing one (note that features such as `SetAutoReconnect` mean this is rarely necessary).
 * Brokers offer many configuration options; some settings may lead to unexpected results.
+* Publish tokens will complete if the connection is lost and re-established using the default
+options.SetAutoReconnect(true) functionality (token.Error() will return nil). Attempts will be made to re-deliver the
+message but there is currently no easy way know when such messages are delivered.
 
 If using Mosquitto then there are a range of fairly common issues:
 * `listener` - By default [Mosquitto v2+](https://mosquitto.org/documentation/migrating-to-2-0/) listens on loopback 
