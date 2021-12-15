@@ -118,6 +118,9 @@ type Client interface {
 	// OptionsReader returns a ClientOptionsReader which is a copy of the clientoptions
 	// in use by the client.
 	OptionsReader() ClientOptionsReader
+	// SimulateConnectionLoss helps in tesing callbacks that are registered when clients are
+	// created with AutoReconnect enabled.
+	SimulateConnectionLoss(err error)
 }
 
 // client implements the Client interface
@@ -1177,4 +1180,12 @@ func (c *client) persistInbound(m packets.ControlPacket) {
 // pingRespReceived will be called by the network routines when a ping response is received
 func (c *client) pingRespReceived() {
 	atomic.StoreInt32(&c.pingOutstanding, 0)
+}
+
+// SimulateConnectionLoss trigger connection loss if AutoReconnect is enabled. This interface is to
+// help in testing callbacks that are registered.
+func (c *client) SimulateConnectionLoss(err error) {
+	if c.options.AutoReconnect {
+		c.internalConnLost(err)
+	}
 }

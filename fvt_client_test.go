@@ -1122,7 +1122,7 @@ func Test_autoreconnect(t *testing.T) {
 	time.Sleep(5 * time.Second)
 
 	fmt.Println("Breaking connection")
-	c.(*client).internalConnLost(fmt.Errorf("autoreconnect test"))
+	c.SimulateConnectionLoss(fmt.Errorf("autoreconnect test"))
 
 	time.Sleep(5 * time.Second)
 	if !c.IsConnected() {
