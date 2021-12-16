@@ -102,5 +102,11 @@ func openConnection(uri *url.URL, tlsc *tls.Config, timeout time.Duration, heade
 
 		return tlsConn, nil
 	}
+	
+	dialer := GetCustomDialer(uri.Scheme)
+	if dialer != nil {
+		return dialer(uri, tlsc, timeout, headers)
+	}	
+	
 	return nil, errors.New("unknown protocol")
 }
