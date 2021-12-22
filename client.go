@@ -393,7 +393,11 @@ func (c *client) attemptConnection() (net.Conn, byte, bool, error) {
 			tlsCfg = c.options.OnConnectAttempt(broker, c.options.TLSConfig)
 		}
 		// Start by opening the network connection (tcp, tls, ws) etc
-		conn, err = openConnection(broker, tlsCfg, c.options.ConnectTimeout, c.options.HTTPHeaders, c.options.WebsocketOptions, c.options.Dialer)
+		if c.options.CustomOpenConnectionFn != nil{
+			conn, err = c.options.CustomOpenConnectionFn(broker, c.options)
+		} else {
+			conn, err = openConnection(broker, tlsCfg, c.options.ConnectTimeout, c.options.HTTPHeaders, c.options.WebsocketOptions, c.options.Dialer)
+		}
 		if err != nil {
 			ERROR.Println(CLI, err.Error())
 			WARN.Println(CLI, "failed to connect to broker, trying next")
