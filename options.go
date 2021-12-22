@@ -441,6 +441,8 @@ func (o *ClientOptions) SetDialer(dialer *net.Dialer) *ClientOptions {
 // The passed in function should return an open `net.Conn` or an error (see the existing openConnection function for an example)
 // It enables custom networking types in addition to the defaults (tcp, tls, websockets...)
 func (o *ClientOptions) SetCustomOpenConectionFn(customOpenConnectionfn OpenConnectionFunc) *ClientOptions {
-	o.CustomOpenConnectionFn = customOpenConnectionfn
+	if customOpenConnectionfn != nil {
+		o.CustomOpenConnectionFn = customOpenConnectionfn
+	}
 	return o
 }
