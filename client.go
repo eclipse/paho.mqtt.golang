@@ -392,6 +392,7 @@ func (c *client) attemptConnection() (net.Conn, byte, bool, error) {
 			DEBUG.Println(CLI, "using custom onConnectAttempt handler...")
 			tlsCfg = c.options.OnConnectAttempt(broker, c.options.TLSConfig)
 		}
+		
 		// Start by opening the network connection (tcp, tls, ws) etc
 		conn, err = c.Options.OpenConnFn(broker, tlsCfg, c.options.ConnectTimeout, c.options.HTTPHeaders, c.options.WebsocketOptions, c.options.Dialer)
 		if err != nil {
