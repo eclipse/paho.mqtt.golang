@@ -57,11 +57,9 @@ type ReconnectHandler func(Client, *ClientOptions)
 // ConnectionAttemptHandler is invoked prior to making the initial connection.
 type ConnectionAttemptHandler func(broker *url.URL, tlsCfg *tls.Config) *tls.Config
 
-
 // OpenConnectionFunc is invoked to establish the underlying network connection.
 // Does not carry out any MQTT specific handshakes.
 type OpenConnectionFunc func(uri *url.URL, tlsc *tls.Config, timeout time.Duration, headers http.Header, websocketOptions *WebsocketOptions, dialer *net.Dialer) (net.Conn, error)
-
 
 // ClientOptions contains configurable options for an Client. Note that these should be set using the
 // relevant methods (e.g. AddBroker) rather than directly. See those functions for information on usage.
