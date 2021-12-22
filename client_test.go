@@ -27,14 +27,14 @@ import (
 	"time"
 )
 
-func TestCustomConnection(t *testing.T) {
+func TestCustomConnectionFunction(t *testing.T) {
 	// Set netpipe to emu
 	netClient, netServer := net.Pipe()
 	defer netClient.Close()
 	defer netServer.Close()
-	// Receive broker messages on background
 	var firstMessage = ""
 	go func() {
+		// read first message only
 		bytes := make([]byte, 1024)
 		n, err := netServer.Read(bytes)
 		if err != nil {
@@ -53,12 +53,12 @@ func TestCustomConnection(t *testing.T) {
 	options.AddBroker(brokerAddr)
 	client := NewClient(options)
 
-	// Try to connect using custom function, wait for 2 seconds
+	// Try to connect using custom function, wait for 2 seconds, to pass MQTT first message
 	if token := client.Connect(); token.WaitTimeout(2*time.Second) && token.Error() != nil {
 		t.Errorf("%v", token.Error())
 	}
 
-	// Analyze first message
+	// Analyze first message sent by client and received by the server
 	if len(firstMessage) <= 0 || !strings.Contains(firstMessage, "MQTT") {
 		t.Error("no message recieved on connect")
 	}
