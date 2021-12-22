@@ -57,6 +57,11 @@ type ReconnectHandler func(Client, *ClientOptions)
 // ConnectionAttemptHandler is invoked prior to making the initial connection.
 type ConnectionAttemptHandler func(broker *url.URL, tlsCfg *tls.Config) *tls.Config
 
+// OpenConnectionFunc is invoked to establish the underlying network connection
+// Its purpose if for custom network transports.
+// Does not carry out any MQTT specific handshakes.
+type OpenConnectionFunc func(uri *url.URL, options ClientOptions) (net.Conn, error)
+
 // ClientOptions contains configurable options for an Client. Note that these should be set using the
 // relevant methods (e.g. AddBroker) rather than directly. See those functions for information on usage.
 // WARNING: Create the below using NewClientOptions unless you have a compelling reason not to. It is easy
@@ -98,6 +103,7 @@ type ClientOptions struct {
 	WebsocketOptions        *WebsocketOptions
 	MaxResumePubInFlight    int // // 0 = no limit; otherwise this is the maximum simultaneous messages sent while resuming
 	Dialer                  *net.Dialer
+	CustomOpenConnectionFn  OpenConnectionFunc
 }
 
 // NewClientOptions will create a new ClientClientOptions type with some
@@ -140,6 +146,7 @@ func NewClientOptions() *ClientOptions {
 		HTTPHeaders:             make(map[string][]string),
 		WebsocketOptions:        &WebsocketOptions{},
 		Dialer:                  &net.Dialer{Timeout: 30 * time.Second},
+		CustomOpenConnectionFn:  nil,
 	}
 	return o
 }
@@ -427,5 +434,13 @@ func (o *ClientOptions) SetMaxResumePubInFlight(MaxResumePubInFlight int) *Clien
 // SetDialer sets the tcp dialer options used in a tcp connection
 func (o *ClientOptions) SetDialer(dialer *net.Dialer) *ClientOptions {
 	o.Dialer = dialer
+	return o
+}
+
+// SetCustomOpenConectionFn replaces the inbuilt function that establishes a network connection with a custom function.
+// The passed in function should return an open `net.Conn` or an error (see the existing openConnection function for an example)
+// It enables custom networking types in addition to the defaults (tcp, tls, websockets...)
+func (o *ClientOptions) SetCustomOpenConectionFn(customOpenConnectionfn OpenConnectionFunc) *ClientOptions {
+	o.CustomOpenConnectionFn = customOpenConnectionfn
 	return o
 }
