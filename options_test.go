@@ -32,7 +32,7 @@ func TestSetCustomConnectionOptions(t *testing.T) {
 		return nil, fmt.Errorf("not implemented open connection func")
 	}
 	options := &ClientOptions{}
-	options = options.SetCustomOpenConectionFn(customConnectionFunc)
+	options = options.SetCustomOpenConnectionFn(customConnectionFunc)
 	if options.CustomOpenConnectionFn == nil {
 		t.Error("custom open connection function cannot be set")
 	}

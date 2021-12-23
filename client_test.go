@@ -27,7 +27,7 @@ import (
 )
 
 func TestCustomConnectionFunction(t *testing.T) {
-	// Set netpipe to emu
+	// Set netpipe to emulate a connection of a different type
 	netClient, netServer := net.Pipe()
 	defer netClient.Close()
 	defer netServer.Close()
@@ -59,6 +59,6 @@ func TestCustomConnectionFunction(t *testing.T) {
 
 	// Analyze first message sent by client and received by the server
 	if len(firstMessage) <= 0 || !strings.Contains(firstMessage, "MQTT") {
-		t.Error("no message recieved on connect")
+		t.Error("no message received on connect")
 	}
 }

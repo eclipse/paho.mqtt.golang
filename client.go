@@ -393,7 +393,7 @@ func (c *client) attemptConnection() (net.Conn, byte, bool, error) {
 			tlsCfg = c.options.OnConnectAttempt(broker, c.options.TLSConfig)
 		}
 		// Start by opening the network connection (tcp, tls, ws) etc
-		if c.options.CustomOpenConnectionFn != nil{
+		if c.options.CustomOpenConnectionFn != nil {
 			conn, err = c.options.CustomOpenConnectionFn(broker, c.options)
 		} else {
 			conn, err = openConnection(broker, tlsCfg, c.options.ConnectTimeout, c.options.HTTPHeaders, c.options.WebsocketOptions, c.options.Dialer)
