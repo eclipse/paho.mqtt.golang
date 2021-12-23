@@ -27,7 +27,7 @@ import (
 )
 
 func TestCustomConnectionFunction(t *testing.T) {
-	// Set netpipe to emu
+	// Set netpipe to emulate a connection of a different type
 	netClient, netServer := net.Pipe()
 	defer netClient.Close()
 	defer netServer.Close()
