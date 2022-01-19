@@ -41,7 +41,7 @@ SPDX-License-Identifier: EPL-2.0 or BSD-3-Clause
 
 The project maintains the following source code repositories:
 
- * https://github.com/eclipse/paho.mqtt.golang
+ * https://github.com/firedome/paho.mqtt.golang
 
 ## Third-party Content
 

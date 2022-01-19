@@ -28,7 +28,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/eclipse/paho.mqtt.golang/packets"
+	"github.com/firedome/paho.mqtt.golang/packets"
 )
 
 const closedNetConnErrorText = "use of closed network connection" // error string for closed conn (https://golang.org/src/net/error_test.go)
@@ -377,13 +377,13 @@ type commsFns interface {
 // Note: The comms routines monitoring oboundp and obound will not shutdown until those channels are both closed. Any messages received between the
 // connection being closed and those channels being closed will generate errors (and nothing will be sent). That way the chance of a deadlock is
 // minimised.
-func startComms(conn net.Conn, // Network connection (must be active)
-	c commsFns, // getters and setters to enable us to cleanly interact with client
+func startComms(conn net.Conn,                     // Network connection (must be active)
+	c commsFns,                                    // getters and setters to enable us to cleanly interact with client
 	inboundFromStore <-chan packets.ControlPacket, // Inbound packets from the persistence store (should be closed relatively soon after startup)
 	oboundp <-chan *PacketAndToken,
 	obound <-chan *PacketAndToken) (
 	<-chan *packets.PublishPacket, // Publishpackages received over the network
-	<-chan error, // Any errors (should generally trigger a disconnect)
+	<-chan error,                  // Any errors (should generally trigger a disconnect)
 ) {
 	// Start inbound comms handler; this needs to be able to transmit messages so we start a go routine to add these to the priority outbound channel
 	ibound := startIncomingComms(conn, c, inboundFromStore)

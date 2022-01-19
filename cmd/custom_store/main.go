@@ -25,8 +25,8 @@ import (
 	"fmt"
 	"time"
 
-	MQTT "github.com/eclipse/paho.mqtt.golang"
-	"github.com/eclipse/paho.mqtt.golang/packets"
+	MQTT "github.com/firedome/paho.mqtt.golang"
+	"github.com/firedome/paho.mqtt.golang/packets"
 )
 
 // This NoOpStore type implements the go-mqtt/Store interface, which
