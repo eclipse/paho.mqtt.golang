@@ -62,10 +62,11 @@ Go Sync
 * License: BSD 3-Clause style license and patent grant.
 * Project: https://cs.opensource.google/go/x/sync/
 
-Gorilla Websockets v1.4.2
+Nhooyr Websocket v1.8.7
 
-* License: BSD 2-Clause "Simplified" License
-* Project: https://github.com/gorilla/websocket
+* License: MIT
+* Project: https://github.com/nhooyr/websocket
+
 
 ## Cryptography
 

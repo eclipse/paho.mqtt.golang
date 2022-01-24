@@ -38,10 +38,10 @@ go get github.com/eclipse/paho.mqtt.golang
 ```
 
 The client depends on Google's [proxy](https://godoc.org/golang.org/x/net/proxy) package and the 
-[websockets](https://godoc.org/github.com/gorilla/websocket) package, also easily installed with the commands:
+[websockets](https://godoc.org/github.com/nhooyr/websocket) package, also easily installed with the commands:
 
 ```
-go get github.com/gorilla/websocket
+go get github.com/nhooyr/websocket
 go get golang.org/x/net/proxy
 ```
 
