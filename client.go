@@ -452,6 +452,8 @@ func (c *client) attemptConnection() (net.Conn, byte, bool, error) {
 // reusing the `client` may lead to panics. If you want to reconnect when the connection drops then use
 // `SetAutoReconnect` and/or `SetConnectRetry`options instead of implementing this yourself.
 func (c *client) Disconnect(quiesce uint) {
+	defer c.disconnect()
+
 	status := atomic.LoadUint32(&c.status)
 	if status == connected {
 		DEBUG.Println(CLI, "disconnecting")
@@ -480,7 +482,6 @@ func (c *client) Disconnect(quiesce uint) {
 		c.setConnected(disconnected)
 	}
 
-	c.disconnect()
 }
 
 // forceDisconnect will end the connection with the mqtt broker immediately (used for tests only)
