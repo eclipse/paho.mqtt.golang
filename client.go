@@ -455,9 +455,9 @@ func (c *client) Disconnect(quiesce uint) {
 	defer c.disconnect()
 
 	status := atomic.LoadUint32(&c.status)
+	c.setConnected(disconnected)
 	if status == connected {
 		DEBUG.Println(CLI, "disconnecting")
-		c.setConnected(disconnected)
 
 		dm := packets.NewControlPacket(packets.Disconnect).(*packets.DisconnectPacket)
 		dt := newToken(packets.Disconnect)
@@ -479,7 +479,6 @@ func (c *client) Disconnect(quiesce uint) {
 		}
 	} else {
 		WARN.Println(CLI, "Disconnect() called but not connected (disconnected/reconnecting)")
-		c.setConnected(disconnected)
 	}
 
 }
