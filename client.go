@@ -452,35 +452,30 @@ func (c *client) attemptConnection() (net.Conn, byte, bool, error) {
 // reusing the `client` may lead to panics. If you want to reconnect when the connection drops then use
 // `SetAutoReconnect` and/or `SetConnectRetry`options instead of implementing this yourself.
 func (c *client) Disconnect(quiesce uint) {
+	defer c.disconnect()
+
 	status := atomic.LoadUint32(&c.status)
-	if status == connected {
-		DEBUG.Println(CLI, "disconnecting")
-		c.setConnected(disconnected)
+	c.setConnected(disconnected)
 
-		dm := packets.NewControlPacket(packets.Disconnect).(*packets.DisconnectPacket)
-		dt := newToken(packets.Disconnect)
-		disconnectSent := false
-		select {
-		case c.oboundP <- &PacketAndToken{p: dm, t: dt}:
-			disconnectSent = true
-		case <-c.commsStopped:
-			WARN.Println("Disconnect packet could not be sent because comms stopped")
-		case <-time.After(time.Duration(quiesce) * time.Millisecond):
-			WARN.Println("Disconnect packet not sent due to timeout")
-		}
-
-		// wait for work to finish, or quiesce time consumed
-		if disconnectSent {
-			DEBUG.Println(CLI, "calling WaitTimeout")
-			dt.WaitTimeout(time.Duration(quiesce) * time.Millisecond)
-			DEBUG.Println(CLI, "WaitTimeout done")
-		}
-	} else {
+	if status != connected {
 		WARN.Println(CLI, "Disconnect() called but not connected (disconnected/reconnecting)")
-		c.setConnected(disconnected)
+		return
 	}
 
-	c.disconnect()
+	DEBUG.Println(CLI, "disconnecting")
+	dm := packets.NewControlPacket(packets.Disconnect).(*packets.DisconnectPacket)
+	dt := newToken(packets.Disconnect)
+	select {
+	case c.oboundP <- &PacketAndToken{p: dm, t: dt}:
+		// wait for work to finish, or quiesce time consumed
+		DEBUG.Println(CLI, "calling WaitTimeout")
+		dt.WaitTimeout(time.Duration(quiesce) * time.Millisecond)
+		DEBUG.Println(CLI, "WaitTimeout done")
+	case <-c.commsStopped:
+		WARN.Println("Disconnect packet could not be sent because comms stopped")
+	case <-time.After(time.Duration(quiesce) * time.Millisecond):
+		WARN.Println("Disconnect packet not sent due to timeout")
+	}
 }
 
 // forceDisconnect will end the connection with the mqtt broker immediately (used for tests only)
