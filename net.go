@@ -208,9 +208,11 @@ func startIncomingComms(conn io.Reader,
 
 				if t, ok := token.(*SubscribeToken); ok {
 					DEBUG.Println(NET, "startIncomingComms: granted qoss", m.ReturnCodes)
+					newSubResults := make(map[string]byte, len(m.ReturnCodes))
 					for i, qos := range m.ReturnCodes {
-						t.subResult[t.subs[i]] = qos
+						newSubResults[t.subs[i]] = qos
 					}
+					t.setSubResult(newSubResults)
 				}
 
 				token.flowComplete()

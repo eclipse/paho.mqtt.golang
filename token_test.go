@@ -18,9 +18,36 @@ package mqtt
 
 import (
 	"errors"
+	"sync"
 	"testing"
 	"time"
 )
+
+// Running this test with go test -race will expose a race
+// if Result() is modifiable in a thread unsafe way.
+// This test illustrates the case where a client receives a SubscribeToken
+// abuses it and modifies implementation details for this library
+func TestSubscribeToken_Result(t *testing.T) {
+	s := SubscribeToken{
+		baseToken: baseToken{complete: make(chan struct{})},
+		subs:      []string{"mysuv"},
+		subResult: map[string]byte{"sd": 0x1},
+		messageID: 0,
+	}
+	w := sync.WaitGroup{}
+	w.Add(2)
+	go func() {
+		s.Result()["sd"] = 0x2
+		w.Done()
+	}()
+	go func() {
+		s.Result()["sd"] = 0x3
+		w.Done()
+	}()
+	if s.Result()["sd"] != 0x1 && s.Result()["sd"] != 0x2 && s.Result()["sd"] != 0x3 {
+		t.Fatal("Unexpected")
+	}
+}
 
 func TestWaitTimeout(t *testing.T) {
 	b := baseToken{}
