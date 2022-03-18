@@ -471,8 +471,10 @@ func (c *client) Disconnect(quiesce uint) {
 		DEBUG.Println(CLI, "calling WaitTimeout")
 		dt.WaitTimeout(time.Duration(quiesce) * time.Millisecond)
 		DEBUG.Println(CLI, "WaitTimeout done")
-	case <-c.commsStopped:
-		WARN.Println("Disconnect packet could not be sent because comms stopped")
+	// Let's comment this chunk of code until we are able to safely read this variable
+	// without data races.
+	// case <-c.commsStopped:
+	//           WARN.Println("Disconnect packet could not be sent because comms stopped")
 	case <-time.After(time.Duration(quiesce) * time.Millisecond):
 		WARN.Println("Disconnect packet not sent due to timeout")
 	}
