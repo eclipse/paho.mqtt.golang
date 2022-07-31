@@ -31,7 +31,7 @@ import (
 type MId uint16
 
 type messageIds struct {
-	sync.RWMutex
+	mu    sync.RWMutex // Named to prevent Mu from being accessible directly via client
 	index map[uint16]tokenCompletor
 
 	lastIssuedID uint16 // The most recently issued ID. Used so we cycle through ids rather than immediately reusing them (can make debugging easier)
@@ -44,7 +44,7 @@ const (
 
 // cleanup clears the message ID map; completes all token types and sets error on PUB, SUB and UNSUB tokens.
 func (mids *messageIds) cleanUp() {
-	mids.Lock()
+	mids.mu.Lock()
 	for _, token := range mids.index {
 		switch token.(type) {
 		case *PublishToken:
@@ -59,14 +59,14 @@ func (mids *messageIds) cleanUp() {
 		token.flowComplete()
 	}
 	mids.index = make(map[uint16]tokenCompletor)
-	mids.Unlock()
+	mids.mu.Unlock()
 	DEBUG.Println(MID, "cleaned up")
 }
 
 // cleanUpSubscribe removes all SUBSCRIBE and UNSUBSCRIBE tokens (setting error)
 // This may be called when the connection is lost, and we will not be resending SUB/UNSUB packets
 func (mids *messageIds) cleanUpSubscribe() {
-	mids.Lock()
+	mids.mu.Lock()
 	for mid, token := range mids.index {
 		switch token.(type) {
 		case *SubscribeToken:
@@ -77,19 +77,19 @@ func (mids *messageIds) cleanUpSubscribe() {
 			delete(mids.index, mid)
 		}
 	}
-	mids.Unlock()
+	mids.mu.Unlock()
 	DEBUG.Println(MID, "cleaned up subs")
 }
 
 func (mids *messageIds) freeID(id uint16) {
-	mids.Lock()
+	mids.mu.Lock()
 	delete(mids.index, id)
-	mids.Unlock()
+	mids.mu.Unlock()
 }
 
 func (mids *messageIds) claimID(token tokenCompletor, id uint16) {
-	mids.Lock()
-	defer mids.Unlock()
+	mids.mu.Lock()
+	defer mids.mu.Unlock()
 	if _, ok := mids.index[id]; !ok {
 		mids.index[id] = token
 	} else {
@@ -105,8 +105,8 @@ func (mids *messageIds) claimID(token tokenCompletor, id uint16) {
 // getID will return an available id or 0 if none available
 // The id will generally be the previous id + 1 (because this makes tracing messages a bit simpler)
 func (mids *messageIds) getID(t tokenCompletor) uint16 {
-	mids.Lock()
-	defer mids.Unlock()
+	mids.mu.Lock()
+	defer mids.mu.Unlock()
 	i := mids.lastIssuedID // note: the only situation where lastIssuedID is 0 the map will be empty
 	looped := false        // uint16 will loop from 65535->0
 	for {
@@ -127,8 +127,8 @@ func (mids *messageIds) getID(t tokenCompletor) uint16 {
 }
 
 func (mids *messageIds) getToken(id uint16) tokenCompletor {
-	mids.RLock()
-	defer mids.RUnlock()
+	mids.mu.RLock()
+	defer mids.mu.RUnlock()
 	if token, ok := mids.index[id]; ok {
 		return token
 	}
