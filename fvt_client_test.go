@@ -1147,12 +1147,12 @@ func Test_cleanUpMids(t *testing.T) {
 	}
 
 	token := c.Publish("/test/cleanUP", 2, false, "cleanup test")
-	c.(*client).messageIds.Lock()
+	c.(*client).messageIds.mu.Lock()
 	fmt.Println("Breaking connection", len(c.(*client).messageIds.index))
 	if len(c.(*client).messageIds.index) == 0 {
 		t.Fatalf("Should be a token in the messageIDs, none found")
 	}
-	c.(*client).messageIds.Unlock()
+	c.(*client).messageIds.mu.Unlock()
 	c.(*client).internalConnLost(fmt.Errorf("cleanup test"))
 
 	time.Sleep(1 * time.Second)
@@ -1160,11 +1160,11 @@ func Test_cleanUpMids(t *testing.T) {
 		t.Fail()
 	}
 
-	c.(*client).messageIds.Lock()
+	c.(*client).messageIds.mu.Lock()
 	if len(c.(*client).messageIds.index) > 0 {
 		t.Fatalf("Should have cleaned up messageIDs, have %d left", len(c.(*client).messageIds.index))
 	}
-	c.(*client).messageIds.Unlock()
+	c.(*client).messageIds.mu.Unlock()
 
 	// This test used to check that token.Error() was not nil. However this is not something that can
 	// be done reliably - it is likely to work with a remote broker but less so with a local one.
@@ -1320,8 +1320,6 @@ func Test_ConnectRetryPublish(t *testing.T) {
 func Test_ResumeSubs(t *testing.T) {
 	topic := "/test/ResumeSubs"
 	var qos byte = 1
-	payload := "sample Payload"
-	choke := make(chan bool)
 
 	// subscribe to topic before establishing a connection, and publish a message after the publish client has connected successfully
 	subMemStore := NewMemoryStore()
@@ -1331,10 +1329,9 @@ func Test_ResumeSubs(t *testing.T) {
 
 	s := NewClient(sops)
 	sConnToken := s.Connect()
+	subToken := s.Subscribe(topic, qos, nil) // Message should be stored before this returns
 
-	subToken := s.Subscribe(topic, qos, nil)
-
-	// Verify the subscribe packet exists in the memorystore
+	// Verify subscribe packet exists in the memory store
 	ids := subMemStore.All()
 	if len(ids) == 0 {
 		t.Fatalf("Expected subscribe packet to be in store")
@@ -1342,6 +1339,7 @@ func Test_ResumeSubs(t *testing.T) {
 		t.Fatalf("Expected 1 packet to be in store")
 	}
 	packet := subMemStore.Get(ids[0])
+	fmt.Println("packet", packet)
 	if packet == nil {
 		t.Fatal("Failed to retrieve packet from store")
 	}
@@ -1373,11 +1371,9 @@ func Test_ResumeSubs(t *testing.T) {
 		SetStore(subMemStore2).SetResumeSubs(true).SetCleanSession(false).SetConnectRetry(true).
 		SetConnectRetryInterval(time.Second / 2)
 
+	msgChan := make(chan Message)
 	var f MessageHandler = func(client Client, msg Message) {
-		if msg.Topic() != topic || string(msg.Payload()) != payload {
-			t.Fatalf("Received unexpected message: %v, %v", msg.Topic(), msg.Payload())
-		}
-		choke <- true
+		msgChan <- msg
 	}
 	sops.SetDefaultPublishHandler(f)
 	s = NewClient(sops).(*client)
@@ -1393,11 +1389,33 @@ func Test_ResumeSubs(t *testing.T) {
 		t.Fatalf("Error on valid Publish.Connect(): %v", pConnToken.Error())
 	}
 
+	payload := "sample Payload"
 	if pubToken := p.Publish(topic, 1, false, payload); pubToken.Wait() && pubToken.Error() != nil {
 		t.Fatalf("Error on valid Client.Publish(): %v", pubToken.Error())
 	}
 
-	wait(choke)
+	timer := time.NewTicker(time.Second) // We wait a second to ensure message is only received once
+	var gotMsg bool
+resultLoop:
+	for {
+		select {
+		case msg := <-msgChan:
+			if msg.Topic() == topic && string(msg.Payload()) == payload {
+				if gotMsg {
+					t.Fatalf("Received message 1 twice")
+				}
+				gotMsg = true
+			} else {
+				t.Fatalf("Received unexpected message: %v, %v", msg.Topic(), msg.Payload())
+			}
+		case <-timer.C:
+			break resultLoop
+		}
+
+	}
+	if !gotMsg {
+		t.Error("did not receive message 1")
+	}
 
 	s.Disconnect(250)
 	p.Disconnect(250)
