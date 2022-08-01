@@ -45,9 +45,7 @@ func TestCustomConnectionFunction(t *testing.T) {
 	var customConnectionFunc OpenConnectionFunc = func(uri *url.URL, options ClientOptions) (net.Conn, error) {
 		return netClient, nil
 	}
-	options := &ClientOptions{
-		CustomOpenConnectionFn: customConnectionFunc,
-	}
+	options := NewClientOptions().SetCustomOpenConnectionFn(customConnectionFunc)
 	brokerAddr := netServer.LocalAddr().Network()
 	options.AddBroker(brokerAddr)
 	client := NewClient(options)

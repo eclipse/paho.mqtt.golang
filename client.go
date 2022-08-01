@@ -392,6 +392,7 @@ func (c *client) attemptConnection() (net.Conn, byte, bool, error) {
 			DEBUG.Println(CLI, "using custom onConnectAttempt handler...")
 			tlsCfg = c.options.OnConnectAttempt(broker, c.options.TLSConfig)
 		}
+		connDeadline := time.Now().Add(c.options.ConnectTimeout) // Time by which connection must be established
 		dialer := c.options.Dialer
 		if dialer == nil { //
 			WARN.Println(CLI, "dialer was nil, using default")
@@ -411,16 +412,23 @@ func (c *client) attemptConnection() (net.Conn, byte, bool, error) {
 		}
 		DEBUG.Println(CLI, "socket connected to broker")
 
+		// Now we perform the MQTT connection handshake ensuring that it does not exceed the timeout
+		if err := conn.SetDeadline(connDeadline); err != nil {
+			ERROR.Println(CLI, "set deadline for handshake ", err)
+		}
+
 		// Now we send the perform the MQTT connection handshake
 		rc, sessionPresent, err = connectMQTT(conn, cm, protocolVersion)
 		if rc == packets.Accepted {
+			if err := conn.SetDeadline(time.Time{}); err != nil {
+				ERROR.Println(CLI, "reset deadline following handshake ", err)
+			}
 			break // successfully connected
 		}
 
-		// We may be have to attempt the connection with MQTT 3.1
-		if conn != nil {
-			_ = conn.Close()
-		}
+		// We may have to attempt the connection with MQTT 3.1
+		_ = conn.Close()
+
 		if !c.options.protocolVersionExplicit && protocolVersion == 4 { // try falling back to 3.1?
 			DEBUG.Println(CLI, "Trying reconnect using MQTT 3.1 protocol")
 			protocolVersion = 3
