@@ -150,7 +150,7 @@ type incomingComms struct {
 
 // startIncomingComms initiates incoming communications; this includes starting a goroutine to process incoming
 // messages.
-// Accepts a channel of inbound messages from the store (persisted messages); note this must be closed as soon as the
+// Accepts a channel of inbound messages from the store (persisted messages); note this must be closed as soon as
 // everything in the store has been sent.
 // Returns a channel that will be passed any received packets; this will be closed on a network error (and inboundFromStore closed)
 func startIncomingComms(conn io.Reader,
@@ -332,7 +332,7 @@ func startOutgoingComms(conn net.Conn,
 					DEBUG.Println(NET, "outbound wrote disconnect, closing connection")
 					// As per the MQTT spec "After sending a DISCONNECT Packet the Client MUST close the Network Connection"
 					// Closing the connection will cause the goroutines to end in sequence (starting with incoming comms)
-					conn.Close()
+					_ = conn.Close()
 				}
 			case msg, ok := <-oboundFromIncoming: // message triggered by an inbound message (PubrecPacket or PubrelPacket)
 				if !ok {
@@ -370,9 +370,10 @@ type commsFns interface {
 // startComms initiates goroutines that handles communications over the network connection
 // Messages will be stored (via commsFns) and deleted from the store as necessary
 // It returns two channels:
-//  packets.PublishPacket - Will receive publish packets received over the network.
-//  Closed when incoming comms routines exit (on shutdown or if network link closed)
-//  error - Any errors will be sent on this channel. The channel is closed when all comms routines have shut down
+//
+//	packets.PublishPacket - Will receive publish packets received over the network.
+//	Closed when incoming comms routines exit (on shutdown or if network link closed)
+//	error - Any errors will be sent on this channel. The channel is closed when all comms routines have shut down
 //
 // Note: The comms routines monitoring oboundp and obound will not shutdown until those channels are both closed. Any messages received between the
 // connection being closed and those channels being closed will generate errors (and nothing will be sent). That way the chance of a deadlock is
