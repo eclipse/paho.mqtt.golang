@@ -19,7 +19,6 @@
 package mqtt
 
 import (
-	"fmt"
 	"testing"
 )
 
@@ -56,8 +55,9 @@ func Test_freeID(t *testing.T) {
 		t.Fatalf("i1 was wrong: %v", i1)
 	}
 
-	i2 := mids.getID(&DummyToken{})
-	fmt.Printf("i2: %v\n", i2)
+	// The below may be needed for a specific test but leaving it in permanently makes output confusing
+	// i2 := mids.getID(&DummyToken{})
+	// fmt.Printf("i2: %v\n", i2)
 }
 
 func Test_noFreeID(t *testing.T) {
