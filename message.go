@@ -36,8 +36,6 @@ type Message interface {
 	MessageID() uint16
 	Payload() []byte
 	Ack()
-	NoAutoAck() bool
-	AutoAckOff()
 }
 
 type message struct {
@@ -49,7 +47,6 @@ type message struct {
 	payload   []byte
 	once      sync.Once
 	ack       func()
-	noautoack bool
 }
 
 func (m *message) Duplicate() bool {
@@ -80,14 +77,6 @@ func (m *message) Ack() {
 	m.once.Do(m.ack)
 }
 
-func (m *message) NoAutoAck() bool {
-	return m.noautoack
-}
-
-func (m *message) AutoAckOff() {
-	m.noautoack = true
-}
-
 func messageFromPublish(p *packets.PublishPacket, ack func()) Message {
 	return &message{
 		duplicate: p.Dup,
@@ -97,7 +86,6 @@ func messageFromPublish(p *packets.PublishPacket, ack func()) Message {
 		messageID: p.MessageID,
 		payload:   p.Payload,
 		ack:       ack,
-		noautoack: false,
 	}
 }
 

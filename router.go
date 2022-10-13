@@ -186,9 +186,7 @@ func (r *router) matchAndDispatch(messages <-chan *packets.PublishPacket, order 
 						wg.Add(1)
 						go func() {
 							hd(client, m)
-							if !m.NoAutoAck() {
-								m.Ack()
-							}
+							m.Ack()
 							wg.Done()
 						}()
 					}
@@ -203,9 +201,7 @@ func (r *router) matchAndDispatch(messages <-chan *packets.PublishPacket, order 
 						wg.Add(1)
 						go func() {
 							r.defaultHandler(client, m)
-							if !m.NoAutoAck() {
-								m.Ack()
-							}
+							m.Ack()
 							wg.Done()
 						}()
 					}
@@ -216,9 +212,7 @@ func (r *router) matchAndDispatch(messages <-chan *packets.PublishPacket, order 
 			r.RUnlock()
 			for _, handler := range handlers {
 				handler(client, m)
-				if !m.NoAutoAck() {
-					m.Ack()
-				}
+				m.Ack()
 			}
 			// DEBUG.Println(ROU, "matchAndDispatch handled message")
 		}
