@@ -104,7 +104,7 @@ type ClientOptions struct {
 	MaxResumePubInFlight    int // // 0 = no limit; otherwise this is the maximum simultaneous messages sent while resuming
 	Dialer                  *net.Dialer
 	CustomOpenConnectionFn  OpenConnectionFunc
-	AutoAck                 bool
+	AutoAckDisabled         bool
 }
 
 // NewClientOptions will create a new ClientClientOptions type with some
@@ -148,7 +148,7 @@ func NewClientOptions() *ClientOptions {
 		WebsocketOptions:        &WebsocketOptions{},
 		Dialer:                  &net.Dialer{Timeout: 30 * time.Second},
 		CustomOpenConnectionFn:  nil,
-		AutoAck:                 true,
+		AutoAckDisabled:         false,
 	}
 	return o
 }
@@ -449,9 +449,9 @@ func (o *ClientOptions) SetCustomOpenConnectionFn(customOpenConnectionFn OpenCon
 	return o
 }
 
-// SetAutoAck enables or disables the Automated Acking of Messages received by the handler.
-//	By default it is set to true. Setting it to false will disable the auto-ack globally.
-func (o *ClientOptions) SetAutoAck(autoAck bool) *ClientOptions {
-	o.AutoAck = autoAck
+// SetAutoAckDisabled enables or disables the Automated Acking of Messages received by the handler.
+//	By default it is set to false. Setting it to true will disable the auto-ack globally.
+func (o *ClientOptions) SetAutoAckDisabled(autoAckDisabled bool) *ClientOptions {
+	o.AutoAckDisabled = autoAckDisabled
 	return o
 }
