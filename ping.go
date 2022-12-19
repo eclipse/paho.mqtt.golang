@@ -32,16 +32,16 @@ import (
 func keepalive(c *client, conn io.Writer) {
 	defer c.workers.Done()
 	DEBUG.Println(PNG, "keepalive starting")
-	var checkInterval int64
+	var checkInterval time.Duration
 	var pingSent time.Time
 
 	if c.options.KeepAlive > 10 {
-		checkInterval = 5
+		checkInterval = 5 * time.Second
 	} else {
-		checkInterval = c.options.KeepAlive / 2
+		checkInterval = time.Duration(c.options.KeepAlive) * time.Second / 2
 	}
 
-	intervalTicker := time.NewTicker(time.Duration(checkInterval * int64(time.Second)))
+	intervalTicker := time.NewTicker(checkInterval)
 	defer intervalTicker.Stop()
 
 	for {
