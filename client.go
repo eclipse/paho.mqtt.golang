@@ -141,6 +141,8 @@ type client struct {
 	stop         chan struct{}  // Closed to request that workers stop
 	workers      sync.WaitGroup // used to wait for workers to complete (ping, keepalive, errwatch, resume)
 	commsStopped chan struct{}  // closed when the comms routines have stopped (kept running until after workers have closed to avoid deadlocks)
+
+	backoff      *backoffController
 }
 
 // NewClient will create an MQTT v3.1.1 client with all of the options specified
@@ -169,6 +171,7 @@ func NewClient(o *ClientOptions) Client {
 	c.msgRouter.setDefaultHandler(c.options.DefaultPublishHandler)
 	c.obound = make(chan *PacketAndToken)
 	c.oboundP = make(chan *PacketAndToken)
+	c.backoff = newBackoffController()
 	return c
 }
 
@@ -302,9 +305,15 @@ func (c *client) Connect() Token {
 func (c *client) reconnect(connectionUp connCompletedFn) {
 	DEBUG.Println(CLI, "enter reconnect")
 	var (
-		sleep = 1 * time.Second
+		initSleep = 1 * time.Second
 		conn  net.Conn
 	)
+
+	// If the reason of connection lost is same as the before one, sleep timer is set before attempting connection is started.
+	// Sleep time is exponentially increased as the same situation continues
+	if slp, isContinual := c.backoff.sleepWithBackoff("connectionLost", initSleep, c.options.MaxReconnectInterval, 3 * time.Second, true); isContinual {
+		DEBUG.Println(CLI, "Detect continual connection lost after reconnect, slept for", int(slp.Seconds()), "seconds")
+	}
 
 	for {
 		if nil != c.options.OnReconnecting {
@@ -315,15 +324,8 @@ func (c *client) reconnect(connectionUp connCompletedFn) {
 		if err == nil {
 			break
 		}
-		DEBUG.Println(CLI, "Reconnect failed, sleeping for", int(sleep.Seconds()), "seconds:", err)
-		time.Sleep(sleep)
-		if sleep < c.options.MaxReconnectInterval {
-			sleep *= 2
-		}
-
-		if sleep > c.options.MaxReconnectInterval {
-			sleep = c.options.MaxReconnectInterval
-		}
+		sleep, _ := c.backoff.sleepWithBackoff("attemptReconnection", initSleep, c.options.MaxReconnectInterval, c.options.ConnectTimeout, false)
+		DEBUG.Println(CLI, "Reconnect failed, slept for", int(sleep.Seconds()), "seconds:", err)
 
 		if c.status.ConnectionStatus() != reconnecting { // Disconnect may have been called
 			if err := connectionUp(false); err != nil { // Should always return an error
