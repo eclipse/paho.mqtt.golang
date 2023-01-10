@@ -1,0 +1,45 @@
+/*
+ * This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v2.0
+ * and Eclipse Distribution License v1.0 which accompany this distribution.
+ *
+ * The Eclipse Public License is available at
+ *    https://www.eclipse.org/legal/epl-2.0/
+ * and the Eclipse Distribution License is available at
+ *   http://www.eclipse.org/org/documents/edl-v10.php.
+ *
+ * Contributors:
+ */
+
+package mqtt
+
+import (
+	"context"
+	"crypto/tls"
+	"fmt"
+	"net"
+	"net/http"
+	"time"
+
+	"nhooyr.io/websocket"
+)
+
+// NewWebsocket returns a new websocket and returns a net.Conn compatible interface using the gorilla/websocket package
+func NewWebsocket(host string, _ *tls.Config, _ time.Duration, _ http.Header, _ *WebsocketOptions) (net.Conn, error) {
+	dialOptions := websocket.DialOptions{
+		Subprotocols: []string{"mqtt"},
+	}
+
+	ctx := context.Background()
+
+	ws, resp, err := websocket.Dial(ctx, host, &dialOptions)
+
+	if err != nil {
+		if resp != nil {
+			WARN.Println(CLI, fmt.Sprintf("Websocket handshake failure. StatusCode: %d. Body: %s", resp.StatusCode, resp.Body))
+		}
+		return nil, err
+	}
+
+	return websocket.NetConn(ctx, ws, websocket.MessageBinary), nil
+}
