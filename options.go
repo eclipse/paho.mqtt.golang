@@ -142,7 +142,7 @@ func NewClientOptions() *ClientOptions {
 		OnConnect:               nil,
 		OnConnectionLost:        DefaultConnectionLostHandler,
 		OnConnectAttempt:        nil,
-		WriteTimeout:            0, // 0 represents timeout disabled
+		WriteTimeout:            time.Second * 30,
 		ResumeSubs:              false,
 		HTTPHeaders:             make(map[string][]string),
 		WebsocketOptions:        &WebsocketOptions{},
@@ -356,7 +356,7 @@ func (o *ClientOptions) SetConnectionAttemptHandler(onConnectAttempt ConnectionA
 }
 
 // SetWriteTimeout puts a limit on how long a mqtt publish should block until it unblocks with a
-// timeout error. A duration of 0 never times out. Default never times out
+// timeout error.
 func (o *ClientOptions) SetWriteTimeout(t time.Duration) *ClientOptions {
 	o.WriteTimeout = t
 	return o

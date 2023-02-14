@@ -220,6 +220,12 @@ func (c *client) IsConnectionOpen() bool {
 // made when the client is not connected to a broker
 var ErrNotConnected = errors.New("not Connected")
 
+// ErrNoMsgIDAvailable
+var ErrNoMsgIDAvailable = errors.New("no message IDs available")
+
+// ErrInvalidPayload
+var ErrInvalidPayload = errors.New("unknown payload type")
+
 // Connect will create a connection to the message broker, by default
 // it will attempt to connect at v3.1.1 and auto retry at v3.1 if that
 // fails
@@ -751,13 +757,8 @@ func (c *client) stopCommsWorkers() chan struct{} {
 func (c *client) Publish(topic string, qos byte, retained bool, payload interface{}) Token {
 	token := newToken(packets.Publish).(*PublishToken)
 	DEBUG.Println(CLI, "enter Publish")
-	switch {
-	case !c.IsConnected():
+	if !c.IsConnected() || (!c.IsConnectionOpen() && qos == 0) {
 		token.setError(ErrNotConnected)
-		return token
-	case c.status.ConnectionStatus() == reconnecting && qos == 0:
-		// message written to store and will be sent when connection comes up
-		token.flowComplete()
 		return token
 	}
 	pub := packets.NewControlPacket(packets.Publish).(*packets.PublishPacket)
@@ -772,14 +773,14 @@ func (c *client) Publish(topic string, qos byte, retained bool, payload interfac
 	case bytes.Buffer:
 		pub.Payload = p.Bytes()
 	default:
-		token.setError(fmt.Errorf("unknown payload type"))
+		token.setError(ErrInvalidPayload)
 		return token
 	}
 
 	if pub.Qos != 0 && pub.MessageID == 0 {
 		mID := c.getID(token)
 		if mID == 0 {
-			token.setError(fmt.Errorf("no message IDs available"))
+			token.setError(ErrNoMsgIDAvailable)
 			return token
 		}
 		pub.MessageID = mID
@@ -787,23 +788,19 @@ func (c *client) Publish(topic string, qos byte, retained bool, payload interfac
 	}
 	persistOutbound(c.persist, pub)
 	switch c.status.ConnectionStatus() {
+	case connected:
+		DEBUG.Println(CLI, "sending publish message, topic:", topic)
+		select {
+		case c.obound <- &PacketAndToken{p: pub, t: token}:
+		case <-time.After(c.options.WriteTimeout):
+			token.setError(errors.New("publish was broken by timeout"))
+		}
 	case connecting:
 		DEBUG.Println(CLI, "storing publish message (connecting), topic:", topic)
 	case reconnecting:
 		DEBUG.Println(CLI, "storing publish message (reconnecting), topic:", topic)
 	case disconnecting:
 		DEBUG.Println(CLI, "storing publish message (disconnecting), topic:", topic)
-	default:
-		DEBUG.Println(CLI, "sending publish message, topic:", topic)
-		publishWaitTimeout := c.options.WriteTimeout
-		if publishWaitTimeout == 0 {
-			publishWaitTimeout = time.Second * 30
-		}
-		select {
-		case c.obound <- &PacketAndToken{p: pub, t: token}:
-		case <-time.After(publishWaitTimeout):
-			token.setError(errors.New("publish was broken by timeout"))
-		}
 	}
 	return token
 }
@@ -859,7 +856,7 @@ func (c *client) Subscribe(topic string, qos byte, callback MessageHandler) Toke
 	if sub.MessageID == 0 {
 		mID := c.getID(token)
 		if mID == 0 {
-			token.setError(fmt.Errorf("no message IDs available"))
+			token.setError(ErrNoMsgIDAvailable)
 			return token
 		}
 		sub.MessageID = mID
@@ -871,23 +868,19 @@ func (c *client) Subscribe(topic string, qos byte, callback MessageHandler) Toke
 		persistOutbound(c.persist, sub)
 	}
 	switch c.status.ConnectionStatus() {
+	case connected:
+		DEBUG.Println(CLI, "sending subscribe message, topic:", topic)
+		select {
+		case c.oboundP <- &PacketAndToken{p: sub, t: token}:
+		case <-time.After(c.options.WriteTimeout):
+			token.setError(errors.New("subscribe was broken by timeout"))
+		}
 	case connecting:
 		DEBUG.Println(CLI, "storing subscribe message (connecting), topic:", topic)
 	case reconnecting:
 		DEBUG.Println(CLI, "storing subscribe message (reconnecting), topic:", topic)
 	case disconnecting:
 		DEBUG.Println(CLI, "storing subscribe message (disconnecting), topic:", topic)
-	default:
-		DEBUG.Println(CLI, "sending subscribe message, topic:", topic)
-		subscribeWaitTimeout := c.options.WriteTimeout
-		if subscribeWaitTimeout == 0 {
-			subscribeWaitTimeout = time.Second * 30
-		}
-		select {
-		case c.oboundP <- &PacketAndToken{p: sub, t: token}:
-		case <-time.After(subscribeWaitTimeout):
-			token.setError(errors.New("subscribe was broken by timeout"))
-		}
 	}
 	DEBUG.Println(CLI, "exit Subscribe")
 	return token
@@ -937,7 +930,7 @@ func (c *client) SubscribeMultiple(filters map[string]byte, callback MessageHand
 	if sub.MessageID == 0 {
 		mID := c.getID(token)
 		if mID == 0 {
-			token.setError(fmt.Errorf("no message IDs available"))
+			token.setError(ErrNoMsgIDAvailable)
 			return token
 		}
 		sub.MessageID = mID
@@ -947,23 +940,19 @@ func (c *client) SubscribeMultiple(filters map[string]byte, callback MessageHand
 		persistOutbound(c.persist, sub)
 	}
 	switch c.status.ConnectionStatus() {
+	case connected:
+		DEBUG.Println(CLI, "sending subscribe message, topics:", sub.Topics)
+		select {
+		case c.oboundP <- &PacketAndToken{p: sub, t: token}:
+		case <-time.After(c.options.WriteTimeout):
+			token.setError(errors.New("subscribe was broken by timeout"))
+		}
 	case connecting:
 		DEBUG.Println(CLI, "storing subscribe message (connecting), topics:", sub.Topics)
 	case reconnecting:
 		DEBUG.Println(CLI, "storing subscribe message (reconnecting), topics:", sub.Topics)
 	case disconnecting:
 		DEBUG.Println(CLI, "storing subscribe message (disconnecting), topics:", sub.Topics)
-	default:
-		DEBUG.Println(CLI, "sending subscribe message, topics:", sub.Topics)
-		subscribeWaitTimeout := c.options.WriteTimeout
-		if subscribeWaitTimeout == 0 {
-			subscribeWaitTimeout = time.Second * 30
-		}
-		select {
-		case c.oboundP <- &PacketAndToken{p: sub, t: token}:
-		case <-time.After(subscribeWaitTimeout):
-			token.setError(errors.New("subscribe was broken by timeout"))
-		}
 	}
 	DEBUG.Println(CLI, "exit SubscribeMultiple")
 	return token
@@ -1153,7 +1142,7 @@ func (c *client) Unsubscribe(topics ...string) Token {
 	if unsub.MessageID == 0 {
 		mID := c.getID(token)
 		if mID == 0 {
-			token.setError(fmt.Errorf("no message IDs available"))
+			token.setError(ErrNoMsgIDAvailable)
 			return token
 		}
 		unsub.MessageID = mID
@@ -1165,26 +1154,22 @@ func (c *client) Unsubscribe(topics ...string) Token {
 	}
 
 	switch c.status.ConnectionStatus() {
+	case connected:
+		DEBUG.Println(CLI, "sending unsubscribe message, topics:", topics)
+		select {
+		case c.oboundP <- &PacketAndToken{p: unsub, t: token}:
+			for _, topic := range topics {
+				c.msgRouter.deleteRoute(topic)
+			}
+		case <-time.After(c.options.WriteTimeout):
+			token.setError(errors.New("unsubscribe was broken by timeout"))
+		}
 	case connecting:
 		DEBUG.Println(CLI, "storing unsubscribe message (connecting), topics:", topics)
 	case reconnecting:
 		DEBUG.Println(CLI, "storing unsubscribe message (reconnecting), topics:", topics)
 	case disconnecting:
 		DEBUG.Println(CLI, "storing unsubscribe message (reconnecting), topics:", topics)
-	default:
-		DEBUG.Println(CLI, "sending unsubscribe message, topics:", topics)
-		subscribeWaitTimeout := c.options.WriteTimeout
-		if subscribeWaitTimeout == 0 {
-			subscribeWaitTimeout = time.Second * 30
-		}
-		select {
-		case c.oboundP <- &PacketAndToken{p: unsub, t: token}:
-			for _, topic := range topics {
-				c.msgRouter.deleteRoute(topic)
-			}
-		case <-time.After(subscribeWaitTimeout):
-			token.setError(errors.New("unsubscribe was broken by timeout"))
-		}
 	}
 
 	DEBUG.Println(CLI, "exit Unsubscribe")
