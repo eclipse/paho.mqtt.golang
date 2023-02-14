@@ -84,6 +84,31 @@ const (
 	ErrProtocolViolation            = 0xFF
 )
 
+// Additional mqtt v5 reason codes
+const (
+	ConnackUnspecifiedError            = 0x80
+	ConnackMalformedPacket             = 0x81
+	ConnackProtocolError               = 0x81
+	ConnackImplementationSpecificError = 0x83
+	ConnackUnsupportedProtocolVersion  = 0x84
+	ConnackInvalidClientID             = 0x85
+	ConnackBadUsernameOrPassword       = 0x86
+	ConnackNotAuthorized               = 0x87
+	ConnackServerUnavailable           = 0x88
+	ConnackServerBusy                  = 0x89
+	ConnackBanned                      = 0x8A
+	ConnackBadAuthenticationMethod     = 0x8C
+	ConnackTopicNameInvalid            = 0x90
+	ConnackPacketTooLarge              = 0x95
+	ConnackQuotaExceeded               = 0x97
+	ConnackPayloadFormatInvalid        = 0x99
+	ConnackRetainNotSupported          = 0x9A
+	ConnackQoSNotSupported             = 0x9B
+	ConnackUseAnotherServer            = 0x9C
+	ConnackServerMoved                 = 0x9D
+	ConnackConnectionRateExceeded      = 0x9F
+)
+
 // ConnackReturnCodes is a map of the error codes constants for Connect()
 // to a string representation of the error
 var ConnackReturnCodes = map[uint8]string{
@@ -93,31 +118,28 @@ var ConnackReturnCodes = map[uint8]string{
 	3:   "Connection Refused: Server Unavailable",
 	4:   "Connection Refused: Username or Password in unknown format",
 	5:   "Connection Refused: Not Authorised",
+	128: "Unspecified error - The Server does not wish to reveal the reason for the failure, or none of the other Reason Codes apply.",
+	129: "Malformed Packet - Data within the CONNECT packet could not be correctly parsed.",
+	130: "Protocol Error - Data in the CONNECT packet does not conform to this specification.",
+	131: "Implementation specific error - The CONNECT is valid but is not accepted by this Server.",
+	132: "Unsupported Protocol Version - The Server does not support the version of the MQTT protocol requested by the Client.",
+	133: "Client Identifier not valid - The Client Identifier is a valid string but is not allowed by the Server.",
+	134: "Bad User Name or Password - The Server does not accept the User Name or Password specified by the Client",
+	135: "Not authorized - The Client is not authorized to connect.",
+	136: "Server unavailable - The MQTT Server is not available.",
+	137: "Server busy - The Server is busy. Try again later.",
+	138: "Banned - This Client has been banned by administrative action. Contact the server administrator.",
+	140: "Bad authentication method - The authentication method is not supported or does not match the authentication method currently in use.",
+	144: "Topic Name invalid - The Will Topic Name is not malformed, but is not accepted by this Server.",
+	149: "Packet too large - The CONNECT packet exceeded the maximum permissible size.",
+	151: "Quota exceeded - An implementation or administrative imposed limit has been exceeded.",
+	154: "Retain not supported - The Server does not support retained messages, and Will Retain was set to 1.",
+	155: "QoS not supported - The Server does not support the QoS set in Will QoS.",
+	156: "Use another server - The Client should temporarily use another server.",
+	157: "Server moved - The Client should permanently use another server.",
+	159: "Connection rate exceeded - The connection rate limit has been exceeded.",
 	254: "Connection Error",
 	255: "Connection Refused: Protocol Violation",
-}
-
-var (
-	ErrorRefusedBadProtocolVersion    = errors.New("unacceptable protocol version")
-	ErrorRefusedIDRejected            = errors.New("identifier rejected")
-	ErrorRefusedServerUnavailable     = errors.New("server Unavailable")
-	ErrorRefusedBadUsernameOrPassword = errors.New("bad user name or password")
-	ErrorRefusedNotAuthorised         = errors.New("not Authorized")
-	ErrorNetworkError                 = errors.New("network Error")
-	ErrorProtocolViolation            = errors.New("protocol Violation")
-)
-
-// ConnErrors is a map of the errors codes constants for Connect()
-// to a Go error
-var ConnErrors = map[byte]error{
-	Accepted:                        nil,
-	ErrRefusedBadProtocolVersion:    ErrorRefusedBadProtocolVersion,
-	ErrRefusedIDRejected:            ErrorRefusedIDRejected,
-	ErrRefusedServerUnavailable:     ErrorRefusedServerUnavailable,
-	ErrRefusedBadUsernameOrPassword: ErrorRefusedBadUsernameOrPassword,
-	ErrRefusedNotAuthorised:         ErrorRefusedNotAuthorised,
-	ErrNetworkError:                 ErrorNetworkError,
-	ErrProtocolViolation:            ErrorProtocolViolation,
 }
 
 // ReadPacket takes an instance of an io.Reader (such as net.Conn) and attempts
