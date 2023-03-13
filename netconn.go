@@ -40,13 +40,13 @@ import (
 func openConnection(uri *url.URL, tlsc *tls.Config, timeout time.Duration, headers http.Header, websocketOptions *WebsocketOptions, dialer *net.Dialer) (net.Conn, error) {
 	switch uri.Scheme {
 	case "ws":
-		dialURI := uri // #623 - Gorilla Websockets does not accept URL's where uri.User != nil
-		uri.User = nil
+		dialURI := *uri // #623 - Gorilla Websockets does not accept URL's where uri.User != nil
+		dialURI.User = nil
 		conn, err := NewWebsocket(dialURI.String(), nil, timeout, headers, websocketOptions)
 		return conn, err
 	case "wss":
-		dialURI := uri // #623 - Gorilla Websockets does not accept URL's where uri.User != nil
-		uri.User = nil
+		dialURI := *uri // #623 - Gorilla Websockets does not accept URL's where uri.User != nil
+		dialURI.User = nil
 		conn, err := NewWebsocket(dialURI.String(), tlsc, timeout, headers, websocketOptions)
 		return conn, err
 	case "mqtt", "tcp":
