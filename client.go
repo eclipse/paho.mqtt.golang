@@ -142,7 +142,7 @@ type client struct {
 	workers      sync.WaitGroup // used to wait for workers to complete (ping, keepalive, errwatch, resume)
 	commsStopped chan struct{}  // closed when the comms routines have stopped (kept running until after workers have closed to avoid deadlocks)
 
-	backoff      *backoffController
+	backoff *backoffController
 }
 
 // NewClient will create an MQTT v3.1.1 client with all of the options specified
@@ -306,12 +306,12 @@ func (c *client) reconnect(connectionUp connCompletedFn) {
 	DEBUG.Println(CLI, "enter reconnect")
 	var (
 		initSleep = 1 * time.Second
-		conn  net.Conn
+		conn      net.Conn
 	)
 
 	// If the reason of connection lost is same as the before one, sleep timer is set before attempting connection is started.
 	// Sleep time is exponentially increased as the same situation continues
-	if slp, isContinual := c.backoff.sleepWithBackoff("connectionLost", initSleep, c.options.MaxReconnectInterval, 3 * time.Second, true); isContinual {
+	if slp, isContinual := c.backoff.sleepWithBackoff("connectionLost", initSleep, c.options.MaxReconnectInterval, 3*time.Second, true); isContinual {
 		DEBUG.Println(CLI, "Detect continual connection lost after reconnect, slept for", int(slp.Seconds()), "seconds")
 	}
 
@@ -427,7 +427,7 @@ func (c *client) attemptConnection() (net.Conn, byte, bool, error) {
 		if rc != packets.ErrNetworkError { // mqtt error
 			err = packets.ConnErrors[rc]
 		} else { // network error (if this occurred in ConnectMQTT then err will be nil)
-			err = fmt.Errorf("%s : %s", packets.ConnErrors[rc], err)
+			err = fmt.Errorf("%w : %w", packets.ConnErrors[rc], err)
 		}
 	}
 	return conn, rc, sessionPresent, err
