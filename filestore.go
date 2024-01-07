@@ -19,7 +19,6 @@
 package mqtt
 
 import (
-	"io/ioutil"
 	"os"
 	"path"
 	"sort"
@@ -166,7 +165,7 @@ func (store *FileStore) all() []string {
 		return nil
 	}
 
-	files, err = ioutil.ReadDir(store.directory)
+	files, err = os.ReadDir(store.directory)
 	chkerr(err)
 	sort.Sort(files)
 	for _, f := range files {
