@@ -20,7 +20,6 @@ package mqtt
 
 import (
 	"bytes"
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -250,7 +249,7 @@ func Test_FileStore_Get_Corrupted(t *testing.T) {
 		t.Fatalf("corrupt message not archived")
 	}
 
-	contents, err := ioutil.ReadFile(storedir + "/o.120.CORRUPT")
+	contents, err := os.ReadFile(storedir + "/o.120.CORRUPT")
 	chkerr(err)
 
 	if !bytes.Equal(exp, contents) {
