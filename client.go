@@ -516,7 +516,7 @@ func (c *client) internalConnLost(whyConnLost error) {
 	DEBUG.Println(CLI, "internalConnLost called")
 	disDone, err := c.status.ConnectionLost(c.options.AutoReconnect && c.status.ConnectionStatus() > connecting)
 	if err != nil {
-		if err == errConnLossWhileDisconnecting || err == errAlreadyHandlingConnectionLoss {
+		if err == errConnLossWhileDisconnecting {
 			return // Loss of connection is expected or already being handled
 		}
 		ERROR.Println(CLI, fmt.Sprintf("internalConnLost unexpected status: %s", err.Error()))

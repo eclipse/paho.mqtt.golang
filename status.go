@@ -67,9 +67,11 @@ func (s status) String() string {
 	}
 }
 
-type connCompletedFn func(success bool) error
-type disconnectCompletedFn func()
-type connectionLostHandledFn func(bool) (connCompletedFn, error)
+type (
+	connCompletedFn         func(success bool) error
+	disconnectCompletedFn   func()
+	connectionLostHandledFn func(bool) (connCompletedFn, error)
+)
 
 /* State transitions
 
@@ -105,7 +107,6 @@ var (
 	errAlreadyDisconnected            = errors.New("status is already disconnected")
 	errDisconnectionRequested         = errors.New("disconnection was requested whilst the action was in progress")
 	errDisconnectionInProgress        = errors.New("disconnection already in progress")
-	errAlreadyHandlingConnectionLoss  = errors.New("status is already Connection Lost")
 	errConnLossWhileDisconnecting     = errors.New("connection status is disconnecting so loss of connection is expected")
 )
 
