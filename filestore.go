@@ -19,6 +19,7 @@
 package mqtt
 
 import (
+	"io/fs"
 	"os"
 	"path"
 	"sort"
@@ -158,15 +159,20 @@ func (store *FileStore) Reset() {
 func (store *FileStore) all() []string {
 	var err error
 	var keys []string
-	var files fileInfos
 
 	if !store.opened {
 		ERROR.Println(STR, "trying to use file store, but not open")
 		return nil
 	}
 
-	files, err = os.ReadDir(store.directory)
+	entries, err := os.ReadDir(store.directory)
 	chkerr(err)
+	files := make(fileInfos, 0, len(entries))
+	for _, entry := range entries {
+		info, err := entry.Info()
+		chkerr(err)
+		files = append(files, info)
+	}
 	sort.Sort(files)
 	for _, f := range files {
 		DEBUG.Println(STR, "file in All():", f.Name())
@@ -245,7 +251,7 @@ func exists(file string) bool {
 	return true
 }
 
-type fileInfos []os.FileInfo
+type fileInfos []fs.FileInfo
 
 func (f fileInfos) Len() int {
 	return len(f)
