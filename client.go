@@ -604,14 +604,25 @@ func (c *client) startCommsWorkers(conn net.Conn, connectionUp connCompletedFn, 
 	// The connection is now ready for use (we spin up a few go routines below). It is possible that
 	// Disconnect has been called in the interim...
 	if err := connectionUp(true); err != nil {
-		DEBUG.Println(CLI, err)
-		close(c.stop) // Tidy up anything we have already started
-		close(incomingPubChan)
-		c.workers.Wait()
-		c.conn.Close()
-		c.conn = nil
-		return false
+		ERROR.Println(CLI, err)
+
+		/* issue 675：goroutine leak when connectionUp(true) return error
+		 *   Only when status == disconnecting will this logic be executed.
+		 * The goroutine that changes the status to disconnecting should be
+		 * responsible for resource cleanup (which is indeed how it is done).
+		 *
+		 *   Being disconnected right when the connection is established is a special case.
+		 * Even if we remove this check for connectionUp(true), the program must still function correctly,
+		 * as if a Disconnect event occurred immediately after connectionUp(true) completed.
+		 */
+
+		//close(c.stop) // Tidy up anything we have already started
+		//close(incomingPubChan)
+		//c.workers.Wait()
+		//c.conn.Close()
+		//c.conn = nil
 	}
+
 	DEBUG.Println(CLI, "client is connected/reconnected")
 	if c.options.OnConnect != nil {
 		go c.options.OnConnect(c)
