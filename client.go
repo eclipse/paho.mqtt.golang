@@ -601,17 +601,14 @@ func (c *client) startCommsWorkers(conn net.Conn, connectionUp connCompletedFn, 
 	c.workers.Add(1) // Done will be called when ackOut is closed
 	ackOut := c.msgRouter.matchAndDispatch(incomingPubChan, c.options.Order, c)
 
-	// The connection is now ready for use (we spin up a few go routines below). It is possible that
-	// Disconnect has been called in the interim...
+	// The connection is now ready for use (we spin up a few go routines below).
+	// It is possible that Disconnect has been called in the interim...
+	// issue 675：we will allow the connection to complete before the Disconnect is allowed to proceed
+	//   as if a Disconnect event occurred immediately after connectionUp(true) completed.
 	if err := connectionUp(true); err != nil {
-		DEBUG.Println(CLI, err)
-		close(c.stop) // Tidy up anything we have already started
-		close(incomingPubChan)
-		c.workers.Wait()
-		c.conn.Close()
-		c.conn = nil
-		return false
+		ERROR.Println(CLI, err)
 	}
+
 	DEBUG.Println(CLI, "client is connected/reconnected")
 	if c.options.OnConnect != nil {
 		go c.options.OnConnect(c)
