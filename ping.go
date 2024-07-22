@@ -66,12 +66,11 @@ func keepalive(c *client, conn io.Writer) {
 					}
 					c.lastSent.Store(time.Now())
 					pingSent = time.Now()
+				} else if time.Since(pingSent) >= c.options.PingTimeout {
+					CRITICAL.Println(PNG, "pingresp not received, disconnecting")
+					c.internalConnLost(errors.New("pingresp not received, disconnecting")) // no harm in calling this if the connection is already down (or shutdown is in progress)
+					return
 				}
-			}
-			if atomic.LoadInt32(&c.pingOutstanding) > 0 && time.Since(pingSent) >= c.options.PingTimeout {
-				CRITICAL.Println(PNG, "pingresp not received, disconnecting")
-				c.internalConnLost(errors.New("pingresp not received, disconnecting")) // no harm in calling this if the connection is already down (or shutdown is in progress)
-				return
 			}
 		}
 	}
