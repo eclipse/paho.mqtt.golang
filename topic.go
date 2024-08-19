@@ -88,3 +88,14 @@ func validateTopicAndQos(topic string, qos byte) error {
 	}
 	return nil
 }
+
+func getRealTopic(topic string) string {
+	if strings.HasPrefix(topic, "$share/") {
+		return strings.Join(strings.Split(topic, "/")[2:], "/")
+	}
+
+	if strings.HasPrefix(topic, "$queue/") {
+		return strings.TrimPrefix(topic, "$queue/")
+	}
+	return topic
+}

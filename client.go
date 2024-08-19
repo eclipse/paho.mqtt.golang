@@ -28,7 +28,6 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -843,13 +842,7 @@ func (c *client) Subscribe(topic string, qos byte, callback MessageHandler) Toke
 	sub.Topics = append(sub.Topics, topic)
 	sub.Qoss = append(sub.Qoss, qos)
 
-	if strings.HasPrefix(topic, "$share/") {
-		topic = strings.Join(strings.Split(topic, "/")[2:], "/")
-	}
-
-	if strings.HasPrefix(topic, "$queue/") {
-		topic = strings.TrimPrefix(topic, "$queue/")
-	}
+	topic = getRealTopic(topic)
 
 	if callback != nil {
 		c.msgRouter.addRoute(topic, callback)
@@ -927,13 +920,18 @@ func (c *client) SubscribeMultiple(filters map[string]byte, callback MessageHand
 		return token
 	}
 
+	var topics []string
+	for topic := range filters {
+		topics = append(topics, getRealTopic(topic))
+	}
+
 	if callback != nil {
-		for topic := range filters {
+		for _, topic := range topics {
 			c.msgRouter.addRoute(topic, callback)
 		}
 	}
-	token.subs = make([]string, len(sub.Topics))
-	copy(token.subs, sub.Topics)
+	token.subs = make([]string, len(topics))
+	copy(token.subs, topics)
 
 	if sub.MessageID == 0 {
 		mID := c.getID(token)
@@ -949,13 +947,13 @@ func (c *client) SubscribeMultiple(filters map[string]byte, callback MessageHand
 	}
 	switch c.status.ConnectionStatus() {
 	case connecting:
-		DEBUG.Println(CLI, "storing subscribe message (connecting), topics:", sub.Topics)
+		DEBUG.Println(CLI, "storing subscribe message (connecting), topics:", topics)
 	case reconnecting:
-		DEBUG.Println(CLI, "storing subscribe message (reconnecting), topics:", sub.Topics)
+		DEBUG.Println(CLI, "storing subscribe message (reconnecting), topics:", topics)
 	case disconnecting:
-		DEBUG.Println(CLI, "storing subscribe message (disconnecting), topics:", sub.Topics)
+		DEBUG.Println(CLI, "storing subscribe message (disconnecting), topics:", topics)
 	default:
-		DEBUG.Println(CLI, "sending subscribe message, topics:", sub.Topics)
+		DEBUG.Println(CLI, "sending subscribe message, topics:", topics)
 		subscribeWaitTimeout := c.options.WriteTimeout
 		if subscribeWaitTimeout == 0 {
 			subscribeWaitTimeout = time.Second * 30
