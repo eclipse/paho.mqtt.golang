@@ -33,6 +33,7 @@ import (
 )
 
 const closedNetConnErrorText = "use of closed network connection" // error string for closed conn (https://golang.org/src/net/error_test.go)
+var ErrMalformedSuback = errors.New("malformed SUBACK received")
 
 // ConnectMQTT takes a connected net.Conn and performs the initial MQTT handshake. Parameters are:
 // conn - Connected net.Conn
@@ -219,6 +220,13 @@ func startIncomingComms(conn io.Reader,
 
 				if t, ok := token.(*SubscribeToken); ok {
 					logger.Debug("startIncomingComms: granted qoss", slog.Any("returnCodes", m.ReturnCodes), slog.String("component", string(NET)))
+					// [MQTT-3.8.4-5] - The SUBACK Packet sent by the Server to the Client MUST contain a return code for each Topic Filter/QoS pair
+					if len(m.ReturnCodes) != len(t.subs) {
+						token.setError(ErrMalformedSuback)
+						c.freeID(m.MessageID)
+						output <- incomingComms{err: ErrMalformedSuback} // This is a protocol error so connection should be closed
+						continue
+					}
 					for i, qos := range m.ReturnCodes {
 						t.subResult[t.subs[i]] = qos
 					}
