@@ -43,6 +43,10 @@ func Test_NewClientOptions_default(t *testing.T) {
 	if o.KeepAlive != 30 {
 		t.Fatalf("bad default timeout")
 	}
+
+	if o.MaxIncomingPacketSize != 0 {
+		t.Fatalf("bad default maximum incoming packet size")
+	}
 }
 
 func Test_NewClientOptions_mix(t *testing.T) {
@@ -52,6 +56,7 @@ func Test_NewClientOptions_mix(t *testing.T) {
 	o.SetUsername("myuser")
 	o.SetPassword("mypassword")
 	o.SetKeepAlive(88 * time.Second)
+	o.SetMaxIncomingPacketSize(1024)
 
 	if o.Servers[0].Scheme != "tcp" {
 		t.Fatalf("bad scheme")
@@ -75,6 +80,10 @@ func Test_NewClientOptions_mix(t *testing.T) {
 
 	if o.KeepAlive != 88 {
 		t.Fatalf("bad set timeout: %d", o.KeepAlive)
+	}
+
+	if o.MaxIncomingPacketSize != 1024 {
+		t.Fatalf("bad maximum incoming packet size: %d", o.MaxIncomingPacketSize)
 	}
 }
 

@@ -59,7 +59,7 @@ func Test_NewClient_simple(t *testing.T) {
 }
 
 func Test_NewClient_optionsReader(t *testing.T) {
-	ops := NewClientOptions().SetClientID("foo").AddBroker("tcp://10.10.0.1:1883")
+	ops := NewClientOptions().SetClientID("foo").AddBroker("tcp://10.10.0.1:1883").SetMaxIncomingPacketSize(4096)
 	c := NewClient(ops).(*client)
 
 	if c == nil {
@@ -77,6 +77,9 @@ func Test_NewClient_optionsReader(t *testing.T) {
 	broker := servers[0]
 	if broker.Hostname() != "10.10.0.1" {
 		t.Fatalf("unable to read hostname")
+	}
+	if rOps.MaxIncomingPacketSize() != 4096 {
+		t.Fatalf("unable to read maximum incoming packet size")
 	}
 
 }

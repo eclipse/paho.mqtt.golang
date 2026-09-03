@@ -446,7 +446,7 @@ func (c *client) attemptConnection(isReconnect bool, attempt int) (net.Conn, byt
 		}
 
 		// Now we perform the MQTT connection handshake
-		rc, sessionPresent, err = connectMQTT(conn, cm, protocolVersion, c.logger)
+		rc, sessionPresent, err = connectMQTT(conn, cm, protocolVersion, c.logger, c.options.MaxIncomingPacketSize)
 		if rc == packets.Accepted {
 			if err := conn.SetDeadline(time.Time{}); err != nil {
 				c.logger.Error("reset deadline following handshake", slog.String("error", err.Error()), slog.String("component", string(CLI)))
@@ -1292,6 +1292,11 @@ func (c *client) UpdateLastSent() {
 // getWriteTimeOut returns the writetimeout (duration to wait when writing to the connection) or 0 if none
 func (c *client) getWriteTimeOut() time.Duration {
 	return c.options.WriteTimeout
+}
+
+// getMaxIncomingPacketSize returns the maximum accepted MQTT Remaining Length or 0 if none.
+func (c *client) getMaxIncomingPacketSize() uint32 {
+	return c.options.MaxIncomingPacketSize
 }
 
 // persistOutbound adds the packet to the outbound store

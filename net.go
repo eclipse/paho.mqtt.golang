@@ -43,7 +43,7 @@ var ErrMalformedSuback = errors.New("malformed SUBACK received")
 // Note that, for backward compatibility, ConnectMQTT() suppresses the actual connection error (compare to connectMQTT()).
 func ConnectMQTT(conn net.Conn, cm *packets.ConnectPacket, protocolVersion uint) (byte, bool) {
 	logger := noopSLogger
-	rc, sessionPresent, _ := connectMQTT(conn, cm, protocolVersion, logger)
+	rc, sessionPresent, _ := connectMQTT(conn, cm, protocolVersion, logger, 0)
 	return rc, sessionPresent
 }
 
@@ -51,11 +51,11 @@ func ConnectMQTTEx(conn net.Conn, cm *packets.ConnectPacket, protocolVersion uin
 	if logger == nil {
 		logger = noopSLogger
 	}
-	rc, sessionPresent, _ := connectMQTT(conn, cm, protocolVersion, logger)
+	rc, sessionPresent, _ := connectMQTT(conn, cm, protocolVersion, logger, 0)
 	return rc, sessionPresent
 }
 
-func connectMQTT(conn io.ReadWriter, cm *packets.ConnectPacket, protocolVersion uint, logger *slog.Logger) (byte, bool, error) {
+func connectMQTT(conn io.ReadWriter, cm *packets.ConnectPacket, protocolVersion uint, logger *slog.Logger, maxIncomingPacketSize uint32) (byte, bool, error) {
 	switch protocolVersion {
 	case 3:
 		logger.Debug("Using MQTT 3.1 protocol", slog.String("component", string(CLI)))
@@ -80,7 +80,7 @@ func connectMQTT(conn io.ReadWriter, cm *packets.ConnectPacket, protocolVersion 
 		return packets.ErrNetworkError, false, err
 	}
 
-	rc, sessionPresent, err := verifyCONNACK(conn, logger)
+	rc, sessionPresent, err := verifyCONNACK(conn, logger, maxIncomingPacketSize)
 	return rc, sessionPresent, err
 }
 
@@ -88,10 +88,10 @@ func connectMQTT(conn io.ReadWriter, cm *packets.ConnectPacket, protocolVersion 
 // when the connection is first started.
 // This prevents receiving incoming data while resume
 // is in progress if clean session is false.
-func verifyCONNACK(conn io.Reader, logger *slog.Logger) (byte, bool, error) {
+func verifyCONNACK(conn io.Reader, logger *slog.Logger, maxIncomingPacketSize uint32) (byte, bool, error) {
 	logger.Debug("connect started", slog.String("component", string(NET)))
 
-	ca, err := packets.ReadPacket(conn)
+	ca, err := packets.ReadPacketWithLimit(conn, maxIncomingPacketSize)
 	if err != nil {
 		logger.Error("connect got error", slog.String("error", err.Error()), slog.String("component", string(NET)))
 		return packets.ErrNetworkError, false, err
@@ -123,7 +123,7 @@ type inbound struct {
 // startIncoming initiates a goroutine that reads incoming messages off the wire and sends them to the channel (returned).
 // If there are any issues with the network connection then the returned channel will be closed and the goroutine will exit
 // (so closing the connection will terminate the goroutine)
-func startIncoming(conn io.Reader, logger *slog.Logger) <-chan inbound {
+func startIncoming(conn io.Reader, logger *slog.Logger, maxIncomingPacketSize uint32) <-chan inbound {
 	var err error
 	var cp packets.ControlPacket
 	ibound := make(chan inbound)
@@ -132,7 +132,7 @@ func startIncoming(conn io.Reader, logger *slog.Logger) <-chan inbound {
 
 	go func() {
 		for {
-			if cp, err = packets.ReadPacket(conn); err != nil {
+			if cp, err = packets.ReadPacketWithLimit(conn, maxIncomingPacketSize); err != nil {
 				// We do not want to log the error if it is due to the network connection having been closed
 				// elsewhere (i.e. after sending DisconnectPacket). Detecting this situation is the subject of
 				// https://github.com/golang/go/issues/4373
@@ -169,7 +169,7 @@ func startIncomingComms(conn io.Reader,
 	inboundFromStore <-chan packets.ControlPacket,
 	logger *slog.Logger,
 ) <-chan incomingComms {
-	ibound := startIncoming(conn, logger) // Start goroutine that reads from network connection
+	ibound := startIncoming(conn, logger, c.getMaxIncomingPacketSize()) // Start goroutine that reads from network connection
 	output := make(chan incomingComms)
 
 	logger.Debug("startIncomingComms started", slog.String("component", string(NET)))
@@ -382,6 +382,7 @@ type commsFns interface {
 	UpdateLastReceived()                     // Must be called whenever a packet is received
 	UpdateLastSent()                         // Must be called whenever a packet is successfully sent
 	getWriteTimeOut() time.Duration          // Return the writetimeout (or 0 if none)
+	getMaxIncomingPacketSize() uint32        // Return the maximum accepted MQTT Remaining Length (or 0 if none)
 	persistOutbound(m packets.ControlPacket) // add the packet to the outbound store
 	persistInbound(m packets.ControlPacket)  // add the packet to the inbound store
 	pingRespReceived()                       // Called when a ping response is received

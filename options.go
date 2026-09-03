@@ -103,6 +103,7 @@ type ClientOptions struct {
 	OnConnectAttempt         ConnectionAttemptHandler
 	OnConnectionNotification ConnectionNotificationHandler
 	WriteTimeout             time.Duration // duration of 0 never times out
+	MaxIncomingPacketSize    uint32        // 0 = no limit; otherwise maximum accepted MQTT Remaining Length
 	MessageChannelDepth      uint
 	ResumeSubs               bool
 	HTTPHeaders              http.Header
@@ -152,6 +153,7 @@ func NewClientOptions() *ClientOptions {
 		OnConnectAttempt:         nil,
 		OnConnectionNotification: nil,
 		WriteTimeout:             0, // 0 represents timeout disabled
+		MaxIncomingPacketSize:    0, // 0 represents no limit for backward compatibility
 		ResumeSubs:               false,
 		HTTPHeaders:              make(map[string][]string),
 		WebsocketOptions:         &WebsocketOptions{},
@@ -380,6 +382,15 @@ func (o *ClientOptions) SetConnectionNotificationHandler(onConnectionNotificatio
 // timeout error. A duration of 0 never times out. Default never times out
 func (o *ClientOptions) SetWriteTimeout(t time.Duration) *ClientOptions {
 	o.WriteTimeout = t
+	return o
+}
+
+// SetMaxIncomingPacketSize sets the maximum MQTT Remaining Length, in bytes,
+// that the client will accept from a broker. Packets that exceed the limit are
+// rejected before their payload buffer is allocated. A value of 0 disables the
+// limit, which is the default for backward compatibility.
+func (o *ClientOptions) SetMaxIncomingPacketSize(maxPacketSize uint32) *ClientOptions {
+	o.MaxIncomingPacketSize = maxPacketSize
 	return o
 }
 

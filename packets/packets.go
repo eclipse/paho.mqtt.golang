@@ -105,6 +105,7 @@ var (
 	ErrorRefusedNotAuthorised         = errors.New("not Authorized")
 	ErrorNetworkError                 = errors.New("network Error")
 	ErrorProtocolViolation            = errors.New("protocol Violation")
+	ErrPacketTooLarge                 = errors.New("incoming packet exceeds configured maximum size")
 )
 
 // ConnErrors is a map of the errors codes constants for Connect()
@@ -125,6 +126,13 @@ var ConnErrors = map[byte]error{
 // representing the decoded MQTT packet and an error. One of these returns will
 // always be nil, a nil ControlPacket indicating an error occurred.
 func ReadPacket(r io.Reader) (ControlPacket, error) {
+	return ReadPacketWithLimit(r, 0)
+}
+
+// ReadPacketWithLimit behaves like ReadPacket, but rejects packets whose MQTT
+// Remaining Length exceeds maxPacketSize before allocating a payload buffer. A
+// maxPacketSize of 0 disables the limit.
+func ReadPacketWithLimit(r io.Reader, maxPacketSize uint32) (ControlPacket, error) {
 	var fh FixedHeader
 	b := make([]byte, 1)
 
@@ -136,6 +144,9 @@ func ReadPacket(r io.Reader) (ControlPacket, error) {
 	err = fh.unpack(b[0], r)
 	if err != nil {
 		return nil, err
+	}
+	if maxPacketSize > 0 && uint32(fh.RemainingLength) > maxPacketSize {
+		return nil, fmt.Errorf("%w: remaining length %d exceeds limit %d", ErrPacketTooLarge, fh.RemainingLength, maxPacketSize)
 	}
 
 	cp, err := NewControlPacketWithHeader(fh)
