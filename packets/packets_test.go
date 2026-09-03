@@ -18,6 +18,7 @@ package packets
 
 import (
 	"bytes"
+	"errors"
 	"testing"
 )
 
@@ -171,6 +172,30 @@ func TestConnectPacket(t *testing.T) {
 	}
 	if string(cp.WillMessage) != "Test Payload" {
 		t.Errorf("Connect Packet WillMessage is %s, should be %s", string(cp.WillMessage), "Test Payload")
+	}
+}
+
+func TestReadPacketWithLimitRejectsOversizedPacket(t *testing.T) {
+	// A maximum MQTT Remaining Length encoded in only four bytes must be
+	// rejected without attempting to allocate its 256 MiB payload.
+	packetHeader := []byte{0x30, 0xff, 0xff, 0xff, 0x7f}
+
+	packet, err := ReadPacketWithLimit(bytes.NewReader(packetHeader), 1024)
+	if packet != nil {
+		t.Fatalf("expected no packet, got %T", packet)
+	}
+	if !errors.Is(err, ErrPacketTooLarge) {
+		t.Fatalf("expected ErrPacketTooLarge, got %v", err)
+	}
+}
+
+func TestReadPacketWithLimitAcceptsPacketWithinLimit(t *testing.T) {
+	packet, err := ReadPacketWithLimit(bytes.NewReader([]byte{0x20, 0x02, 0x00, 0x00}), 2)
+	if err != nil {
+		t.Fatalf("expected packet within limit to be accepted, got %v", err)
+	}
+	if _, ok := packet.(*ConnackPacket); !ok {
+		t.Fatalf("expected ConnackPacket, got %T", packet)
 	}
 }
 

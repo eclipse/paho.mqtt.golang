@@ -23,6 +23,40 @@ import (
 	"github.com/eclipse/paho.mqtt.golang/packets"
 )
 
+func Test_connectMQTT_rejectsOversizedConnack(t *testing.T) {
+	// The broker response advertises a two-byte body but does not send it. A
+	// one-byte limit must reject the packet before attempting to read the body.
+	conn := bytes.NewBuffer([]byte{0x20, 0x02})
+	connectPacket := packets.NewControlPacket(packets.Connect).(*packets.ConnectPacket)
+
+	_, _, err := connectMQTT(conn, connectPacket, 4, noopSLogger, 1)
+	if !errors.Is(err, packets.ErrPacketTooLarge) {
+		t.Fatalf("expected ErrPacketTooLarge, got %v", err)
+	}
+}
+
+func Test_startIncomingComms_rejectsOversizedPacket(t *testing.T) {
+	conn := bytes.NewBuffer([]byte{0x30, 0xff, 0xff, 0xff, 0x7f})
+	inboundFromStore := make(chan packets.ControlPacket)
+	close(inboundFromStore)
+
+	output := startIncomingComms(
+		conn,
+		&testCommsFns{maxIncomingPacketSize: 1024},
+		inboundFromStore,
+		noopSLogger,
+	)
+
+	select {
+	case result := <-output:
+		if !errors.Is(result.err, packets.ErrPacketTooLarge) {
+			t.Fatalf("expected ErrPacketTooLarge, got %v", result.err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("startIncomingComms did not report the oversized packet")
+	}
+}
+
 // Check that the library handles a case where a malicious server sends a SUBACK packet with a different number of return codes than
 // the matching SUBSCRIBE requested subscriptions.
 // See [MQTT-3.8.4-5] in the spec for the relevant rule.
@@ -129,7 +163,8 @@ func Test_startIncomingComms_subackReturnCodeSubscriptionMismatch(t *testing.T) 
 
 // testCommsFns is a basic implementation of commsFns for use with startIncomingComms
 type testCommsFns struct {
-	token tokenCompletor
+	token                 tokenCompletor
+	maxIncomingPacketSize uint32
 }
 
 func (c *testCommsFns) getToken(uint16) tokenCompletor {
@@ -144,6 +179,10 @@ func (c *testCommsFns) UpdateLastSent() {}
 
 func (c *testCommsFns) getWriteTimeOut() time.Duration {
 	return 0
+}
+
+func (c *testCommsFns) getMaxIncomingPacketSize() uint32 {
+	return c.maxIncomingPacketSize
 }
 
 func (c *testCommsFns) persistOutbound(packets.ControlPacket) {}
